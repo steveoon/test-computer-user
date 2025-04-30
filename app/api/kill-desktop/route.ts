@@ -10,14 +10,11 @@ async function handleKillDesktop(request: Request) {
   console.log(`Kill desktop request received via ${request.method} for ID: ${sandboxId}`);
 
   if (!sandboxId) {
-    console.log('No sandboxId provided');
     return new Response("No sandboxId provided", { status: 400 });
   }
 
   try {
-    console.log(`Attempting to kill desktop with ID: ${sandboxId}`);
     await killDesktop(sandboxId);
-    console.log(`Successfully killed desktop with ID: ${sandboxId}`);
     return new Response("Desktop killed successfully", { status: 200 });
   } catch (error) {
     console.error(`Failed to kill desktop with ID: ${sandboxId}`, error);
