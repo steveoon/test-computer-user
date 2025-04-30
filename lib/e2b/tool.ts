@@ -19,7 +19,7 @@ export const computerTool = (sandboxId: string) =>
       duration,
       scroll_amount,
       scroll_direction,
-      start_coordinate
+      start_coordinate,
     }) => {
       const desktop = await getDesktop(sandboxId);
 
