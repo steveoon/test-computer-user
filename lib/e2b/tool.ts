@@ -19,6 +19,7 @@ export const computerTool = (sandboxId: string) =>
       duration,
       scroll_amount,
       scroll_direction,
+      start_coordinate,
     }) => {
       const desktop = await getDesktop(sandboxId);
 
@@ -96,6 +97,18 @@ export const computerTool = (sandboxId: string) =>
             scroll_amount,
           );
           return { type: "text" as const, text: `Scrolled ${text}` };
+        }
+        case "left_click_drag": {
+          if (!start_coordinate || !coordinate)
+            throw new Error("Coordinate required for mouse move action");
+          const [startX, startY] = start_coordinate;
+          const [endX, endY] = coordinate;
+
+          await desktop.drag([startX, startY], [endX, endY]);
+          return {
+            type: "text" as const,
+            text: `Dragged mouse from ${startX}, ${startY} to ${endX}, ${endY}`,
+          };
         }
         default:
           throw new Error(`Unsupported action: ${action}`);
