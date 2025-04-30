@@ -1,7 +1,7 @@
 "use client";
 
 import { PreviewMessage } from "@/components/message";
-import { getDesktopURL, killDesktop } from "@/lib/e2b/utils";
+import { getDesktopURL } from "@/lib/e2b/utils";
 import { useScrollToBottom } from "@/lib/use-scroll-to-bottom";
 import { useChat } from "@ai-sdk/react";
 import { useEffect, useState } from "react";
