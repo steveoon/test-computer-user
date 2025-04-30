@@ -26,7 +26,7 @@ export const ProjectInfo = () => {
           Learn more about{" "}
           <Link
             className="text-blue-500 dark:text-blue-400"
-            href="https://sdk.vercel.ai/docs/examples/ai-sdk-computer-use"
+            href="https://sdk.vercel.ai/docs/guides/computer-use"
             target="_blank"
           >
             Computer Use{" "}
