@@ -98,41 +98,46 @@ export default function Chat() {
     }
   };
 
-  // Kill desktop on page close.
+  // Kill desktop on page close
   useEffect(() => {
-    // Create a flag to track whether the user is actually closing the page
-    let isReallyClosing = false;
+    if (!sandboxId) return;
 
-    const handleBeforeUnload = () => {
-      // Set the flag to true as user is trying to close the page
-      isReallyClosing = true;
+    // Function to kill the desktop - just one method to reduce duplicates
+    const killDesktop = () => {
+      if (!sandboxId) return;
 
-      // Give browser time to set the flag before the visibilitychange event might fire
-      setTimeout(() => {
-        isReallyClosing = false; // Reset if the page doesn't actually close
-      }, 1000);
-
-      // Don't do anything else here - we'll handle cleanup in the unload event
+      // Use sendBeacon which is best supported across browsers
+      navigator.sendBeacon(
+        `/api/kill-desktop?sandboxId=${encodeURIComponent(sandboxId)}`,
+      );
     };
 
-    const handleUnload = () => {
-      // Only proceed if this is really a page close (not just a visibility change)
-      if (isReallyClosing && sandboxId) {
-        // Use sendBeacon as it's the most reliable for unload events
-        // sendBeacon uses POST by default
-        navigator.sendBeacon(
-          `/api/kill-desktop?sandboxId=${encodeURIComponent(sandboxId)}`,
-        );
-      }
-    };
+    // Detect iOS / Safari
+    const isIOS =
+      /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
 
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    window.addEventListener("unload", handleUnload);
+    // Choose exactly ONE event handler based on the browser
+    if (isIOS || isSafari) {
+      // For Safari on iOS, use pagehide which is most reliable
+      window.addEventListener("pagehide", killDesktop);
 
-    return () => {
-      window.removeEventListener("beforeunload", handleBeforeUnload);
-      window.removeEventListener("unload", handleUnload);
-    };
+      return () => {
+        window.removeEventListener("pagehide", killDesktop);
+        // Also kill desktop when component unmounts
+        killDesktop();
+      };
+    } else {
+      // For all other browsers, use beforeunload
+      window.addEventListener("beforeunload", killDesktop);
+
+      return () => {
+        window.removeEventListener("beforeunload", killDesktop);
+        // Also kill desktop when component unmounts
+        killDesktop();
+      };
+    }
   }, [sandboxId]);
 
   useEffect(() => {
