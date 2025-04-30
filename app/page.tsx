@@ -98,18 +98,51 @@ export default function Chat() {
     }
   };
 
+  // Kill desktop on page close.
+  useEffect(() => {
+    // Create a flag to track whether the user is actually closing the page
+    let isReallyClosing = false;
+
+    const handleBeforeUnload = (_: BeforeUnloadEvent) => {
+      // Set the flag to true as user is trying to close the page
+      isReallyClosing = true;
+
+      // Give browser time to set the flag before the visibilitychange event might fire
+      setTimeout(() => {
+        isReallyClosing = false; // Reset if the page doesn't actually close
+      }, 1000);
+
+      // Don't do anything else here - we'll handle cleanup in the unload event
+    };
+
+    const handleUnload = () => {
+      // Only proceed if this is really a page close (not just a visibility change)
+      if (isReallyClosing && sandboxId) {
+        // Use sendBeacon as it's the most reliable for unload events
+        // sendBeacon uses POST by default
+        navigator.sendBeacon(
+          `/api/kill-desktop?sandboxId=${encodeURIComponent(sandboxId)}`,
+        );
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    window.addEventListener("unload", handleUnload);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      window.removeEventListener("unload", handleUnload);
+    };
+  }, [sandboxId]);
+
   useEffect(() => {
     // Initialize desktop and get stream URL when the component mounts
     const init = async () => {
       try {
         setIsInitializing(true);
 
-        // Try to connect to existing sandbox if we have an ID
-        const useId = sandboxId || undefined;
-        const { streamUrl, id } = await getDesktopURL(useId);
-
-        // console.log("Connected to desktop with ID:", id);
-        // console.log("Stream URL:", streamUrl);
+        // Use the provided ID or create a new one
+        const { streamUrl, id } = await getDesktopURL(sandboxId ?? undefined);
 
         setStreamUrl(streamUrl);
         setSandboxId(id);
@@ -123,14 +156,6 @@ export default function Chat() {
 
     init();
 
-    // Cleanup when component unmounts
-    return () => {
-      // We're commenting out the kill call to maintain the desktop instance
-      // But we could add a manual "Close Desktop" button if needed
-      if (sandboxId) {
-        killDesktop(sandboxId).catch(console.error);
-      }
-    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
