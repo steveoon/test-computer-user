@@ -1,7 +1,7 @@
 "use client";
 
 import { PreviewMessage } from "@/components/message";
-import { getDesktopURL, killDesktop } from "@/lib/e2b/utils";
+import { getDesktopURL } from "@/lib/e2b/utils";
 import { useScrollToBottom } from "@/lib/use-scroll-to-bottom";
 import { useChat } from "@ai-sdk/react";
 import { useEffect, useState } from "react";
@@ -98,18 +98,56 @@ export default function Chat() {
     }
   };
 
+  // Kill desktop on page close
+  useEffect(() => {
+    if (!sandboxId) return;
+
+    // Function to kill the desktop - just one method to reduce duplicates
+    const killDesktop = () => {
+      if (!sandboxId) return;
+
+      // Use sendBeacon which is best supported across browsers
+      navigator.sendBeacon(
+        `/api/kill-desktop?sandboxId=${encodeURIComponent(sandboxId)}`,
+      );
+    };
+
+    // Detect iOS / Safari
+    const isIOS =
+      /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+
+    // Choose exactly ONE event handler based on the browser
+    if (isIOS || isSafari) {
+      // For Safari on iOS, use pagehide which is most reliable
+      window.addEventListener("pagehide", killDesktop);
+
+      return () => {
+        window.removeEventListener("pagehide", killDesktop);
+        // Also kill desktop when component unmounts
+        killDesktop();
+      };
+    } else {
+      // For all other browsers, use beforeunload
+      window.addEventListener("beforeunload", killDesktop);
+
+      return () => {
+        window.removeEventListener("beforeunload", killDesktop);
+        // Also kill desktop when component unmounts
+        killDesktop();
+      };
+    }
+  }, [sandboxId]);
+
   useEffect(() => {
     // Initialize desktop and get stream URL when the component mounts
     const init = async () => {
       try {
         setIsInitializing(true);
 
-        // Try to connect to existing sandbox if we have an ID
-        const useId = sandboxId || undefined;
-        const { streamUrl, id } = await getDesktopURL(useId);
-
-        // console.log("Connected to desktop with ID:", id);
-        // console.log("Stream URL:", streamUrl);
+        // Use the provided ID or create a new one
+        const { streamUrl, id } = await getDesktopURL(sandboxId ?? undefined);
 
         setStreamUrl(streamUrl);
         setSandboxId(id);
@@ -123,14 +161,6 @@ export default function Chat() {
 
     init();
 
-    // Cleanup when component unmounts
-    return () => {
-      // We're commenting out the kill call to maintain the desktop instance
-      // But we could add a manual "Close Desktop" button if needed
-      if (sandboxId) {
-        killDesktop(sandboxId).catch(console.error);
-      }
-    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
