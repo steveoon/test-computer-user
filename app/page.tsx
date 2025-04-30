@@ -103,7 +103,7 @@ export default function Chat() {
     // Create a flag to track whether the user is actually closing the page
     let isReallyClosing = false;
 
-    const handleBeforeUnload = (_: BeforeUnloadEvent) => {
+    const handleBeforeUnload = () => {
       // Set the flag to true as user is trying to close the page
       isReallyClosing = true;
 
