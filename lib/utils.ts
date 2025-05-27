@@ -39,3 +39,28 @@ export const prunedMessages = (messages: UIMessage[]): UIMessage[] => {
     return message;
   });
 };
+
+// 图片压缩处理函数
+export const compressImage = (
+  base64Data: string,
+  maxSizeKB: number = 500
+): string => {
+  // 计算当前图片大小（KB）
+  const currentSizeKB = (base64Data.length * 3) / 4 / 1024;
+
+  if (currentSizeKB <= maxSizeKB) {
+    return base64Data;
+  }
+
+  // 如果图片太大，可以考虑以下策略：
+  // 1. 返回缩略图信息
+  // 2. 降低质量
+  // 3. 裁剪图片
+
+  console.log(
+    `Image size: ${currentSizeKB.toFixed(2)}KB, exceeds ${maxSizeKB}KB limit`
+  );
+
+  // 目前先返回原图，后续可以添加真实的压缩逻辑
+  return base64Data;
+};

@@ -3,25 +3,91 @@
 import { Sandbox } from "@e2b/desktop";
 import { resolution } from "./tool";
 
-export const getDesktop = async (id?: string) => {
+// 沙盒持久化相关函数 - 使用beta版本API
+export const pauseDesktop = async (desktop: Sandbox) => {
   try {
-    if (id) {
-      const connected = await Sandbox.connect(id);
-      const isRunning = await connected.isRunning();
-      if (isRunning) {
-        // await connected.stream.start();
-        return connected;
-      }
+    // 检查pause方法是否存在
+    if (typeof (desktop as any).pause !== "function") {
+      throw new Error(
+        "Pause method not available in current @e2b/desktop version"
+      );
     }
 
-    const desktop = await Sandbox.create({
-      resolution: [resolution.x, resolution.y], // Custom resolution
-      timeoutMs: 300000, // Container timeout in milliseconds
-    });
+    const sandboxId = await (desktop as any).pause();
+    console.log("Sandbox paused with ID:", sandboxId);
+    return sandboxId;
+  } catch (error) {
+    console.error("Error pausing desktop:", error);
+    throw error;
+  }
+};
+
+export const resumeDesktop = async (sandboxId: string) => {
+  try {
+    // 检查resume方法是否存在
+    if (typeof (Sandbox as any).resume !== "function") {
+      throw new Error(
+        "Resume method not available in current @e2b/desktop version"
+      );
+    }
+
+    const desktop = await (Sandbox as any).resume(sandboxId);
+    console.log("Sandbox resumed with ID:", desktop.sandboxId);
     await desktop.stream.start();
     return desktop;
   } catch (error) {
+    console.error("Error resuming desktop:", error);
+    throw error;
+  }
+};
+
+export const getDesktop = async (id?: string) => {
+  try {
+    if (id) {
+      // 首先尝试连接到现有的沙盒
+      try {
+        const connected = await (Sandbox as any).connect(id);
+        const isRunning = await connected.isRunning();
+        if (isRunning) {
+          console.log("Connected to existing running sandbox:", id);
+          return connected;
+        } else {
+          console.log("Sandbox not running, attempting to resume...");
+
+          // 尝试恢复暂停的沙盒
+          try {
+            const resumed = await resumeDesktop(id);
+            console.log("Successfully resumed sandbox:", id);
+            return resumed;
+          } catch (resumeError) {
+            console.log(
+              "Failed to resume sandbox, creating new one:",
+              resumeError
+            );
+          }
+        }
+      } catch (connectError) {
+        console.log(
+          "Failed to connect to sandbox, creating new one:",
+          connectError
+        );
+      }
+    }
+
+    // 创建新的沙盒
+    const desktop = await (Sandbox as any).create({
+      resolution: [resolution.x, resolution.y], // Custom resolution
+      timeoutMs: 1800000, // Container timeout in milliseconds (30 minutes)
+    });
+    await desktop.stream.start();
+    console.log("Created new sandbox with ID:", desktop.sandboxId);
+    return desktop;
+  } catch (error) {
     console.error("Error in getDesktop:", error);
+    // 添加重试逻辑或更详细的错误信息
+    if (error instanceof Error && error.message.includes("cache key")) {
+      console.error("Cache key generation failed - check E2B API key");
+    }
     throw error;
   }
 };
@@ -39,6 +105,25 @@ export const getDesktopURL = async (id?: string) => {
 };
 
 export const killDesktop = async (id: string = "desktop") => {
-  const desktop = await getDesktop(id);
-  await desktop.kill();
+  try {
+    const desktop = await getDesktop(id);
+    await desktop.kill();
+    console.log("Desktop killed successfully:", id);
+  } catch (error) {
+    console.error("Error killing desktop:", error);
+    throw error;
+  }
+};
+
+// 检查沙盒状态的工具函数
+export const checkSandboxStatus = async (id: string) => {
+  try {
+    const connected = await (Sandbox as any).connect(id);
+    const isRunning = await connected.isRunning();
+    return { isRunning, sandboxId: id };
+  } catch (error) {
+    console.error("Error checking sandbox status:", error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return { isRunning: false, sandboxId: id, error: errorMessage };
+  }
 };

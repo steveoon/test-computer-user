@@ -26,6 +26,10 @@ export default function Chat() {
   const [isInitializing, setIsInitializing] = useState(true);
   const [streamUrl, setStreamUrl] = useState<string | null>(null);
   const [sandboxId, setSandboxId] = useState<string | null>(null);
+  const [isPausing, setIsPausing] = useState(false);
+  const [sandboxStatus, setSandboxStatus] = useState<
+    "running" | "paused" | "unknown"
+  >("unknown");
 
   const {
     messages,
@@ -87,14 +91,104 @@ export default function Chat() {
   const refreshDesktop = async () => {
     try {
       setIsInitializing(true);
+
+      // 如果当前状态是暂停，优先尝试恢复
+      if (sandboxStatus === "paused" && sandboxId) {
+        console.log("Attempting to resume paused sandbox:", sandboxId);
+        toast.info("正在恢复暂停的沙盒...", {
+          richColors: true,
+          position: "top-center",
+        });
+      }
+
       const { streamUrl, id } = await getDesktopURL(sandboxId || undefined);
-      // console.log("Refreshed desktop connection with ID:", id);
+      console.log("Desktop connection established with ID:", id);
       setStreamUrl(streamUrl);
       setSandboxId(id);
+      setSandboxStatus("running");
+
+      if (sandboxStatus === "paused") {
+        toast.success("沙盒已成功恢复！", {
+          richColors: true,
+          position: "top-center",
+        });
+      }
     } catch (err) {
       console.error("Failed to refresh desktop:", err);
+      toast.error("恢复沙盒失败，将创建新的沙盒", {
+        richColors: true,
+        position: "top-center",
+      });
+      // 如果恢复失败，清除当前sandboxId，强制创建新的
+      setSandboxId(null);
+      setSandboxStatus("unknown");
     } finally {
       setIsInitializing(false);
+    }
+  };
+
+  const pauseDesktop = async () => {
+    if (!sandboxId || isPausing) return;
+
+    try {
+      setIsPausing(true);
+      const response = await fetch(
+        `/api/pause-desktop?sandboxId=${encodeURIComponent(sandboxId)}`,
+        {
+          method: "POST",
+        }
+      );
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log("Desktop paused:", result);
+        setSandboxStatus("paused");
+        toast.success("桌面已暂停", {
+          description: "你可以稍后恢复使用",
+          richColors: true,
+          position: "top-center",
+        });
+      } else {
+        throw new Error("Failed to pause desktop");
+      }
+    } catch (err) {
+      console.error("Failed to pause desktop:", err);
+      toast.error("暂停桌面失败", {
+        description: "请稍后重试",
+        richColors: true,
+        position: "top-center",
+      });
+    } finally {
+      setIsPausing(false);
+    }
+  };
+
+  const checkSandboxStatus = async () => {
+    if (!sandboxId) return;
+
+    try {
+      const response = await fetch(
+        `/api/sandbox-status?sandboxId=${encodeURIComponent(sandboxId)}`
+      );
+      if (response.ok) {
+        const status = await response.json();
+        const newStatus = status.isRunning ? "running" : "paused";
+
+        // 如果沙盒从运行状态变为暂停状态，显示通知
+        if (sandboxStatus === "running" && newStatus === "paused") {
+          console.log("Sandbox has been paused unexpectedly");
+          toast.info("沙盒已暂停", {
+            description: "点击'刷新桌面'按钮可以恢复",
+            richColors: true,
+            position: "top-center",
+          });
+        }
+
+        setSandboxStatus(newStatus);
+      }
+    } catch (err) {
+      console.error("Failed to check sandbox status:", err);
+      setSandboxStatus("unknown");
     }
   };
 
@@ -108,7 +202,7 @@ export default function Chat() {
 
       // Use sendBeacon which is best supported across browsers
       navigator.sendBeacon(
-        `/api/kill-desktop?sandboxId=${encodeURIComponent(sandboxId)}`,
+        `/api/kill-desktop?sandboxId=${encodeURIComponent(sandboxId)}`
       );
     };
 
@@ -140,6 +234,21 @@ export default function Chat() {
     }
   }, [sandboxId]);
 
+  // 心跳检测 - 定期检查沙盒状态
+  useEffect(() => {
+    if (!sandboxId) return;
+
+    // 立即检查一次状态
+    checkSandboxStatus();
+
+    // 设置定期检查
+    const heartbeatInterval = setInterval(() => {
+      checkSandboxStatus();
+    }, 60000); // 每分钟检查一次
+
+    return () => clearInterval(heartbeatInterval);
+  }, [sandboxId]); // 移除sandboxStatus依赖避免循环
+
   useEffect(() => {
     // Initialize desktop and get stream URL when the component mounts
     const init = async () => {
@@ -151,9 +260,11 @@ export default function Chat() {
 
         setStreamUrl(streamUrl);
         setSandboxId(id);
+        setSandboxStatus("running");
       } catch (err) {
         console.error("Failed to initialize desktop:", err);
         toast.error("Failed to initialize desktop");
+        setSandboxStatus("unknown");
       } finally {
         setIsInitializing(false);
       }
@@ -199,6 +310,45 @@ export default function Chat() {
                 >
                   {isInitializing ? "Creating desktop..." : "New desktop"}
                 </Button>
+
+                {/* 状态显示和暂停按钮 */}
+                <div className="absolute top-2 left-2 flex gap-2 z-10">
+                  <div
+                    className={`px-2 py-1 rounded text-xs font-medium ${
+                      sandboxStatus === "running"
+                        ? "bg-green-500/80 text-white"
+                        : sandboxStatus === "paused"
+                        ? "bg-yellow-500/80 text-white"
+                        : "bg-gray-500/80 text-white"
+                    }`}
+                  >
+                    {sandboxStatus === "running"
+                      ? "运行中"
+                      : sandboxStatus === "paused"
+                      ? "已暂停"
+                      : "未知状态"}
+                  </div>
+
+                  {sandboxStatus === "running" && (
+                    <Button
+                      onClick={pauseDesktop}
+                      className="bg-yellow-500/80 hover:bg-yellow-600/80 text-white px-2 py-1 rounded text-xs"
+                      disabled={isPausing}
+                    >
+                      {isPausing ? "暂停中..." : "暂停"}
+                    </Button>
+                  )}
+
+                  {sandboxStatus === "paused" && (
+                    <Button
+                      onClick={refreshDesktop}
+                      className="bg-blue-500/80 hover:bg-blue-600/80 text-white px-2 py-1 rounded text-xs"
+                      disabled={isInitializing}
+                    >
+                      {isInitializing ? "恢复中..." : "恢复桌面"}
+                    </Button>
+                  )}
+                </div>
               </>
             ) : (
               <div className="flex items-center justify-center h-full text-white">
