@@ -1,31 +1,12 @@
 import { anthropic } from "@ai-sdk/anthropic";
 import { tool } from "ai";
 import { z } from "zod";
-import { getDesktop } from "./utils";
+import { getDesktop, withTimeout } from "./utils";
 import { compressImage } from "../utils";
 import { diagnoseE2BEnvironment } from "./diagnostic";
 
 const wait = async (seconds: number) => {
   await new Promise((resolve) => setTimeout(resolve, seconds * 1000));
-};
-
-// 为E2B操作添加超时保护的通用函数
-const withTimeout = async <T>(
-  promise: Promise<T>,
-  timeoutMs: number,
-  operation: string
-): Promise<T> => {
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    setTimeout(
-      () =>
-        reject(
-          new Error(`${operation} operation timeout after ${timeoutMs}ms`)
-        ),
-      timeoutMs
-    );
-  });
-
-  return Promise.race([promise, timeoutPromise]);
 };
 
 // 改进的鼠标移动函数，确保指针可见性

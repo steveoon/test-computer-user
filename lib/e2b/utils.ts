@@ -127,3 +127,19 @@ export const checkSandboxStatus = async (id: string) => {
     return { isRunning: false, sandboxId: id, error: errorMessage };
   }
 };
+
+// 为诊断操作添加超时保护
+export const withTimeout = async <T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  operation: string
+): Promise<T> => {
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(
+      () => reject(new Error(`${operation} timeout after ${timeoutMs}ms`)),
+      timeoutMs
+    );
+  });
+
+  return Promise.race([promise, timeoutPromise]);
+};

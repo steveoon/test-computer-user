@@ -1,20 +1,4 @@
-import { getDesktop } from "./utils";
-
-// 为诊断操作添加超时保护
-const withTimeout = async <T>(
-  promise: Promise<T>,
-  timeoutMs: number,
-  operation: string
-): Promise<T> => {
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    setTimeout(
-      () => reject(new Error(`${operation} timeout after ${timeoutMs}ms`)),
-      timeoutMs
-    );
-  });
-
-  return Promise.race([promise, timeoutPromise]);
-};
+import { getDesktop, withTimeout } from "./utils";
 
 export const diagnoseE2BEnvironment = async (sandboxId?: string) => {
   console.log("🔍 开始 E2B 环境诊断...");
