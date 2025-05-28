@@ -38,42 +38,127 @@ const handleChineseInput = async (
   );
 
   if (containsChinese) {
-    console.log("🔤 检测到中文字符，使用逐字符Unicode编码输入...");
+    console.log("🔤 检测到中文字符，选择最优输入策略...");
+
+    // 策略1: 尝试使用剪贴板方法（最快）
+    try {
+      // 检查xclip是否可用
+      const xclipCheck = await desktop.commands.run("which xclip", {
+        timeoutMs: 1000,
+      });
+
+      if (xclipCheck.exitCode === 0) {
+        console.log("📋 使用剪贴板方法快速输入中文...");
+
+        // 将文本写入剪贴板
+        await desktop.commands.run(
+          `echo -n "${text.replace(/"/g, '\\"')}" | xclip -selection clipboard`,
+          { timeoutMs: 2000 }
+        );
+
+        // 粘贴内容
+        await desktop.press("ctrl+v");
+        await wait(0.1); // 给粘贴操作一点时间
+
+        console.log("✅ 剪贴板方法输入成功");
+        return `Typed (clipboard method): ${text}`;
+      }
+    } catch (clipboardError) {
+      console.log("⚠️ 剪贴板方法不可用，切换到备用方法");
+    }
+
+    // 策略2: 优化的Unicode输入（分段处理）
+    console.log("🔤 使用优化的Unicode编码输入...");
 
     try {
-      for (const char of text) {
-        try {
-          // 检查是否为ASCII字符
-          if (char.charCodeAt(0) < 128) {
-            await desktop.write(char);
+      let currentSegment = "";
+      let isAsciiSegment = false;
+
+      // 将文本分段处理：连续的ASCII字符作为一段，连续的非ASCII字符作为另一段
+      for (let i = 0; i < text.length; i++) {
+        const char = text[i];
+        const isAscii = char.charCodeAt(0) < 128;
+
+        // 如果字符类型改变，先处理当前段
+        if (currentSegment && isAscii !== isAsciiSegment) {
+          if (isAsciiSegment) {
+            // ASCII段直接输入
+            await desktop.write(currentSegment);
           } else {
-            // 对于非ASCII字符，使用Unicode输入
-            const unicode = char.charCodeAt(0).toString(16).padStart(4, "0");
-            await desktop.press("ctrl+shift+u");
-            await wait(0.05);
-            for (const digit of unicode) {
-              await desktop.press(digit);
-              await wait(0.02);
+            // 非ASCII段逐字符Unicode输入（但延迟更短）
+            for (const c of currentSegment) {
+              const unicode = c.charCodeAt(0).toString(16).padStart(4, "0");
+              await desktop.press("ctrl+shift+u");
+              await wait(0.01); // 减少延迟
+
+              // 快速输入unicode码
+              await desktop.write(unicode);
+              await wait(0.01);
+
+              await desktop.press("space");
+              await wait(0.02); // 减少延迟
             }
-            await desktop.press("space");
-            await wait(0.05);
           }
-        } catch (charError) {
-          console.warn(`⚠️ 字符 '${char}' 输入失败:`, charError);
-          // 跳过有问题的字符，继续下一个
+          currentSegment = "";
+        }
+
+        currentSegment += char;
+        isAsciiSegment = isAscii;
+      }
+
+      // 处理最后一段
+      if (currentSegment) {
+        if (isAsciiSegment) {
+          await desktop.write(currentSegment);
+        } else {
+          for (const c of currentSegment) {
+            const unicode = c.charCodeAt(0).toString(16).padStart(4, "0");
+            await desktop.press("ctrl+shift+u");
+            await wait(0.01);
+            await desktop.write(unicode);
+            await wait(0.01);
+            await desktop.press("space");
+            await wait(0.02);
+          }
         }
       }
 
-      console.log("✅ 逐字符Unicode编码输入完成");
-      return `Typed (character-by-character Unicode): ${text}`;
+      console.log("✅ 优化的Unicode编码输入完成");
+      return `Typed (optimized Unicode): ${text}`;
     } catch (error) {
-      console.error("❌ 逐字符输入失败:", error);
-      return `中文输入失败: ${
-        error instanceof Error ? error.message : "未知错误"
-      }`;
+      console.error("❌ Unicode输入失败:", error);
+
+      // 策略3: 降级到逐字符输入（最慢但最可靠）
+      try {
+        console.log("🔤 降级到逐字符输入模式...");
+        for (const char of text) {
+          try {
+            if (char.charCodeAt(0) < 128) {
+              await desktop.write(char);
+            } else {
+              const unicode = char.charCodeAt(0).toString(16).padStart(4, "0");
+              await desktop.press("ctrl+shift+u");
+              await wait(0.03);
+              for (const digit of unicode) {
+                await desktop.press(digit);
+                await wait(0.01);
+              }
+              await desktop.press("space");
+              await wait(0.03);
+            }
+          } catch (charError) {
+            console.warn(`⚠️ 字符 '${char}' 输入失败:`, charError);
+          }
+        }
+        return `Typed (fallback character-by-character): ${text}`;
+      } catch (fallbackError) {
+        return `中文输入失败: ${
+          fallbackError instanceof Error ? fallbackError.message : "未知错误"
+        }`;
+      }
     }
   } else {
-    // 对于非中文字符，使用原始方法
+    // 对于纯ASCII文本，直接输入
     try {
       await desktop.write(text);
       return `Typed: ${text}`;
