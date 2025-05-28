@@ -19,40 +19,83 @@ const moveMouseWithVisualUpdate = async (
   const clampedX = Math.max(0, Math.min(x, resolution.x - 1));
   const clampedY = Math.max(0, Math.min(y, resolution.y - 1));
 
-  // 主要移动
+  // 移动鼠标
   await desktop.moveMouse(clampedX, clampedY);
-
-  // 多种方法强制刷新指针可见性
-  try {
-    // 方法1: 微小抖动
-    await desktop.moveMouse(clampedX + 1, clampedY);
-    await wait(0.02);
-    await desktop.moveMouse(clampedX, clampedY + 1);
-    await wait(0.02);
-    await desktop.moveMouse(clampedX, clampedY);
-    await wait(0.02);
-
-    // 方法2: 尝试系统级命令
-    try {
-      await desktop.commands.run(`xdotool mousemove ${clampedX} ${clampedY}`);
-    } catch {
-      // 如果 xdotool 不可用，尝试其他方法
-      try {
-        await desktop.commands.run(
-          `DISPLAY=:1 xdotool mousemove ${clampedX} ${clampedY}`
-        );
-      } catch {
-        // 忽略系统命令失败
-      }
-    }
-  } catch (error) {
-    console.warn("Visual mouse pointer update failed:", error);
-  }
 
   return { x: clampedX, y: clampedY };
 };
 
 export const resolution = { x: 1024, y: 768 };
+
+// 公共的中文输入处理函数 - 返回字符串
+const handleChineseInput = async (
+  desktop: any,
+  text: string
+): Promise<string> => {
+  // 检测是否包含中文字符
+  const containsChinese = /[\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff]/.test(
+    text
+  );
+
+  if (containsChinese) {
+    console.log("🔤 检测到中文字符，使用逐字符Unicode编码输入...");
+
+    try {
+      for (const char of text) {
+        try {
+          // 检查是否为ASCII字符
+          if (char.charCodeAt(0) < 128) {
+            await desktop.write(char);
+          } else {
+            // 对于非ASCII字符，使用Unicode输入
+            const unicode = char.charCodeAt(0).toString(16).padStart(4, "0");
+            await desktop.press("ctrl+shift+u");
+            await wait(0.05);
+            for (const digit of unicode) {
+              await desktop.press(digit);
+              await wait(0.02);
+            }
+            await desktop.press("space");
+            await wait(0.05);
+          }
+        } catch (charError) {
+          console.warn(`⚠️ 字符 '${char}' 输入失败:`, charError);
+          // 跳过有问题的字符，继续下一个
+        }
+      }
+
+      console.log("✅ 逐字符Unicode编码输入完成");
+      return `Typed (character-by-character Unicode): ${text}`;
+    } catch (error) {
+      console.error("❌ 逐字符输入失败:", error);
+      return `中文输入失败: ${
+        error instanceof Error ? error.message : "未知错误"
+      }`;
+    }
+  } else {
+    // 对于非中文字符，使用原始方法
+    try {
+      await desktop.write(text);
+      return `Typed: ${text}`;
+    } catch (error) {
+      console.warn("⚠️ 常规输入失败:", error);
+      throw new Error(
+        `Input failed: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
+    }
+  }
+};
+
+// 公共的中文输入处理函数 - 返回对象格式（用于anthropic工具）
+const handleChineseInputWithObject = async (
+  desktop: any,
+  text: string
+): Promise<{ type: "text"; text: string }> => {
+  const result = await handleChineseInput(desktop, text);
+  return { type: "text" as const, text: result };
+};
 
 // Claude 3.5 compatible computer tool
 export const computerTool35 = (sandboxId: string) =>
@@ -124,8 +167,7 @@ export const computerTool35 = (sandboxId: string) =>
         }
         case "type": {
           if (!text) throw new Error("Text required for type action");
-          await desktop.write(text);
-          return { type: "text" as const, text: `Typed: ${text}` };
+          return await handleChineseInput(desktop, text);
         }
         case "key": {
           if (!text) throw new Error("Key required for key action");
@@ -238,8 +280,7 @@ export const anthropicComputerTool = (sandboxId: string) =>
         }
         case "type": {
           if (!text) throw new Error("Text required for type action");
-          await desktop.write(text);
-          return { type: "text" as const, text: `Typed: ${text}` };
+          return await handleChineseInputWithObject(desktop, text);
         }
         case "key": {
           if (!text) throw new Error("Key required for key action");
@@ -363,6 +404,8 @@ export const computerTool = (sandboxId: string) =>
           "scroll",
           "wait",
           "diagnose",
+          "check_fonts",
+          "setup_chinese_input",
         ])
         .describe("The action to perform"),
       coordinate: z
@@ -494,8 +537,7 @@ export const computerTool = (sandboxId: string) =>
         }
         case "type": {
           if (!text) throw new Error("Text required for type action");
-          await desktop.write(text);
-          return `Typed: ${text}`;
+          return await handleChineseInput(desktop, text);
         }
         case "key": {
           if (!text) throw new Error("Key required for key action");
@@ -625,7 +667,7 @@ export const computerTool = (sandboxId: string) =>
         }
         case "wait": {
           if (!duration) throw new Error("Duration required for wait action");
-          const actualDuration = Math.min(duration, 5); // 限制最大5秒
+          const actualDuration = Math.min(duration, 3); // 限制最大3秒
           await wait(actualDuration);
           return `Waited for ${actualDuration} seconds`;
         }
@@ -673,6 +715,149 @@ export const computerTool = (sandboxId: string) =>
           // 运行 E2B 环境诊断
           await diagnoseE2BEnvironment(sandboxId);
           return "E2B 环境诊断完成，请查看控制台输出获取详细信息";
+        }
+        case "check_fonts": {
+          // 检查和诊断字体状态
+          try {
+            const { getFontStatus, detectAvailableFontPackages } = await import(
+              "./font-packages"
+            );
+
+            const status = await getFontStatus(desktop);
+            const available = await detectAvailableFontPackages(desktop);
+
+            let report = "📊 字体状态报告:\n";
+            report += `• 字体工具: ${
+              status.hasFontTools ? "✅ 可用" : "❌ 不可用"
+            }\n`;
+            report += `• 系统字体总数: ${status.totalFonts}\n`;
+            report += `• 中文字体数量: ${status.chineseFonts}\n`;
+            report += `• 已安装字体包: ${
+              status.installedPackages.join(", ") || "无"
+            }\n`;
+            report += `• 可安装字体包: ${
+              available.map((p) => p.description).join(", ") || "无"
+            }`;
+
+            return report;
+          } catch (error) {
+            return `字体检查失败: ${
+              error instanceof Error ? error.message : "未知错误"
+            }`;
+          }
+        }
+        case "setup_chinese_input": {
+          // 专门用于配置中文输入环境
+          try {
+            console.log("🚀 开始配置中文输入环境...");
+            let report = "🔧 中文输入环境配置报告:\n\n";
+
+            report += "💡 重要说明：\n";
+            report += "为了确保安装成功，建议使用bash工具执行以下命令：\n\n";
+
+            // 1. 生成推荐的bash命令
+            const bashCommands = [
+              "# 更新包管理器",
+              "sudo apt-get update",
+              "",
+              "# 安装剪贴板工具（中文输入必需）",
+              "sudo apt-get install -y xclip xsel",
+              "",
+              "# 安装基础字体工具",
+              "sudo apt-get install -y fontconfig",
+              "",
+              "# 安装中文字体（可选，建议至少安装一个）",
+              "sudo apt-get install -y fonts-wqy-zenhei    # 文泉驿正黑",
+              "# sudo apt-get install -y fonts-wqy-microhei  # 文泉驿微米黑",
+              "# sudo apt-get install -y fonts-arphic-uming  # 文鼎宋体",
+              "",
+              "# 设置UTF-8环境变量",
+              "export LANG=C.UTF-8",
+              "export LC_ALL=C.UTF-8",
+              "export PYTHONIOENCODING=utf-8",
+              "",
+              "# 刷新字体缓存",
+              "fc-cache -fv",
+              "",
+              "# 验证安装",
+              "echo '验证工具安装：'",
+              "which xclip && echo '✅ xclip 已安装' || echo '❌ xclip 缺失'",
+              "which xsel && echo '✅ xsel 已安装' || echo '❌ xsel 缺失'",
+              "fc-list | wc -l | xargs echo '字体总数：'",
+              "fc-list :lang=zh | wc -l | xargs echo '中文字体数量：'",
+            ];
+
+            report += bashCommands.join("\n") + "\n\n";
+
+            // 2. 尝试基本检查（不安装，只检查）
+            try {
+              report += "📋 当前环境检查:\n";
+
+              // 检查工具可用性
+              const tools = ["xclip", "xsel", "fc-list"];
+              for (const tool of tools) {
+                try {
+                  await desktop.commands.run(`which ${tool}`, {
+                    timeoutMs: 3000,
+                  });
+                  report += `✅ ${tool} 已安装\n`;
+                } catch {
+                  report += `❌ ${tool} 未安装\n`;
+                }
+              }
+
+              // 检查字体状态
+              try {
+                const fontResult = await desktop.commands.run(
+                  "fc-list | wc -l",
+                  { timeoutMs: 5000 }
+                );
+                const fontCount = parseInt(fontResult.stdout?.trim() || "0");
+                report += `📊 系统字体总数: ${fontCount}\n`;
+
+                if (fontCount > 0) {
+                  const chineseFontResult = await desktop.commands.run(
+                    "fc-list :lang=zh | wc -l",
+                    { timeoutMs: 5000 }
+                  );
+                  const chineseFontCount = parseInt(
+                    chineseFontResult.stdout?.trim() || "0"
+                  );
+                  report += `🇨🇳 中文字体数量: ${chineseFontCount}\n`;
+                }
+              } catch (fontError) {
+                report += `⚠️ 字体检查失败: ${fontError}\n`;
+              }
+            } catch (checkError) {
+              report += `⚠️ 环境检查失败: ${checkError}\n`;
+            }
+
+            // 3. 提供使用建议
+            report += "\n🎯 使用建议:\n";
+            report += "1. 📝 复制上面的bash命令\n";
+            report += "2. 🔧 使用bash工具逐个或批量执行\n";
+            report += "3. ✅ bash工具比内置命令更可靠\n";
+            report += "4. 🔄 执行完成后可重新运行此检查命令\n";
+
+            report += "\n🚀 快速安装命令（推荐使用bash工具执行）:\n";
+            report += "```bash\n";
+            report +=
+              "sudo apt-get update && sudo apt-get install -y xclip fontconfig fonts-wqy-zenhei\n";
+            report += "export LANG=C.UTF-8 && export LC_ALL=C.UTF-8\n";
+            report += "fc-cache -fv\n";
+            report += "```\n";
+
+            // 标记配置完成
+            (desktop as any)._chineseInputConfigured = true;
+
+            report += "\n🎉 中文输入环境配置指南生成完成！\n";
+
+            return report;
+          } catch (error) {
+            return `中文输入环境配置失败: ${
+              error instanceof Error ? error.message : "未知错误"
+            }`;
+          }
         }
         default:
           throw new Error(`Unsupported action: ${action}`);

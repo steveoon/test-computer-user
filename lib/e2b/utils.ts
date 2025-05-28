@@ -76,10 +76,11 @@ export const getDesktop = async (id?: string) => {
 
     // 创建新的沙盒
     const desktop = await (Sandbox as any).create({
-      resolution: [resolution.x, resolution.y], // Custom resolution
-      timeoutMs: 1800000, // Container timeout in milliseconds (30 minutes)
+      resolution: [resolution.x, resolution.y],
+      timeoutMs: 1800000,
     });
     await desktop.stream.start();
+
     console.log("Created new sandbox with ID:", desktop.sandboxId);
     return desktop;
   } catch (error) {

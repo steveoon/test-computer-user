@@ -40,6 +40,8 @@ export default function Chat() {
     stop: stopGeneration,
     append,
     setMessages,
+    error,
+    reload,
   } = useChat({
     api: "/api/chat",
     id: sandboxId ?? undefined,
@@ -48,12 +50,17 @@ export default function Chat() {
     },
     maxSteps: 30,
     onError: (error) => {
-      console.error(error);
-      toast.error("There was an error", {
-        description: "Please try again later.",
-        richColors: true,
-        position: "top-center",
+      console.error("Chat error:", error);
+
+      // 根据AI SDK文档建议，记录详细错误但只向用户显示通用信息
+      console.error("Error details:", {
+        name: error.name,
+        message: error.message,
+        stack: error.stack,
       });
+    },
+    onFinish: (message) => {
+      console.log("Chat finished:", message);
     },
   });
 
@@ -87,6 +94,22 @@ export default function Chat() {
   };
 
   const isLoading = status !== "ready";
+
+  // 自定义提交处理器，根据AI SDK文档建议在错误时移除最后一条消息
+  const customSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    if (error != null) {
+      console.log("Removing last message due to error before retry");
+      setMessages(messages.slice(0, -1)); // 移除最后一条消息
+    }
+    handleSubmit(event);
+  };
+
+  // 监听错误状态变化
+  useEffect(() => {
+    if (error) {
+      console.log("Error detected:", error);
+    }
+  }, [error]);
 
   const refreshDesktop = async () => {
     try {
@@ -389,16 +412,43 @@ export default function Chat() {
               <div ref={desktopEndRef} className="pb-2" />
             </div>
 
-            {messages.length === 0 && (
-              <PromptSuggestions
-                disabled={isInitializing}
-                submitPrompt={(prompt: string) =>
-                  append({ role: "user", content: prompt })
-                }
-              />
+            {/* 错误状态显示 - 根据AI SDK文档建议 */}
+            {error && (
+              <div className="mx-4 mb-4">
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                      <span className="text-sm text-red-700 font-medium">
+                        Something went wrong
+                      </span>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => reload()}
+                      className="text-xs h-7 px-2 border-red-200 text-red-700 hover:bg-red-50"
+                    >
+                      Retry
+                    </Button>
+                  </div>
+                  <p className="text-xs text-red-600 mt-1">
+                    Please try again. If the problem persists, refresh the page.
+                  </p>
+                </div>
+              </div>
             )}
+
+            {/* PromptSuggestions 始终显示在输入框上方 */}
+            <PromptSuggestions
+              disabled={isInitializing}
+              submitPrompt={(prompt: string) =>
+                append({ role: "user", content: prompt })
+              }
+            />
+
             <div className="bg-white">
-              <form onSubmit={handleSubmit} className="p-4">
+              <form onSubmit={customSubmit} className="p-4">
                 <Input
                   handleInputChange={handleInputChange}
                   input={input}
@@ -406,6 +456,7 @@ export default function Chat() {
                   isLoading={isLoading}
                   status={status}
                   stop={stop}
+                  error={error}
                 />
               </form>
             </div>
@@ -437,16 +488,16 @@ export default function Chat() {
           <div ref={mobileEndRef} className="pb-2" />
         </div>
 
-        {messages.length === 0 && (
-          <PromptSuggestions
-            disabled={isInitializing}
-            submitPrompt={(prompt: string) =>
-              append({ role: "user", content: prompt })
-            }
-          />
-        )}
+        {/* PromptSuggestions 始终显示在输入框上方 */}
+        <PromptSuggestions
+          disabled={isInitializing}
+          submitPrompt={(prompt: string) =>
+            append({ role: "user", content: prompt })
+          }
+        />
+
         <div className="bg-white">
-          <form onSubmit={handleSubmit} className="p-4">
+          <form onSubmit={customSubmit} className="p-4">
             <Input
               handleInputChange={handleInputChange}
               input={input}
@@ -454,6 +505,7 @@ export default function Chat() {
               isLoading={isLoading}
               status={status}
               stop={stop}
+              error={error}
             />
           </form>
         </div>

@@ -8,6 +8,7 @@ interface InputProps {
   isLoading: boolean;
   status: string;
   stop: () => void;
+  error?: Error | null;
 }
 
 export const Input = ({
@@ -17,7 +18,10 @@ export const Input = ({
   isLoading,
   status,
   stop,
+  error,
 }: InputProps) => {
+  // 更智能的禁用逻辑：只有在真正加载中且没有错误时才禁用
+  const shouldDisable = (isLoading && !error) || isInitializing;
   return (
     <div className="relative w-full">
       <ShadcnInput
@@ -26,7 +30,7 @@ export const Input = ({
         autoFocus
         placeholder={"Tell me what to do..."}
         onChange={handleInputChange}
-        disabled={isLoading || isInitializing}
+        disabled={shouldDisable}
       />
       {status === "streaming" || status === "submitted" ? (
         <button
@@ -56,7 +60,7 @@ export const Input = ({
       ) : (
         <button
           type="submit"
-          disabled={isLoading || !input.trim() || isInitializing}
+          disabled={shouldDisable || !input.trim()}
           className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-2 bg-black hover:bg-zinc-800 disabled:bg-zinc-300 disabled:cursor-not-allowed transition-colors"
         >
           <ArrowUp className="h-4 w-4 text-white" />

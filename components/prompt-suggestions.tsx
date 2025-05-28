@@ -3,24 +3,31 @@ import { Button } from "./ui/button";
 
 const suggestions = [
   {
-    text: "Get the latest Vercel blog post",
-    prompt: "Go to vercel.com/blog and get the latest post",
+    text: "配置中文输入环境",
+    prompt:
+      "执行 setup_chinese_input 操作来配置完整的中文输入环境，包括字体、输入法和编码设置",
+  },
+  {
+    text: "测试中文逐字符编码输入",
+    prompt:
+      "测试中文逐字符Unicode编码输入功能：输入一段中文文本 '您好，这是Unicode编码测试。我正在寻找工作机会，希望能够了解贵公司的职位详情。谢谢！' 来验证逐字符Unicode编码输入是否正常工作，系统会使用Ctrl+Shift+U快捷键逐个输入Unicode字符。",
   },
   // {
   //   text: "search google for cute dogs",
   //   prompt: "Launch browser and search Google for labradoodle puppies. Show me images.",
   // },
   {
-    text: "Create a new text file",
-    prompt: "Open a text editor and create a new file called notes.txt and write 'we are so back!'",
+    text: "与BOSS直聘页面中的招聘者沟通",
+    prompt:
+      "我正在BOSS直聘页面上。请帮我处理未读消息：1) 先截图查看当前页面状态；2) 在左侧聊天列表中找到有红色圆点未读消息提示的联系人，点击该联系人的头像；3) 再次截图查看聊天内容，仔细阅读对方最新的消息；4) 根据对方消息内容智能回复：如果是打招呼就礼貌回应，如果询问简历就说明简历发送方式，如果咨询工作经验就简要介绍相关背景，如果是职位介绍就表示感兴趣并询问具体信息；回复内容尽量言简意赅（不要超过30个字）；5) 输入合适的中文回复；6) 发送消息（使用回车键）。请保持回复专业、礼貌且针对性强。",
   },
   // {
   //   text: "Check system memory usage",
   //   prompt: "Run the top command to show system resource usage",
   // },
   {
-    text: "Get the latest rauchg tweet",
-    prompt: "Go to twitter.com/rauchg and get the latest tweet",
+    text: "安装中文字体",
+    prompt: "安装少数可用的中文字体",
   },
   // {
   //   text: "What do you see",
@@ -37,7 +44,7 @@ export const PromptSuggestions = ({
   disabled: boolean;
 }) => {
   return (
-    <div className="flex flex-wrap items-center gap-3 px-4">
+    <div className="flex flex-wrap items-center gap-3 px-4 py-3 bg-white border-t border-zinc-200">
       {suggestions.map((suggestion, index) => (
         <Button
           key={index}
