@@ -13,24 +13,52 @@ export const prunedMessages = (messages: UIMessage[]): UIMessage[] => {
     return messages;
   }
 
-  return messages.map((message) => {
-    // check if last message part is a tool invocation in a call state, then append a part with the tool result
+  return messages.map((message, messageIndex) => {
+    // 对于旧消息，更激进地清理截图数据
+    const isOldMessage = messageIndex < messages.length - 5; // 保留最近5条消息的图片
+
     message.parts = message.parts.map((part) => {
       if (part.type === "tool-invocation") {
         if (
           part.toolInvocation.toolName === "computer" &&
           part.toolInvocation.args.action === "screenshot"
         ) {
-          return {
-            ...part,
-            toolInvocation: {
-              ...part.toolInvocation,
-              result: {
-                type: "text",
-                text: "Image redacted to save input tokens",
+          // 对于 call 状态的截图请求
+          if (part.toolInvocation.state === "call") {
+            return {
+              ...part,
+              toolInvocation: {
+                ...part.toolInvocation,
+                result: {
+                  type: "text",
+                  text: "Screenshot request redacted to save tokens",
+                },
               },
-            },
-          };
+            };
+          }
+
+          // 对于已完成的截图结果
+          if (
+            part.toolInvocation.state === "result" &&
+            part.toolInvocation.result &&
+            part.toolInvocation.result.type === "image"
+          ) {
+            // 如果是旧消息，完全移除图片数据
+            if (isOldMessage) {
+              return {
+                ...part,
+                toolInvocation: {
+                  ...part.toolInvocation,
+                  result: {
+                    type: "text",
+                    text: "Screenshot removed to save tokens",
+                  },
+                },
+              };
+            }
+
+            // 近期消息保留原始图片数据，实际压缩在 server-actions.ts 中处理
+          }
         }
         return part;
       }
@@ -38,31 +66,6 @@ export const prunedMessages = (messages: UIMessage[]): UIMessage[] => {
     });
     return message;
   });
-};
-
-// 图片压缩处理函数
-export const compressImage = (
-  base64Data: string,
-  maxSizeKB: number = 500
-): string => {
-  // 计算当前图片大小（KB）
-  const currentSizeKB = (base64Data.length * 3) / 4 / 1024;
-
-  if (currentSizeKB <= maxSizeKB) {
-    return base64Data;
-  }
-
-  // 如果图片太大，可以考虑以下策略：
-  // 1. 返回缩略图信息
-  // 2. 降低质量
-  // 3. 裁剪图片
-
-  console.log(
-    `Image size: ${currentSizeKB.toFixed(2)}KB, exceeds ${maxSizeKB}KB limit`
-  );
-
-  // 目前先返回原图，后续可以添加真实的压缩逻辑
-  return base64Data;
 };
 
 // 判断是否需要清理沙箱的公共函数

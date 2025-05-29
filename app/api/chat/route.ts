@@ -31,9 +31,26 @@ export async function POST(req: Request) {
     await req.json();
 
   try {
+    // 对历史消息应用剪枝优化
+    const processedMessages = prunedMessages(messages);
+
+    // 估算消息大小并记录
+    const originalSize = JSON.stringify(messages).length;
+    const processedSize = JSON.stringify(processedMessages).length;
+    const savedPercent = (
+      ((originalSize - processedSize) / originalSize) *
+      100
+    ).toFixed(2);
+
+    console.log(
+      `📊 消息优化: ${(originalSize / 1024).toFixed(2)}KB -> ${(
+        processedSize / 1024
+      ).toFixed(2)}KB (节省 ${savedPercent}%)`
+    );
+
     const result = streamText({
       // model: openrouter("anthropic/claude-3.7-sonnet"), // Use OpenRouter with universal tools
-      model: registry.languageModel("anthropic/claude-3-7-sonnet-20250219"), // Using Sonnet for computer use
+      model: registry.languageModel("anthropic/claude-sonnet-4-20250514"), // Using Sonnet for computer use
       system:
         "You are a helpful assistant with access to a computer. " +
         "Use the computer tool to help the user with their requests. " +
@@ -49,7 +66,7 @@ export async function POST(req: Request) {
         "6. **Wait appropriately** after clicks before taking verification screenshots to allow UI updates to complete.\n" +
         "7. **Be precise with coordinates** - use the center of clickable elements when possible.\n" +
         "8. **If elements are not visible**, scroll or navigate to find them before attempting to click.",
-      messages: prunedMessages(messages),
+      messages: processedMessages,
       tools: {
         computer: computerTool(sandboxId),
         bash: bashTool(sandboxId),

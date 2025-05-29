@@ -2,8 +2,9 @@ import { anthropic } from "@ai-sdk/anthropic";
 import { tool } from "ai";
 import { z } from "zod";
 import { getDesktop, withTimeout } from "./utils";
-import { compressImage, mapKeySequence } from "../utils";
+import { mapKeySequence } from "../utils";
 import { diagnoseE2BEnvironment } from "./diagnostic";
+import { compressImageServer } from "../image-optimized";
 
 const wait = async (seconds: number) => {
   await new Promise((resolve) => setTimeout(resolve, seconds * 1000));
@@ -314,7 +315,7 @@ export const computerTool35 = (sandboxId: string) =>
           {
             type: "image",
             data: result.data,
-            mimeType: "image/png",
+            mimeType: "image/jpeg",
           },
         ];
       }
@@ -345,11 +346,22 @@ export const anthropicComputerTool = (sandboxId: string) =>
       switch (action) {
         case "screenshot": {
           const image = await desktop.screenshot();
-          // Convert image data to base64 immediately
           const base64Data = Buffer.from(image).toString("base64");
+
+          // 直接使用服务端压缩函数以减少 token 使用
+          console.log(
+            `🖼️ 截图原始大小: ${(base64Data.length / 1024).toFixed(2)}KB`
+          );
+          const compressedData = await compressImageServer(base64Data, 200);
+          console.log(
+            `✅ 服务端压缩完成，当前大小: ${(
+              compressedData.length / 1024
+            ).toFixed(2)}KB`
+          );
+
           return {
             type: "image" as const,
-            data: base64Data,
+            data: compressedData,
           };
         }
         case "wait": {
@@ -441,7 +453,7 @@ export const anthropicComputerTool = (sandboxId: string) =>
           {
             type: "image",
             data: result.data,
-            mimeType: "image/png",
+            mimeType: "image/jpeg",
           },
         ];
       }
@@ -568,8 +580,16 @@ export const computerTool = (sandboxId: string) =>
           const image = await desktop.screenshot();
           const base64Data = Buffer.from(image).toString("base64");
 
-          // 压缩图片以减少token使用
-          const compressedData = compressImage(base64Data, 400);
+          // 直接使用服务端压缩函数以减少 token 使用
+          console.log(
+            `🖼️ 截图原始大小: ${(base64Data.length / 1024).toFixed(2)}KB`
+          );
+          const compressedData = await compressImageServer(base64Data, 200);
+          console.log(
+            `✅ 服务端压缩完成，当前大小: ${(
+              compressedData.length / 1024
+            ).toFixed(2)}KB`
+          );
 
           // 返回结构化的图片数据，让 AI SDK 处理
           return {
@@ -1104,7 +1124,7 @@ export const computerTool = (sandboxId: string) =>
             {
               type: "image",
               data: resultObj.data as string,
-              mimeType: "image/png",
+              mimeType: "image/jpeg",
             },
           ];
         }

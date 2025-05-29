@@ -43,7 +43,7 @@ const PurePreviewMessage = ({
         <div
           className={cn(
             "flex gap-4 w-full group-data-[role=user]/message:ml-auto group-data-[role=user]/message:max-w-2xl",
-            "group-data-[role=user]/message:w-fit",
+            "group-data-[role=user]/message:w-fit"
           )}
         >
           {/* {message.role === "assistant" && (
@@ -185,9 +185,10 @@ const PurePreviewMessage = ({
                             ) : state === "result" ? (
                               part.toolInvocation.result === ABORTED ? (
                                 <CircleSlash
-                                size={14}
-                                className="text-amber-600"
-                                />                              ) : (
+                                  size={14}
+                                  className="text-amber-600"
+                                />
+                              ) : (
                                 <CheckCircle
                                   size={14}
                                   className="text-green-600"
@@ -201,7 +202,7 @@ const PurePreviewMessage = ({
                             <div className="p-2">
                               {/* eslint-disable-next-line @next/next/no-img-element */}
                               <img
-                                src={`data:image/png;base64,${part.toolInvocation.result.data}`}
+                                src={`data:image/jpeg;base64,${part.toolInvocation.result.data}`}
                                 alt="Generated Image"
                                 className="w-full aspect-[1024/768] rounded-sm"
                               />
@@ -278,5 +279,5 @@ export const PreviewMessage = memo(
     if (!equal(prevProps.message.parts, nextProps.message.parts)) return false;
 
     return true;
-  },
+  }
 );
