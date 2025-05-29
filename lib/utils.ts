@@ -66,7 +66,7 @@ export const compressImage = (
 };
 
 // 判断是否需要清理沙箱的公共函数
-export function shouldCleanupSandbox(error: any): boolean {
+export function shouldCleanupSandbox(error: unknown): boolean {
   // 如果是字符串错误，检查是否包含沙箱相关的关键词
   if (typeof error === "string") {
     return (
@@ -79,8 +79,13 @@ export function shouldCleanupSandbox(error: any): boolean {
 
   // 如果是对象错误，检查错误类型
   if (error && typeof error === "object") {
-    const errorType = error.type || error.error?.type;
-    const errorMessage = error.message || error.error?.message || "";
+    const errorObj = error as Record<string, unknown>;
+    const errorType =
+      errorObj.type || (errorObj.error as Record<string, unknown>)?.type;
+    const errorMessage =
+      errorObj.message ||
+      (errorObj.error as Record<string, unknown>)?.message ||
+      "";
 
     // 这些错误类型不需要清理沙箱（外部服务问题）
     const externalServiceErrors = [
@@ -93,7 +98,7 @@ export function shouldCleanupSandbox(error: any): boolean {
       "billing_error", // 计费问题
     ];
 
-    if (externalServiceErrors.includes(errorType)) {
+    if (externalServiceErrors.includes(errorType as string)) {
       console.log(`🔄 外部服务错误 (${errorType}), 保留沙箱环境`);
       return false;
     }
@@ -106,7 +111,7 @@ export function shouldCleanupSandbox(error: any): boolean {
       "connection_error",
     ];
 
-    if (sandboxErrors.includes(errorType)) {
+    if (sandboxErrors.includes(errorType as string)) {
       console.log(`🧹 沙箱环境错误 (${errorType}), 需要清理`);
       return true;
     }
@@ -124,7 +129,7 @@ export function shouldCleanupSandbox(error: any): boolean {
     ];
 
     const messageContainsSandboxIssue = sandboxRelatedKeywords.some((keyword) =>
-      errorMessage.toLowerCase().includes(keyword.toLowerCase())
+      String(errorMessage).toLowerCase().includes(keyword.toLowerCase())
     );
 
     if (messageContainsSandboxIssue) {
