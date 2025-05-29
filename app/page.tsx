@@ -93,6 +93,26 @@ export default function Chat() {
     }
   };
 
+  // 清空对话记录
+  const clearMessages = () => {
+    if (messages.length === 0) {
+      toast.info("对话记录已经为空", {
+        richColors: true,
+        position: "top-center",
+      });
+      return;
+    }
+
+    // 添加确认提示
+    if (window.confirm("确定要清空所有对话记录吗？此操作无法撤销。")) {
+      setMessages([]);
+      toast.success("对话记录已清空", {
+        richColors: true,
+        position: "top-center",
+      });
+    }
+  };
+
   const isLoading = status !== "ready";
 
   // 自定义提交处理器，根据AI SDK文档建议在错误时移除最后一条消息
@@ -392,7 +412,18 @@ export default function Chat() {
           >
             <div className="bg-white py-4 px-4 flex justify-between items-center">
               <AISDKLogo />
-              <DeployButton />
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={clearMessages}
+                  variant="outline"
+                  size="sm"
+                  className="text-xs h-8 px-3 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
+                  disabled={isLoading}
+                >
+                  清空对话
+                </Button>
+                <DeployButton />
+              </div>
             </div>
 
             <div
@@ -468,7 +499,18 @@ export default function Chat() {
       <div className="w-full xl:hidden flex flex-col">
         <div className="bg-white py-4 px-4 flex justify-between items-center">
           <AISDKLogo />
-          <DeployButton />
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={clearMessages}
+              variant="outline"
+              size="sm"
+              className="text-xs h-8 px-3 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
+              disabled={isLoading}
+            >
+              清空对话
+            </Button>
+            <DeployButton />
+          </div>
         </div>
 
         <div

@@ -2,7 +2,7 @@ import { anthropic } from "@ai-sdk/anthropic";
 import { tool } from "ai";
 import { z } from "zod";
 import { getDesktop, withTimeout } from "./utils";
-import { compressImage } from "../utils";
+import { compressImage, mapKeySequence } from "../utils";
 import { diagnoseE2BEnvironment } from "./diagnostic";
 
 const wait = async (seconds: number) => {
@@ -256,8 +256,22 @@ export const computerTool35 = (sandboxId: string) =>
         }
         case "key": {
           if (!text) throw new Error("Key required for key action");
-          await desktop.press(text === "Return" ? "enter" : text);
-          return { type: "text" as const, text: `Pressed key: ${text}` };
+
+          // 使用键映射函数处理特殊字符
+          const mappedKey = mapKeySequence(text);
+
+          try {
+            await desktop.press(mappedKey);
+          } catch (error) {
+            console.warn(`按键失败，尝试原始键序列: ${text}`, error);
+            // 如果映射的键失败，尝试原始键序列
+            await desktop.press(text === "Return" ? "enter" : text);
+          }
+
+          return {
+            type: "text" as const,
+            text: `Pressed key: ${text} (mapped to: ${mappedKey})`,
+          };
         }
         case "left_click_drag": {
           if (!coordinate)
@@ -491,6 +505,7 @@ export const computerTool = (sandboxId: string) =>
           "diagnose",
           "check_fonts",
           "setup_chinese_input",
+          "launch_app",
         ])
         .describe("The action to perform"),
       coordinate: z
@@ -513,6 +528,10 @@ export const computerTool = (sandboxId: string) =>
         .optional()
         .describe("Direction to scroll"),
       scroll_amount: z.number().optional().describe("Amount to scroll"),
+      app_name: z
+        .enum(["google-chrome", "firefox", "vscode"])
+        .optional()
+        .describe("Name of the app to launch"),
     }),
     execute: async ({
       action,
@@ -522,6 +541,7 @@ export const computerTool = (sandboxId: string) =>
       duration,
       scroll_direction,
       scroll_amount,
+      app_name,
     }) => {
       const desktop = await getDesktop(sandboxId);
 
@@ -558,9 +578,12 @@ export const computerTool = (sandboxId: string) =>
 
           // 添加点击后的短暂延迟
           await wait(0.1);
-          return coordinate
-            ? `Left clicked at ${coordinate[0]}, ${coordinate[1]}`
-            : "Left clicked";
+          return {
+            type: "text" as const,
+            text: coordinate
+              ? `Left clicked at ${coordinate[0]}, ${coordinate[1]}`
+              : "Left clicked",
+          };
         }
         case "double_click": {
           if (coordinate) {
@@ -570,9 +593,12 @@ export const computerTool = (sandboxId: string) =>
           }
           await desktop.doubleClick();
           await wait(0.2);
-          return coordinate
-            ? `Double clicked at ${coordinate[0]}, ${coordinate[1]}`
-            : "Double clicked";
+          return {
+            type: "text" as const,
+            text: coordinate
+              ? `Double clicked at ${coordinate[0]}, ${coordinate[1]}`
+              : "Double clicked",
+          };
         }
         case "right_click": {
           if (coordinate) {
@@ -582,9 +608,12 @@ export const computerTool = (sandboxId: string) =>
           }
           await desktop.rightClick();
           await wait(0.1);
-          return coordinate
-            ? `Right clicked at ${coordinate[0]}, ${coordinate[1]}`
-            : "Right clicked";
+          return {
+            type: "text" as const,
+            text: coordinate
+              ? `Right clicked at ${coordinate[0]}, ${coordinate[1]}`
+              : "Right clicked",
+          };
         }
         case "middle_click": {
           if (coordinate) {
@@ -600,12 +629,18 @@ export const computerTool = (sandboxId: string) =>
           } catch (error) {
             console.warn("Middle click not supported:", error);
           }
-          return coordinate
-            ? `Middle clicked at ${coordinate[0]}, ${coordinate[1]}`
-            : "Middle clicked";
+          return {
+            type: "text" as const,
+            text: coordinate
+              ? `Middle clicked at ${coordinate[0]}, ${coordinate[1]}`
+              : "Middle clicked",
+          };
         }
         case "cursor_position": {
-          return "Cursor position query not supported in this environment";
+          return {
+            type: "text" as const,
+            text: "Cursor position query not supported in this environment",
+          };
         }
         case "mouse_move": {
           if (!coordinate)
@@ -618,16 +653,37 @@ export const computerTool = (sandboxId: string) =>
             y
           );
           await wait(0.1);
-          return `Moved mouse to ${finalX}, ${finalY}`;
+          return {
+            type: "text" as const,
+            text: `Moved mouse to ${finalX}, ${finalY}`,
+          };
         }
         case "type": {
           if (!text) throw new Error("Text required for type action");
-          return await handleChineseInput(desktop, text);
+          const result = await handleChineseInput(desktop, text);
+          return {
+            type: "text" as const,
+            text: result,
+          };
         }
         case "key": {
           if (!text) throw new Error("Key required for key action");
-          await desktop.press(text === "Return" ? "enter" : text);
-          return `Pressed key: ${text}`;
+
+          // 使用键映射函数处理特殊字符
+          const mappedKey = mapKeySequence(text);
+
+          try {
+            await desktop.press(mappedKey);
+          } catch (error) {
+            console.warn(`按键失败，尝试原始键序列: ${text}`, error);
+            // 如果映射的键失败，尝试原始键序列
+            await desktop.press(text === "Return" ? "enter" : text);
+          }
+
+          return {
+            type: "text" as const,
+            text: `Pressed key: ${text} (mapped to: ${mappedKey})`,
+          };
         }
         case "triple_click": {
           if (coordinate) {
@@ -642,9 +698,12 @@ export const computerTool = (sandboxId: string) =>
           await wait(0.05);
           await desktop.leftClick();
           await wait(0.1);
-          return coordinate
-            ? `Triple clicked at ${coordinate[0]}, ${coordinate[1]}`
-            : "Triple clicked";
+          return {
+            type: "text" as const,
+            text: coordinate
+              ? `Triple clicked at ${coordinate[0]}, ${coordinate[1]}`
+              : "Triple clicked",
+          };
         }
         case "left_mouse_down": {
           if (coordinate) {
@@ -661,9 +720,12 @@ export const computerTool = (sandboxId: string) =>
           } catch (error) {
             console.warn("Mouse down not supported:", error);
           }
-          return coordinate
-            ? `Left mouse down at ${coordinate[0]}, ${coordinate[1]}`
-            : "Left mouse down";
+          return {
+            type: "text" as const,
+            text: coordinate
+              ? `Left mouse down at ${coordinate[0]}, ${coordinate[1]}`
+              : "Left mouse down",
+          };
         }
         case "left_mouse_up": {
           if (coordinate) {
@@ -680,9 +742,12 @@ export const computerTool = (sandboxId: string) =>
           } catch (error) {
             console.warn("Mouse up not supported:", error);
           }
-          return coordinate
-            ? `Left mouse up at ${coordinate[0]}, ${coordinate[1]}`
-            : "Left mouse up";
+          return {
+            type: "text" as const,
+            text: coordinate
+              ? `Left mouse up at ${coordinate[0]}, ${coordinate[1]}`
+              : "Left mouse up",
+          };
         }
         case "hold_key": {
           if (!text) throw new Error("Key required for hold key action");
@@ -690,14 +755,23 @@ export const computerTool = (sandboxId: string) =>
             throw new Error("Duration required for hold key action");
           const actualDuration = Math.min(duration, 5); // 限制最大5秒
 
+          // 使用键映射函数处理特殊字符
+          const mappedKey = mapKeySequence(text);
+
           // E2B 可能没有直接的 holdKey 方法，使用按下-等待-释放
           try {
-            await desktop.press(text === "Return" ? "enter" : text);
+            await desktop.press(mappedKey);
             await wait(actualDuration);
           } catch (error) {
             console.warn("Hold key not fully supported:", error);
+            // 如果映射失败，尝试原始键序列
+            await desktop.press(text === "Return" ? "enter" : text);
+            await wait(actualDuration);
           }
-          return `Held key: ${text} for ${actualDuration} seconds`;
+          return {
+            type: "text" as const,
+            text: `Held key: ${text} (mapped to: ${mappedKey}) for ${actualDuration} seconds`,
+          };
         }
         case "scroll": {
           if (!scroll_direction)
@@ -706,31 +780,44 @@ export const computerTool = (sandboxId: string) =>
             throw new Error("Scroll amount required for scroll action");
 
           try {
-            if (coordinate) {
-              const [x, y] = coordinate;
-              // 确保坐标在有效范围内
-              const clampedX = Math.max(0, Math.min(x, resolution.x - 1));
-              const clampedY = Math.max(0, Math.min(y, resolution.y - 1));
+            // if (coordinate) {
+            //   const [x, y] = coordinate;
+            //   // 确保坐标在有效范围内
+            //   const clampedX = Math.max(0, Math.min(x, resolution.x - 1));
+            //   const clampedY = Math.max(0, Math.min(y, resolution.y - 1));
 
-              await desktop.moveMouse(clampedX, clampedY);
-              await wait(0.1);
-            }
+            //   await desktop.moveMouse(clampedX, clampedY);
+            //   await wait(0.1);
+            // }
 
-            // 使用超时保护执行滚动操作
+            // // 使用超时保护执行滚动操作
+            // await withTimeout(
+            //   desktop.scroll(scroll_direction as "up" | "down", scroll_amount),
+            //   5000,
+            //   "Scroll"
+            // );
+
+            // // 滚动后等待一下让页面稳定
+            // await wait(0.2);
+
+            // return `Scrolled ${scroll_direction} by ${scroll_amount} at ${
+            //   coordinate
+            //     ? `${coordinate[0]}, ${coordinate[1]}`
+            //     : "current position"
+            // }`;
             await withTimeout(
-              desktop.scroll(scroll_direction as "up" | "down", scroll_amount),
+              desktop.scroll(
+                scroll_direction as "up" | "down" | "left" | "right",
+                scroll_amount
+              ),
               5000,
               "Scroll"
             );
-
-            // 滚动后等待一下让页面稳定
             await wait(0.2);
-
-            return `Scrolled ${scroll_direction} by ${scroll_amount} at ${
-              coordinate
-                ? `${coordinate[0]}, ${coordinate[1]}`
-                : "current position"
-            }`;
+            return {
+              type: "text" as const,
+              text: `Scrolled ${scroll_direction} by ${scroll_amount}`,
+            };
           } catch (error) {
             console.warn("Scroll operation failed:", error);
             // 如果滚动失败，尝试使用键盘滚动作为备选方案
@@ -741,12 +828,20 @@ export const computerTool = (sandboxId: string) =>
                 await desktop.press(scrollKey);
                 await wait(0.1);
               }
-              return `Scrolled ${scroll_direction} using keyboard (fallback method)`;
+              return {
+                type: "text" as const,
+                text: `Scrolled ${scroll_direction} using keyboard (fallback method)`,
+              };
             } catch (fallbackError) {
               console.error("Fallback scroll also failed:", fallbackError);
-              return `Scroll attempt failed: ${
-                error instanceof Error ? error.message : "Unknown error"
-              }`;
+              return {
+                type: "text" as const,
+                text: `Scroll attempt failed: ${
+                  fallbackError instanceof Error
+                    ? fallbackError.message
+                    : "Unknown error"
+                }`,
+              };
             }
           }
         }
@@ -754,7 +849,10 @@ export const computerTool = (sandboxId: string) =>
           if (!duration) throw new Error("Duration required for wait action");
           const actualDuration = Math.min(duration, 3); // 限制最大3秒
           await wait(actualDuration);
-          return `Waited for ${actualDuration} seconds`;
+          return {
+            type: "text" as const,
+            text: `Waited for ${actualDuration} seconds`,
+          };
         }
         case "left_click_drag": {
           if (!start_coordinate || !coordinate)
@@ -788,18 +886,27 @@ export const computerTool = (sandboxId: string) =>
             );
             await wait(0.2);
 
-            return `Dragged from ${clampedStartX}, ${clampedStartY} to ${clampedEndX}, ${clampedEndY}`;
+            return {
+              type: "text" as const,
+              text: `Dragged from ${clampedStartX}, ${clampedStartY} to ${clampedEndX}, ${clampedEndY}`,
+            };
           } catch (error) {
             console.warn("Drag operation failed:", error);
-            return `Drag attempt failed: ${
-              error instanceof Error ? error.message : "Unknown error"
-            }`;
+            return {
+              type: "text" as const,
+              text: `Drag attempt failed: ${
+                error instanceof Error ? error.message : "Unknown error"
+              }`,
+            };
           }
         }
         case "diagnose": {
           // 运行 E2B 环境诊断
           await diagnoseE2BEnvironment(sandboxId);
-          return "E2B 环境诊断完成，请查看控制台输出获取详细信息";
+          return {
+            type: "text" as const,
+            text: "E2B 环境诊断完成，请查看控制台输出获取详细信息",
+          };
         }
         case "check_fonts": {
           // 检查和诊断字体状态
@@ -824,11 +931,17 @@ export const computerTool = (sandboxId: string) =>
               available.map((p) => p.description).join(", ") || "无"
             }`;
 
-            return report;
+            return {
+              type: "text" as const,
+              text: report,
+            };
           } catch (error) {
-            return `字体检查失败: ${
-              error instanceof Error ? error.message : "未知错误"
-            }`;
+            return {
+              type: "text" as const,
+              text: `字体检查失败: ${
+                error instanceof Error ? error.message : "未知错误"
+              }`,
+            };
           }
         }
         case "setup_chinese_input": {
@@ -943,6 +1056,14 @@ export const computerTool = (sandboxId: string) =>
               error instanceof Error ? error.message : "未知错误"
             }`;
           }
+        }
+        case "launch_app": {
+          if (!app_name) throw new Error("App name required for launch action");
+          await desktop.launch(app_name);
+          return {
+            type: "text" as const,
+            text: `Launched ${app_name}`,
+          };
         }
         default:
           throw new Error(`Unsupported action: ${action}`);

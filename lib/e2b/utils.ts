@@ -77,7 +77,7 @@ export const getDesktop = async (id?: string) => {
     // 创建新的沙盒
     const desktop = await (Sandbox as any).create({
       resolution: [resolution.x, resolution.y],
-      timeoutMs: 1800000,
+      timeoutMs: 3600000, // 延长到1小时 (3600000毫秒)
     });
     await desktop.stream.start();
 

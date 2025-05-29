@@ -156,3 +156,50 @@ export function shouldCleanupSandbox(error: any): boolean {
   console.log(`⚡ 未知错误类型，保留沙箱环境，错误详情:`, error);
   return false;
 }
+
+// 键映射函数 - 处理E2B/xdo特殊字符
+export const mapKeySequence = (keySequence: string): string => {
+  // 只映射真正有问题的特殊字符
+  const problematicKeyMappings: Record<string, string> = {
+    // 确认有问题的字符
+    "-": "minus",
+    "+": "plus",
+    // 如果发现其他有问题的字符，可以在这里添加
+    "=": "equal",
+    "[": "bracketleft",
+    "]": "bracketright",
+    "`": "grave",
+    "~": "tilde",
+    "|": "bar",
+    "\\": "backslash",
+    ":": "colon",
+    ";": "semicolon",
+  };
+
+  // 处理组合键，例如 "ctrl+-" -> "ctrl+minus"
+  let result = keySequence;
+
+  // 分解组合键
+  const parts = result.split("+");
+  if (parts.length > 1) {
+    // 映射每个部分，但只映射有问题的字符
+    const mappedParts = parts.map((part) => {
+      const trimmedPart = part.trim();
+
+      // 只映射真正有问题的字符，其他保持原样
+      return problematicKeyMappings[trimmedPart] || trimmedPart;
+    });
+
+    result = mappedParts.join("+");
+  } else {
+    // 单个键的映射
+    result = problematicKeyMappings[result] || result;
+  }
+
+  // 只在实际映射发生时才输出日志
+  if (result !== keySequence) {
+    console.log(`🎹 键映射: "${keySequence}" -> "${result}"`);
+  }
+
+  return result;
+};
