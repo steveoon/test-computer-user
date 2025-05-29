@@ -57,7 +57,7 @@ export interface E2BDesktop {
 }
 
 // 沙盒持久化相关函数 - 使用beta版本API
-export const pauseDesktop = async (desktop: Sandbox) => {
+export const pauseDesktop = async (desktop: E2BDesktop) => {
   try {
     // 检查pause方法是否存在
     const extendedDesktop = desktop as unknown as SandboxWithExtensions;
