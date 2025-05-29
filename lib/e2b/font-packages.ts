@@ -1,10 +1,19 @@
 // E2B环境中可用字体包的检测和推荐
 
+import { type E2BDesktop } from "./utils";
+
 export interface FontPackage {
   name: string;
   description: string;
   priority: number; // 优先级，数字越小优先级越高
   alternatives?: string[]; // 备用包名
+}
+
+// 命令执行结果类型
+interface CommandResult {
+  stdout?: string;
+  stderr?: string;
+  exitCode: number;
 }
 
 // 基础字体包列表（按优先级排序）
@@ -60,7 +69,7 @@ export const CHINESE_FONT_PACKAGES: FontPackage[] = [
  * 检测系统中可用的字体包
  */
 export const detectAvailableFontPackages = async (
-  desktop: any
+  desktop: E2BDesktop
 ): Promise<FontPackage[]> => {
   console.log("🔍 检测可用的字体包...");
   const available: FontPackage[] = [];
@@ -96,18 +105,18 @@ export const detectAvailableFontPackages = async (
  * 检查单个包是否存在
  */
 export const checkPackageExists = async (
-  desktop: any,
+  desktop: E2BDesktop,
   pkg: FontPackage
 ): Promise<boolean> => {
   // 检查主包名
   try {
-    const mainCheck = (await desktop.commands.run(
+    const mainCheck: CommandResult = await desktop.commands.run(
       `apt-cache show ${pkg.name} >/dev/null 2>&1 && echo "exists"`
-    )) as any;
+    );
     if (mainCheck.stdout?.includes("exists")) {
       return true;
     }
-  } catch (error) {
+  } catch (_error) {
     // 主包不存在，继续检查备用包名
   }
 
@@ -115,15 +124,15 @@ export const checkPackageExists = async (
   if (pkg.alternatives) {
     for (const altName of pkg.alternatives) {
       try {
-        const altCheck = (await desktop.commands.run(
+        const altCheck: CommandResult = await desktop.commands.run(
           `apt-cache show ${altName} >/dev/null 2>&1 && echo "exists"`
-        )) as any;
+        );
         if (altCheck.stdout?.includes("exists")) {
           // 更新包名为实际可用的名称
           pkg.name = altName;
           return true;
         }
-      } catch (error) {
+      } catch (_error) {
         // 继续检查下一个
       }
     }
@@ -135,7 +144,7 @@ export const checkPackageExists = async (
 /**
  * 获取系统当前的字体状态
  */
-export const getFontStatus = async (desktop: any) => {
+export const getFontStatus = async (desktop: E2BDesktop) => {
   const status = {
     hasFontTools: false,
     totalFonts: 0,
@@ -145,19 +154,21 @@ export const getFontStatus = async (desktop: any) => {
 
   try {
     // 检查字体工具
-    const toolCheck = (await desktop.commands.run(
+    const toolCheck: CommandResult = await desktop.commands.run(
       "which fc-list && echo 'ok'"
-    )) as any;
-    status.hasFontTools = toolCheck.stdout?.includes("ok");
+    );
+    status.hasFontTools = toolCheck.stdout?.includes("ok") ?? false;
 
     if (status.hasFontTools) {
       // 检查字体数量
-      const totalCheck = (await desktop.commands.run("fc-list | wc -l")) as any;
+      const totalCheck: CommandResult = await desktop.commands.run(
+        "fc-list | wc -l"
+      );
       status.totalFonts = parseInt(totalCheck.stdout?.trim() || "0");
 
-      const chineseCheck = (await desktop.commands.run(
+      const chineseCheck: CommandResult = await desktop.commands.run(
         "fc-list :lang=zh | wc -l"
-      )) as any;
+      );
       status.chineseFonts = parseInt(chineseCheck.stdout?.trim() || "0");
     }
 
@@ -170,13 +181,13 @@ export const getFontStatus = async (desktop: any) => {
     ];
     for (const pkg of packages) {
       try {
-        const pkgCheck = (await desktop.commands.run(
+        const pkgCheck: CommandResult = await desktop.commands.run(
           `dpkg -l | grep ${pkg} && echo "installed"`
-        )) as any;
+        );
         if (pkgCheck.stdout?.includes("installed")) {
           status.installedPackages.push(pkg);
         }
-      } catch (error) {
+      } catch (_error) {
         // 包未安装
       }
     }

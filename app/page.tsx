@@ -4,7 +4,7 @@ import { PreviewMessage } from "@/components/message";
 import { getDesktopURL } from "@/lib/e2b/utils";
 import { useScrollToBottom } from "@/lib/use-scroll-to-bottom";
 import { useChat } from "@ai-sdk/react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Input } from "@/components/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -206,7 +206,7 @@ export default function Chat() {
     }
   };
 
-  const checkSandboxStatus = async () => {
+  const checkSandboxStatus = useCallback(async () => {
     if (!sandboxId) return;
 
     try {
@@ -233,7 +233,7 @@ export default function Chat() {
       console.error("Failed to check sandbox status:", err);
       setSandboxStatus("unknown");
     }
-  };
+  }, [sandboxId, sandboxStatus]);
 
   // Kill desktop on page close
   useEffect(() => {
@@ -290,7 +290,7 @@ export default function Chat() {
     }, 60000); // 每分钟检查一次
 
     return () => clearInterval(heartbeatInterval);
-  }, [sandboxId]); // 移除sandboxStatus依赖避免循环
+  }, [sandboxId, checkSandboxStatus]);
 
   useEffect(() => {
     // Initialize desktop and get stream URL when the component mounts

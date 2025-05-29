@@ -11,7 +11,7 @@ const wait = async (seconds: number) => {
 
 // 改进的鼠标移动函数，确保指针可见性
 const moveMouseWithVisualUpdate = async (
-  desktop: any,
+  desktop: { moveMouse: (x: number, y: number) => Promise<void> },
   x: number,
   y: number
 ) => {
@@ -29,7 +29,16 @@ export const resolution = { x: 1024, y: 768 };
 
 // 公共的中文输入处理函数 - 返回字符串
 const handleChineseInput = async (
-  desktop: any,
+  desktop: {
+    commands: {
+      run: (
+        cmd: string,
+        options?: { timeoutMs?: number }
+      ) => Promise<{ exitCode: number; stdout?: string }>;
+    };
+    press: (key: string) => Promise<void>;
+    write: (text: string) => Promise<void>;
+  },
   text: string
 ): Promise<string> => {
   // 检测是否包含中文字符
@@ -63,7 +72,7 @@ const handleChineseInput = async (
         console.log("✅ 剪贴板方法输入成功");
         return `Typed (clipboard method): ${text}`;
       }
-    } catch (clipboardError) {
+    } catch (_clipboardError) {
       console.log("⚠️ 剪贴板方法不可用，切换到备用方法");
     }
 
@@ -175,7 +184,16 @@ const handleChineseInput = async (
 
 // 公共的中文输入处理函数 - 返回对象格式（用于anthropic工具）
 const handleChineseInputWithObject = async (
-  desktop: any,
+  desktop: {
+    commands: {
+      run: (
+        cmd: string,
+        options?: { timeoutMs?: number }
+      ) => Promise<{ exitCode: number; stdout?: string }>;
+    };
+    press: (key: string) => Promise<void>;
+    write: (text: string) => Promise<void>;
+  },
   text: string
 ): Promise<{ type: "text"; text: string }> => {
   const result = await handleChineseInput(desktop, text);
@@ -1046,7 +1064,9 @@ export const computerTool = (sandboxId: string) =>
             report += "```\n";
 
             // 标记配置完成
-            (desktop as any)._chineseInputConfigured = true;
+            (
+              desktop as unknown as { _chineseInputConfigured?: boolean }
+            )._chineseInputConfigured = true;
 
             report += "\n🎉 中文输入环境配置指南生成完成！\n";
 
@@ -1074,7 +1094,11 @@ export const computerTool = (sandboxId: string) =>
         return [{ type: "text", text: result }];
       }
       if (result && typeof result === "object" && "type" in result) {
-        const resultObj = result as any;
+        const resultObj = result as {
+          type: string;
+          data?: string;
+          text?: string;
+        };
         if (resultObj.type === "image" && "data" in resultObj) {
           return [
             {

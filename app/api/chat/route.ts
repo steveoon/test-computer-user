@@ -2,7 +2,6 @@ import { streamText, UIMessage } from "ai";
 import { killDesktop } from "@/lib/e2b/utils";
 import { bashTool, computerTool } from "@/lib/e2b/tool";
 import { prunedMessages, shouldCleanupSandbox } from "@/lib/utils";
-import { openrouter } from "@/lib/model-registry";
 import { registry } from "@/lib/model-registry";
 
 // Allow streaming responses up to 30 seconds
@@ -11,7 +10,7 @@ export const maxDuration = 300;
 // 清理沙箱的公共函数
 async function cleanupSandboxIfNeeded(
   sandboxId: string,
-  error: any,
+  error: unknown,
   context: string
 ) {
   if (shouldCleanupSandbox(error)) {
@@ -104,7 +103,7 @@ export async function POST(req: Request) {
           return error;
         }
         if (error && typeof error === "object" && "message" in error) {
-          return String((error as any).message);
+          return String((error as { message: unknown }).message);
         }
         return "发生未知错误，请重试";
       },

@@ -41,7 +41,7 @@ export const diagnoseE2BEnvironment = async (sandboxId?: string) => {
           "xdotool mousemove"
         );
         console.log("✅ xdotool 鼠标移动可用");
-      } catch (error) {
+      } catch (_error) {
         console.log("⚠️ xdotool 不可用，使用E2B原生移动");
       }
     } catch (error) {
