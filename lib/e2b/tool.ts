@@ -4,7 +4,7 @@ import { z } from "zod";
 import { getDesktop, withTimeout } from "./utils";
 import { mapKeySequence } from "../utils";
 import { diagnoseE2BEnvironment } from "./diagnostic";
-import { compressImageServer } from "../image-optimized";
+import { compressImageServerV2 } from "../image-optimized";
 
 const wait = async (seconds: number) => {
   await new Promise((resolve) => setTimeout(resolve, seconds * 1000));
@@ -352,7 +352,12 @@ export const anthropicComputerTool = (sandboxId: string) =>
           console.log(
             `🖼️ 截图原始大小: ${(base64Data.length / 1024).toFixed(2)}KB`
           );
-          const compressedData = await compressImageServer(base64Data, 200);
+          const compressedData = await compressImageServerV2(base64Data, {
+            targetSizeKB: 150,
+            maxSizeKB: 200,
+            enableAdaptive: true,
+            preserveText: true,
+          });
           console.log(
             `✅ 服务端压缩完成，当前大小: ${(
               compressedData.length / 1024
@@ -584,7 +589,12 @@ export const computerTool = (sandboxId: string) =>
           console.log(
             `🖼️ 截图原始大小: ${(base64Data.length / 1024).toFixed(2)}KB`
           );
-          const compressedData = await compressImageServer(base64Data, 200);
+          const compressedData = await compressImageServerV2(base64Data, {
+            targetSizeKB: 150,
+            maxSizeKB: 200,
+            enableAdaptive: true,
+            preserveText: true,
+          });
           console.log(
             `✅ 服务端压缩完成，当前大小: ${(
               compressedData.length / 1024

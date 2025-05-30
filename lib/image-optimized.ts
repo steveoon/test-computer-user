@@ -2,113 +2,364 @@
 
 import sharp from "sharp";
 
-// 服务端图片压缩函数
-export async function compressImageServer(
+interface CompressionConfig {
+  targetSizeKB: number;
+  maxSizeKB: number;
+  minQuality: number;
+  maxQuality: number;
+  enableAdaptive: boolean;
+  preserveText: boolean;
+}
+
+interface CompressionResult {
+  base64: string;
+  originalSizeKB: number;
+  finalSizeKB: number;
+  compressionRatio: number;
+  quality: number;
+  processingTime: number;
+}
+
+/**
+ * 🧠 智能图像压缩引擎 v2.0
+ * 专为LLM截图优化，平衡token效率与视觉质量
+ */
+export async function compressImageServerV2(
   base64Data: string,
-  maxSizeKB: number = 100
+  config: Partial<CompressionConfig> = {}
 ): Promise<string> {
-  // 计算当前图片大小（KB）
-  const currentSizeKB = (base64Data.length * 3) / 4 / 1024;
+  const startTime = Date.now();
+
+  // 🎛️ 智能配置系统
+  const finalConfig: CompressionConfig = {
+    targetSizeKB: config.targetSizeKB || 150, // 提高目标大小，保证质量
+    maxSizeKB: config.maxSizeKB || 200,
+    minQuality: config.minQuality || 45,
+    maxQuality: config.maxQuality || 85,
+    enableAdaptive: config.enableAdaptive ?? true,
+    preserveText: config.preserveText ?? true,
+    ...config,
+  };
 
   try {
-    // 将 base64 转换为 Buffer
-    const buffer = Buffer.from(base64Data, "base64");
-
-    // 如果图片小于阈值，只做格式转换，不做压缩
-    if (currentSizeKB <= maxSizeKB) {
-      console.log(
-        `图片大小: ${currentSizeKB.toFixed(
-          2
-        )}KB, 低于阈值 ${maxSizeKB}KB, 仅转换格式`
-      );
-
-      const convertedBuffer = await sharp(buffer)
-        .grayscale() // 转换为灰度图像
-        .jpeg({
-          quality: 85, // 高质量，不压缩
-          progressive: true,
-          optimiseCoding: true,
-          force: true,
-        })
-        .toBuffer();
-
-      const convertedBase64 = convertedBuffer.toString("base64");
-      const convertedSizeKB = (convertedBase64.length * 3) / 4 / 1024;
-
-      console.log(
-        `格式转换完成: ${currentSizeKB.toFixed(
-          2
-        )}KB -> ${convertedSizeKB.toFixed(2)}KB`
-      );
-      return convertedBase64;
-    }
-
-    console.log(`图片大小: ${currentSizeKB.toFixed(2)}KB, 开始优化...`);
-
-    // 获取图像的原始尺寸
-    const metadata = await sharp(buffer).metadata();
-    const originalWidth = metadata.width || 1024;
-    const originalHeight = metadata.height || 768;
-
-    // 计算新的尺寸，使用更保守的缩放比例
-    let scale = 0.85; // 默认缩放比例（更保守）
-    if (currentSizeKB > 300) {
-      scale = 0.75; // 很大的图片稍微多压缩一些
-    }
-
-    const newWidth = Math.round(originalWidth * scale);
-    const newHeight = Math.round(originalHeight * scale);
-
-    // 使用 sharp 处理图像
-    const processedImageBuffer = await sharp(buffer)
-      .grayscale() // 转换为灰度图像
-      .resize({
-        width: newWidth,
-        height: newHeight,
-        fit: "inside",
-      })
-      .jpeg({
-        quality: 50, // 提升质量设置，保持定位准确度
-        progressive: true,
-        optimiseCoding: true,
-        force: true,
-      })
-      .toBuffer();
-
-    // 转换回 base64
-    const optimizedBase64 = processedImageBuffer.toString("base64");
-    const newSizeKB = (optimizedBase64.length * 3) / 4 / 1024;
-
-    // 如果优化后反而变大了，则返回格式转换版本
-    if (newSizeKB >= currentSizeKB) {
-      console.log(`优化后图片变大，返回格式转换版本`);
-      const fallbackBuffer = await sharp(buffer)
-        .grayscale()
-        .jpeg({ quality: 85, force: true })
-        .toBuffer();
-      return fallbackBuffer.toString("base64");
-    }
-
-    console.log(
-      `图片已优化: ${currentSizeKB.toFixed(2)}KB -> ${newSizeKB.toFixed(
-        2
-      )}KB (${Math.round((1 - newSizeKB / currentSizeKB) * 100)}% 减少)`
+    const result = await processImageWithStrategy(
+      base64Data,
+      finalConfig,
+      startTime
     );
 
-    return optimizedBase64;
+    console.log(
+      `🚀 压缩完成: ${result.originalSizeKB.toFixed(
+        2
+      )}KB → ${result.finalSizeKB.toFixed(
+        2
+      )}KB (${result.compressionRatio.toFixed(1)}% 压缩) 质量: ${
+        result.quality
+      } 耗时: ${result.processingTime}ms`
+    );
+
+    return result.base64;
   } catch (error) {
-    console.error("图片处理失败:", error);
-    // 即使失败也要尝试格式转换
-    try {
-      const buffer = Buffer.from(base64Data, "base64");
-      const fallbackBuffer = await sharp(buffer)
-        .grayscale()
-        .jpeg({ quality: 80, force: true })
-        .toBuffer();
-      return fallbackBuffer.toString("base64");
-    } catch (fallbackError) {
-      console.error("格式转换也失败:", fallbackError);
-      return base64Data;
+    console.error("🚨 压缩失败，使用备用策略:", error);
+    return await fallbackCompression(base64Data);
+  }
+}
+
+/**
+ * 🎯 核心处理策略：二分查找 + 自适应优化
+ */
+async function processImageWithStrategy(
+  base64Data: string,
+  config: CompressionConfig,
+  startTime: number
+): Promise<CompressionResult> {
+  const buffer = Buffer.from(base64Data, "base64");
+  const originalSizeKB = (base64Data.length * 3) / 4 / 1024;
+
+  // 📊 图像分析
+  const metadata = await sharp(buffer).metadata();
+  const imageAnalysis = analyzeImageCharacteristics(metadata, originalSizeKB);
+
+  // 🎯 策略选择
+  if (originalSizeKB <= config.targetSizeKB) {
+    return await lightOptimization(buffer, originalSizeKB, config, startTime);
+  }
+
+  if (config.enableAdaptive) {
+    return await adaptiveCompression(
+      buffer,
+      originalSizeKB,
+      config,
+      imageAnalysis,
+      startTime
+    );
+  } else {
+    return await standardCompression(buffer, originalSizeKB, config, startTime);
+  }
+}
+
+/**
+ * 🔬 图像特征分析器
+ */
+function analyzeImageCharacteristics(metadata: sharp.Metadata, sizeKB: number) {
+  const width = metadata.width || 1024;
+  const height = metadata.height || 768;
+  const pixelDensity = (width * height) / 1000000; // MP
+
+  return {
+    isHighRes: pixelDensity > 2.0,
+    isWidescreen: width / height > 1.5,
+    likelyScreenshot: width > 1200 && height > 600,
+    density: pixelDensity,
+    aspectRatio: width / height,
+    originalSize: sizeKB,
+    width,
+    height,
+  };
+}
+
+/**
+ * 🧠 自适应压缩：智能二分查找最优质量
+ */
+async function adaptiveCompression(
+  buffer: Buffer,
+  originalSizeKB: number,
+  config: CompressionConfig,
+  analysis: any,
+  startTime: number
+): Promise<CompressionResult> {
+  // 🎛️ 动态参数调整
+  const optimalDimensions = calculateOptimalDimensions(analysis, config);
+
+  let lowQuality = config.minQuality;
+  let highQuality = config.maxQuality;
+  let bestResult: any = null;
+  let iterations = 0;
+  const maxIterations = 6; // 限制迭代次数
+
+  // 🔍 二分查找最优质量点
+  while (lowQuality <= highQuality && iterations < maxIterations) {
+    const midQuality = Math.round((lowQuality + highQuality) / 2);
+    iterations++;
+
+    const result = await compressWithParams(buffer, {
+      ...optimalDimensions,
+      quality: midQuality,
+      preserveText: config.preserveText,
+    });
+
+    const resultSizeKB = (result.length * 3) / 4 / 1024;
+
+    console.log(
+      `🔍 迭代 ${iterations}: 质量=${midQuality}, 大小=${resultSizeKB.toFixed(
+        2
+      )}KB`
+    );
+
+    if (resultSizeKB <= config.targetSizeKB) {
+      bestResult = {
+        base64: result,
+        quality: midQuality,
+        sizeKB: resultSizeKB,
+      };
+      lowQuality = midQuality + 1; // 尝试更高质量
+    } else if (resultSizeKB <= config.maxSizeKB) {
+      if (!bestResult || resultSizeKB < bestResult.sizeKB) {
+        bestResult = {
+          base64: result,
+          quality: midQuality,
+          sizeKB: resultSizeKB,
+        };
+      }
+      highQuality = midQuality - 1;
+    } else {
+      highQuality = midQuality - 1;
     }
+  }
+
+  // 📊 返回最佳结果
+  if (bestResult) {
+    return {
+      base64: bestResult.base64,
+      originalSizeKB,
+      finalSizeKB: bestResult.sizeKB,
+      compressionRatio:
+        ((originalSizeKB - bestResult.sizeKB) / originalSizeKB) * 100,
+      quality: bestResult.quality,
+      processingTime: Date.now() - startTime,
+    };
+  }
+
+  // 兜底策略
+  return await standardCompression(buffer, originalSizeKB, config, startTime);
+}
+
+/**
+ * 📐 智能尺寸计算器
+ */
+function calculateOptimalDimensions(analysis: any, config: CompressionConfig) {
+  let scaleFactor = 1.0;
+
+  // 🎯 基于图像特征的缩放策略
+  if (analysis.likelyScreenshot) {
+    // 截图优化：保持文本清晰度
+    if (analysis.originalSize > 300) {
+      scaleFactor = 0.8; // 大截图适度缩放
+    } else if (analysis.originalSize > 200) {
+      scaleFactor = 0.9; // 中等大小轻微缩放
+    }
+  } else if (analysis.isHighRes) {
+    scaleFactor = 0.75; // 高分辨率图像可以更多压缩
+  }
+
+  // 📏 确保最小可读性
+  const minWidth = config.preserveText ? 800 : 600; // 根据文本保留需求调整最小宽度
+  const targetWidth = Math.max(
+    minWidth,
+    Math.round(analysis.width * scaleFactor)
+  );
+
+  return {
+    width: targetWidth,
+    height: Math.round((targetWidth / analysis.width) * analysis.height),
+  };
+}
+
+/**
+ * ⚙️ 参数化压缩执行器
+ */
+async function compressWithParams(
+  buffer: Buffer,
+  params: any
+): Promise<string> {
+  const sharpInstance = sharp(buffer);
+
+  // 🎨 智能预处理
+  if (params.preserveText) {
+    // 针对文本优化的预处理
+    sharpInstance
+      .gamma(1.1) // 轻微增强对比度，提升文本清晰度
+      .modulate({
+        brightness: 1.05, // 轻微提亮
+        saturation: 0.8, // 降低饱和度，利于压缩
+      });
+  } else {
+    sharpInstance.grayscale(); // 非文本内容转灰度
+  }
+
+  // 🔧 核心压缩处理
+  const processedBuffer = await sharpInstance
+    .resize({
+      width: params.width,
+      height: params.height,
+      fit: "inside",
+      withoutEnlargement: true,
+      kernel: "lanczos3", // 高质量缩放算法
+    })
+    .jpeg({
+      quality: params.quality,
+      progressive: true,
+      mozjpeg: true, // 启用更好的压缩算法
+      optimiseCoding: true,
+      quantisationTable: 2, // 优化量化表
+      force: true,
+    })
+    .toBuffer();
+
+  return processedBuffer.toString("base64");
+}
+
+/**
+ * 🪶 轻量级优化（小文件）
+ */
+async function lightOptimization(
+  buffer: Buffer,
+  originalSizeKB: number,
+  config: CompressionConfig,
+  startTime: number
+): Promise<CompressionResult> {
+  console.log(`📦 文件已小于目标大小，执行轻量级优化`);
+
+  // 使用配置的质量参数进行轻量级优化
+  const quality = Math.min(config.maxQuality, 80);
+
+  const optimizedBuffer = await sharp(buffer)
+    .jpeg({
+      quality,
+      progressive: true,
+      mozjpeg: true,
+      optimiseCoding: true,
+      force: true,
+    })
+    .toBuffer();
+
+  const finalSizeKB = (optimizedBuffer.length * 3) / 4 / 1024;
+
+  return {
+    base64: optimizedBuffer.toString("base64"),
+    originalSizeKB,
+    finalSizeKB,
+    compressionRatio: ((originalSizeKB - finalSizeKB) / originalSizeKB) * 100,
+    quality,
+    processingTime: Date.now() - startTime,
+  };
+}
+
+/**
+ * 🛡️ 标准压缩（兜底策略）
+ */
+async function standardCompression(
+  buffer: Buffer,
+  originalSizeKB: number,
+  config: CompressionConfig,
+  startTime: number
+): Promise<CompressionResult> {
+  const metadata = await sharp(buffer).metadata();
+  const scaleFactor = originalSizeKB > 250 ? 0.8 : 0.9;
+
+  // 使用配置参数计算质量
+  const quality = Math.max(
+    config.minQuality,
+    Math.min(config.maxQuality, originalSizeKB > 300 ? 60 : 65)
+  );
+
+  const compressedBuffer = await sharp(buffer)
+    .resize({
+      width: Math.round((metadata.width || 1024) * scaleFactor),
+      height: Math.round((metadata.height || 768) * scaleFactor),
+      fit: "inside",
+    })
+    .jpeg({
+      quality,
+      progressive: true,
+      force: true,
+    })
+    .toBuffer();
+
+  const finalSizeKB = (compressedBuffer.length * 3) / 4 / 1024;
+
+  return {
+    base64: compressedBuffer.toString("base64"),
+    originalSizeKB,
+    finalSizeKB,
+    compressionRatio: ((originalSizeKB - finalSizeKB) / originalSizeKB) * 100,
+    quality,
+    processingTime: Date.now() - startTime,
+  };
+}
+
+/**
+ * 🚨 终极兜底策略
+ */
+async function fallbackCompression(base64Data: string): Promise<string> {
+  try {
+    const buffer = Buffer.from(base64Data, "base64");
+    const fallbackBuffer = await sharp(buffer)
+      .jpeg({ quality: 60, force: true })
+      .toBuffer();
+    return fallbackBuffer.toString("base64");
+  } catch {
+    console.error("🆘 所有压缩策略失败，返回原图");
+    return base64Data;
   }
 }

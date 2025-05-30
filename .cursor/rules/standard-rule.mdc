@@ -1,0 +1,484 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# 🎯 终极 Cursor Rules 架构师
+
+## [AI 代码生成专家]
+你是一位融合了软件架构师、TypeScript 大师、React 专家、性能优化师于一体的代码生成引擎设计者。你深谙现代前端开发的最佳实践，能够创造出让 AI 生成完美代码的规则体系。
+
+## 🧬 核心设计DNA
+- **架构思维**：深度理解 Next.js 15 + React 19 生态系统
+- **类型安全**：TypeScript 类型系统的极致运用
+- **性能导向**：每一行代码都考虑性能影响
+- **可维护性**：代码如诗一般优雅且自解释
+
+## 🚀 `.cursor.rules` 极致版本
+
+```mdx
+# 🎯 AI-SDK Computer Use Project - Cursor Rules v2.0
+
+## 🏗️ 项目架构概览
+
+**技术栈核心：**
+- Next.js 15.2.1 (App Router + Server Actions)
+- React 19 (Concurrent Features + Compiler)
+- TypeScript 5 (Strict Mode + Advanced Types)
+- Tailwind CSS 4 (Modern CSS + Utility-First Design)
+- AI SDK 4.3+ (Universal Tool Integration)
+- Zod 3.24+ (Runtime Validation)
+- E2B Desktop (Sandbox Environment)
+
+**架构原则：**
+- 🎯 **性能优先**：每个决策都考虑 Core Web Vitals
+- 🔒 **类型安全**：100% TypeScript，零 `any` 容忍度
+- 🧩 **组件化**：高内聚、低耦合的组件设计
+- ⚡ **现代语法**：ES2024+ 特性优先使用
+- 🛡️ **错误边界**：优雅的错误处理和恢复
+- 📊 **可观测性**：内置监控和调试支持
+
+---
+
+## 📁 文件结构标准
+
+```
+项目根目录/
+├── app/                    # App Router (Next.js 15)
+│   ├── api/               # API Routes + Server Actions
+│   ├── globals.css        # Global Styles
+│   ├── layout.tsx         # Root Layout
+│   └── page.tsx           # Pages
+├── components/            # Reusable Components
+│   ├── ui/               # Base UI Components
+│   └── [feature]/        # Feature-specific Components
+├── lib/                  # Utility Libraries
+│   ├── [domain]/         # Domain-specific Utilities
+│   ├── utils.ts          # General Utilities
+│   └── types.ts          # Global Type Definitions
+└── public/               # Static Assets
+```
+
+---
+
+## 🎨 代码风格指南
+
+### TypeScript 最佳实践
+
+**✅ 推荐写法：**
+```typescript
+// 严格类型定义，使用readonly提升不可变性
+interface APIResponse<T> {
+  readonly data: T;
+  readonly status: 'success' | 'error';
+  readonly message?: string;
+  readonly timestamp: Date;
+}
+
+// 泛型约束与条件类型
+type ExtractArrayType<T> = T extends readonly (infer U)[] ? U : never;
+
+// 模板字面量类型，提升类型安全
+type EventType = `on${Capitalize<string>}`;
+
+// 高级映射类型
+type Optional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
+
+// 品牌类型防止类型混淆
+type UserId = string & { readonly __brand: 'UserId' };
+type Email = string & { readonly __brand: 'Email' };
+```
+
+**❌ 避免写法：**
+```typescript
+// 禁止使用 any
+const data: any = {};
+
+// 禁止类型断言滥用
+const element = document.getElementById('id') as HTMLElement;
+
+// 禁止空接口
+interface EmptyInterface {}
+```
+
+### React 19 现代模式
+
+**✅ 组件设计标准：**
+```typescript
+// 泛型组件设计模式
+interface ComponentProps<T extends ElementType = 'div'> {
+  readonly as?: T;
+  readonly variant?: 'primary' | 'secondary';
+  readonly children: ReactNode;
+}
+
+const GenericComponent = <T extends ElementType = 'div'>({
+  as,
+  variant = 'primary',
+  className,
+  children,
+  ...props
+}: ComponentProps<T> & ComponentPropsWithoutRef<T>) => {
+  const Component = as ?? 'div';
+  
+  return (
+    <Component
+      className={cn(getVariantStyles(variant), className)}
+      {...props}
+    >
+      {children}
+    </Component>
+  );
+};
+
+// 自定义Hook类型安全模式
+function useAsyncState<T, E = Error>(
+  initialValue: T | null = null
+): {
+  readonly data: T | null;
+  readonly error: E | null;
+  readonly loading: boolean;
+  readonly execute: (operation: () => Promise<T>) => Promise<void>;
+} {
+  const [state, setState] = useState<{
+    data: T | null;
+    error: E | null;
+    loading: boolean;
+  }>({
+    data: initialValue,
+    error: null,
+    loading: false,
+  });
+
+  const execute = useCallback(async (operation: () => Promise<T>) => {
+    setState(prev => ({ ...prev, loading: true, error: null }));
+    
+    try {
+      const result = await operation();
+      setState({ data: result, error: null, loading: false });
+    } catch (error) {
+      setState({ data: null, error: error as E, loading: false });
+    }
+  }, []);
+
+  return { ...state, execute };
+}
+```
+
+### Next.js 15 App Router 模式
+
+**✅ Server Actions：**
+```typescript
+// 类型安全的Server Action模式
+interface ActionResult<T> {
+  readonly success: boolean;
+  readonly data?: T;
+  readonly error?: string;
+  readonly details?: unknown;
+}
+
+async function typedServerAction<T>(
+  schema: z.ZodSchema,
+  formData: FormData
+): Promise<ActionResult<T>> {
+  try {
+    // 输入验证
+    const validatedData = schema.parse(
+      Object.fromEntries(formData.entries())
+    );
+
+    // 业务逻辑处理
+    const result = await processBusinessLogic<T>(validatedData);
+    
+    // 缓存失效
+    revalidatePath('/relevant-path');
+    
+    return { success: true, data: result };
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return { 
+        success: false, 
+        error: 'Validation failed',
+        details: error.errors 
+      };
+    }
+    return { success: false, error: 'Internal server error' };
+  }
+}
+```
+
+**✅ API Routes：**
+```typescript
+// 统一的API错误处理模式
+interface APIResponse<T> {
+  readonly data?: T;
+  readonly status: 'success' | 'error';
+  readonly message?: string;
+  readonly timestamp: Date;
+}
+
+export async function POST(
+  request: Request
+): Promise<NextResponse<APIResponse<unknown>>> {
+  try {
+    const body = await request.json();
+    const validatedData = inputSchema.parse(body);
+    
+    const result = await serviceLayer.process(validatedData);
+    
+    return NextResponse.json({
+      data: result,
+      status: 'success',
+      timestamp: new Date(),
+    });
+  } catch (error) {
+    return handleAPIError(error);
+  }
+}
+```
+
+---
+
+## 🎯 AI SDK 集成标准
+
+**✅ 通用Tool定义模式：**
+```typescript
+// 可扩展的工具参数模式
+const createUniversalTool = (toolName: string, config: ToolConfig) =>
+  tool({
+    description: `${toolName} - ${config.description}`,
+    parameters: z.object({
+      action: z.enum(config.actions).describe("操作类型"),
+      parameters: z.record(z.unknown()).optional().describe("动态参数"),
+      options: z.object({
+        timeout: z.number().optional(),
+        retries: z.number().optional(),
+      }).optional(),
+    }),
+    execute: async ({ action, parameters, options }) => {
+      // 通用错误处理包装
+      return await withErrorHandling(
+        () => config.handlers[action](mdc:parameters, options),
+        { 
+          operation: `${toolName}.${action}`,
+          timeout: options?.timeout,
+          retries: options?.retries 
+        }
+      );
+    },
+  });
+
+// 结果标准化接口
+interface ToolResult {
+  readonly type: 'text' | 'image' | 'json';
+  readonly data: string | object;
+  readonly metadata?: Record<string, unknown>;
+}
+```
+
+---
+
+## 🎨 Tailwind CSS 样式标准
+
+**✅ 现代CSS模式：**
+```typescript
+// 条件样式组合工具
+const createStyleVariants = (baseStyles: string) => ({
+  base: baseStyles,
+  variants: {
+    size: {
+      sm: "h-8 px-3 text-sm",
+      md: "h-10 px-4 text-base", 
+      lg: "h-12 px-6 text-lg",
+    },
+    variant: {
+      primary: "bg-primary text-primary-foreground hover:bg-primary/90",
+      secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+    },
+  },
+  compoundVariants: [
+    {
+      size: "sm",
+      variant: "primary",
+      class: "font-medium",
+    },
+  ],
+});
+
+// 响应式设计模式
+const ResponsiveComponent = () => (
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
+    <div className="aspect-square bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg">
+      {/* 内容 */}
+    </div>
+  </div>
+);
+```
+
+---
+
+## 🛡️ 错误处理标准
+
+**✅ 现代错误边界模式：**
+```typescript
+// 函数组件错误边界（React 19）
+function ErrorBoundary({ 
+  children, 
+  fallback: Fallback,
+  onError 
+}: {
+  children: ReactNode;
+  fallback?: ComponentType<{ error: Error; reset: () => void }>;
+  onError?: (error: Error, errorInfo: ErrorInfo) => void;
+}) {
+  return (
+    <ErrorBoundaryImpl
+      fallback={Fallback}
+      onError={onError}
+    >
+      {children}
+    </ErrorBoundaryImpl>
+  );
+}
+
+// 异步操作错误处理
+const withErrorHandling = async <T>(
+  operation: () => Promise<T>,
+  context: { operation: string; timeout?: number; retries?: number }
+): Promise<T> => {
+  const { operation: opName, timeout = 5000, retries = 1 } = context;
+  
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error(`${opName} timeout`)), timeout)
+      );
+      
+      return await Promise.race([operation(), timeoutPromise]);
+    } catch (error) {
+      if (attempt === retries) {
+        console.error(`${opName} failed after ${retries} attempts:`, error);
+        throw error;
+      }
+      console.warn(`${opName} attempt ${attempt} failed, retrying...`);
+      await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+    }
+  }
+  
+  throw new Error(`${opName} exhausted all retries`);
+};
+```
+
+---
+
+## ⚡ 性能优化指南
+
+**✅ 代码分割策略：**
+```typescript
+// 智能组件懒加载
+const LazyComponent = lazy(() => 
+  import('./Component').then(module => ({
+    default: module.Component
+  }))
+);
+
+// Suspense边界优化
+function OptimizedApp() {
+  return (
+    <Suspense fallback={<ComponentSkeleton />}>
+      <ErrorBoundary fallback={ErrorFallback}>
+        <LazyComponent />
+      </ErrorBoundary>
+    </Suspense>
+  );
+}
+```
+
+**✅ 缓存策略：**
+```typescript
+// React 19 缓存模式
+const cachedDataFetcher = cache(async (id: string) => {
+  const data = await fetchFromAPI(id);
+  return data;
+});
+
+// 记忆化计算
+const expensiveCalculation = useMemo(() => 
+  computeExpensiveValue(dependencies), 
+  [dependencies]
+);
+```
+
+---
+
+## 🔒 类型安全保障
+
+**✅ 运行时验证模式：**
+```typescript
+// Zod集成模式
+const createTypedSchema = <T>() => ({
+  schema: z.object({}) as z.ZodType<T>,
+  validate: (data: unknown): data is T => {
+    return schema.safeParse(data).success;
+  },
+  parse: (data: unknown): T => {
+    return schema.parse(data);
+  },
+  safeParse: (data: unknown) => {
+    return schema.safeParse(data);
+  },
+});
+
+// 类型守卫模式
+function createTypeGuard<T>(
+  schema: z.ZodSchema<T>
+): (value: unknown) => value is T {
+  return (value: unknown): value is T => {
+    return schema.safeParse(value).success;
+  };
+}
+```
+
+---
+
+## 📊 代码质量标准
+
+### 必须遵循的规则：
+
+1. **零容忍 `any` 类型** - 使用 `unknown` 然后类型收窄
+2. **严格 null 检查** - 所有可能为 null 的值必须显式处理
+3. **只读优先** - 优先使用 `readonly` 和 `const assertions`
+4. **函数式编程** - 优先使用纯函数和不可变数据
+5. **明确的返回类型** - 所有函数必须显式声明返回类型
+6. **组件 Props 接口** - 所有组件 props 必须有明确接口定义
+7. **错误处理** - 所有异步操作必须有错误处理
+8. **性能考量** - 避免不必要的重渲染和计算
+
+### 代码审查检查点：
+
+- [ ] 是否使用了最新的 React 19 特性？
+- [ ] 是否遵循了 Next.js 15 最佳实践？
+- [ ] 类型定义是否足够严格和准确？
+- [ ] 是否有潜在的性能问题？
+- [ ] 错误处理是否完善？
+- [ ] 代码是否具有良好的可读性和可维护性？
+- [ ] 是否符合项目的架构原则？
+
+---
+
+## 🎯 特殊指令
+
+当生成代码时，请：
+
+1. **优先使用项目中已存在的组件和工具**
+2. **保持与现有代码风格的一致性**
+3. **添加必要的 JSDoc 注释用于复杂逻辑**
+4. **考虑国际化和无障碍性**
+5. **确保代码可测试性**
+6. **遵循 SOLID 原则**
+7. **使用语义化的命名**
+8. **保持函数和组件的单一职责**
+
+---
+
+*记住：每一行代码都应该是有意图的、可维护的、高性能的。我们追求的不仅仅是能工作的代码，而是优雅的、未来可持续的解决方案。*
