@@ -1,24 +1,14 @@
 "use server";
 
 import sharp from "sharp";
-
-interface CompressionConfig {
-  targetSizeKB: number;
-  maxSizeKB: number;
-  minQuality: number;
-  maxQuality: number;
-  enableAdaptive: boolean;
-  preserveText: boolean;
-}
-
-interface CompressionResult {
-  base64: string;
-  originalSizeKB: number;
-  finalSizeKB: number;
-  compressionRatio: number;
-  quality: number;
-  processingTime: number;
-}
+import {
+  CompressionConfig,
+  CompressionResult,
+  ImageAnalysis,
+  CompressionParams,
+  BestCompressionResult,
+  OptimalDimensions,
+} from "../types";
 
 /**
  * 🧠 智能图像压缩引擎 v2.0
@@ -125,7 +115,7 @@ async function adaptiveCompression(
   buffer: Buffer,
   originalSizeKB: number,
   config: CompressionConfig,
-  analysis: any,
+  analysis: ImageAnalysis,
   startTime: number
 ): Promise<CompressionResult> {
   // 🎛️ 动态参数调整
@@ -133,7 +123,7 @@ async function adaptiveCompression(
 
   let lowQuality = config.minQuality;
   let highQuality = config.maxQuality;
-  let bestResult: any = null;
+  let bestResult: BestCompressionResult | null = null;
   let iterations = 0;
   const maxIterations = 6; // 限制迭代次数
 
@@ -197,7 +187,10 @@ async function adaptiveCompression(
 /**
  * 📐 智能尺寸计算器
  */
-function calculateOptimalDimensions(analysis: any, config: CompressionConfig) {
+function calculateOptimalDimensions(
+  analysis: ImageAnalysis,
+  config: CompressionConfig
+): OptimalDimensions {
   let scaleFactor = 1.0;
 
   // 🎯 基于图像特征的缩放策略
@@ -230,7 +223,7 @@ function calculateOptimalDimensions(analysis: any, config: CompressionConfig) {
  */
 async function compressWithParams(
   buffer: Buffer,
-  params: any
+  params: CompressionParams
 ): Promise<string> {
   const sharpInstance = sharp(buffer);
 
