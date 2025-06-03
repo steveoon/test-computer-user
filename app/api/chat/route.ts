@@ -31,10 +31,14 @@ export async function POST(req: Request) {
     await req.json();
 
   try {
-    // 对历史消息应用剪枝优化
-    const processedMessages = prunedMessages(messages);
+    // 🎯 对历史消息应用智能Token优化 (10K tokens阈值)
+    const processedMessages = prunedMessages(messages, {
+      maxTokens: 15000, // 硬限制：15K tokens
+      targetTokens: 8000, // 目标：8K tokens时开始优化
+      preserveRecentMessages: 2, // 保护最近2条消息
+    });
 
-    // 估算消息大小并记录
+    // 估算消息大小并记录优化效果
     const originalSize = JSON.stringify(messages).length;
     const processedSize = JSON.stringify(processedMessages).length;
     const savedPercent = (
@@ -45,12 +49,14 @@ export async function POST(req: Request) {
     console.log(
       `📊 消息优化: ${(originalSize / 1024).toFixed(2)}KB -> ${(
         processedSize / 1024
-      ).toFixed(2)}KB (节省 ${savedPercent}%)`
+      ).toFixed(2)}KB (节省 ${savedPercent}%) | 消息数: ${messages.length} -> ${
+        processedMessages.length
+      }`
     );
 
     const result = streamText({
       // model: openrouter("anthropic/claude-3.7-sonnet"), // Use OpenRouter with universal tools
-      model: registry.languageModel("anthropic/claude-sonnet-4-20250514"), // Using Sonnet for computer use
+      model: registry.languageModel("anthropic/claude-3-7-sonnet-20250219"), // Using Sonnet for computer use
       system:
         "You are a helpful assistant with access to a computer. " +
         "Use the computer tool to help the user with their requests. " +

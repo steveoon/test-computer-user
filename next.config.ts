@@ -2,6 +2,33 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /* config options here */
+  webpack(config, { isServer, dev }) {
+    // 🎯 添加tiktoken WASM支持
+    config.experiments = {
+      asyncWebAssembly: true,
+      layers: true,
+      // 🔧 确保支持顶级await
+      topLevelAwait: true,
+    };
+
+    // 🔧 WASM文件处理规则
+    config.module.rules.push({
+      test: /\.wasm$/,
+      type: "webassembly/async",
+    });
+
+    // 🔧 确保Node.js polyfill (主要针对client side)
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        path: false,
+      };
+    }
+
+    return config;
+  },
+
   async headers() {
     return [
       {
