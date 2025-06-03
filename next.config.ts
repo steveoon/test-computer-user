@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /* config options here */
-  webpack(config, { isServer, dev }) {
+  webpack(config, { isServer }) {
     // 🎯 添加tiktoken WASM支持
     config.experiments = {
       asyncWebAssembly: true,
