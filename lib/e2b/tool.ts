@@ -215,10 +215,26 @@ export const computerTool35 = (sandboxId: string) =>
           const image = await desktop.screenshot();
           const base64Data = Buffer.from(image).toString("base64");
 
-          // 直接返回图片，让 prunedMessages 函数处理大小优化
+          console.log(
+            `🖼️ 截图原始大小: ${(base64Data.length / 1024).toFixed(2)}KB`
+          );
+
+          const compressedData = await compressImageServerV2(base64Data, {
+            targetSizeKB: 150,
+            maxSizeKB: 200,
+            enableAdaptive: true,
+            preserveText: true,
+          });
+
+          console.log(
+            `✅ 服务端压缩完成，当前大小: ${(
+              compressedData.length / 1024
+            ).toFixed(2)}KB`
+          );
+
           return {
             type: "image" as const,
-            data: base64Data,
+            data: compressedData,
           };
         }
         case "left_click": {
@@ -828,31 +844,6 @@ export const computerTool = (sandboxId: string) =>
             throw new Error("Scroll amount required for scroll action");
 
           try {
-            // if (coordinate) {
-            //   const [x, y] = coordinate;
-            //   // 确保坐标在有效范围内
-            //   const clampedX = Math.max(0, Math.min(x, resolution.x - 1));
-            //   const clampedY = Math.max(0, Math.min(y, resolution.y - 1));
-
-            //   await desktop.moveMouse(clampedX, clampedY);
-            //   await wait(0.1);
-            // }
-
-            // // 使用超时保护执行滚动操作
-            // await withTimeout(
-            //   desktop.scroll(scroll_direction as "up" | "down", scroll_amount),
-            //   5000,
-            //   "Scroll"
-            // );
-
-            // // 滚动后等待一下让页面稳定
-            // await wait(0.2);
-
-            // return `Scrolled ${scroll_direction} by ${scroll_amount} at ${
-            //   coordinate
-            //     ? `${coordinate[0]}, ${coordinate[1]}`
-            //     : "current position"
-            // }`;
             await withTimeout(
               desktop.scroll(
                 scroll_direction as "up" | "down" | "left" | "right",
@@ -1102,9 +1093,12 @@ export const computerTool = (sandboxId: string) =>
 
             return report;
           } catch (error) {
-            return `中文输入环境配置失败: ${
-              error instanceof Error ? error.message : "未知错误"
-            }`;
+            return {
+              type: "text" as const,
+              text: `中文输入环境配置失败: ${
+                error instanceof Error ? error.message : "未知错误"
+              }`,
+            };
           }
         }
         case "launch_app": {
@@ -1123,26 +1117,19 @@ export const computerTool = (sandboxId: string) =>
       if (typeof result === "string") {
         return [{ type: "text", text: result }];
       }
-      if (result && typeof result === "object" && "type" in result) {
-        const resultObj = result as {
-          type: string;
-          data?: string;
-          text?: string;
-        };
-        if (resultObj.type === "image" && "data" in resultObj) {
-          return [
-            {
-              type: "image",
-              data: resultObj.data as string,
-              mimeType: "image/jpeg",
-            },
-          ];
-        }
-        if (resultObj.type === "text" && "text" in resultObj) {
-          return [{ type: "text", text: resultObj.text as string }];
-        }
+      if (result.type === "image" && "data" in result) {
+        return [
+          {
+            type: "image",
+            data: result.data,
+            mimeType: "image/jpeg",
+          },
+        ];
       }
-      return [{ type: "text", text: String(result) }];
+      if (result.type === "text" && "text" in result) {
+        return [{ type: "text", text: result.text }];
+      }
+      throw new Error("Invalid result format");
     },
   });
 

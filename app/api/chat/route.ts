@@ -55,8 +55,7 @@ export async function POST(req: Request) {
     );
 
     const result = streamText({
-      // model: openrouter("anthropic/claude-3.7-sonnet"), // Use OpenRouter with universal tools
-      model: registry.languageModel("anthropic/claude-3-7-sonnet-20250219"), // Using Sonnet for computer use
+      model: registry.languageModel("anthropic/claude-sonnet-4-20250514"), // Using Sonnet for computer use
       system:
         "You are a helpful assistant with access to a computer. " +
         "Use the computer tool to help the user with their requests. " +
