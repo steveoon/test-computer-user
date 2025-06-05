@@ -2,39 +2,12 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /* config options here */
-  webpack(config, { isServer, dev }) {
-    // 🎯 添加tiktoken WASM支持 (遵循tiktoken文档)
+  webpack(config) {
+    // 🎯 官方推荐的 tiktoken 配置（严格按照文档）
     config.experiments = {
       asyncWebAssembly: true,
       layers: true,
     };
-
-    // 🔧 Vercel部署优化：复制WASM文件到正确位置
-    if (isServer && !dev) {
-      // 在生产构建时确保WASM文件被正确处理
-      config.externals = config.externals || [];
-      config.externals.push({
-        "tiktoken/tiktoken_bg.wasm": "tiktoken/tiktoken_bg.wasm",
-      });
-    }
-
-    // 🔧 WASM模块解析优化
-    config.module.rules.push({
-      test: /\.wasm$/,
-      type: "asset/resource",
-      generator: {
-        filename: "static/wasm/[name].[hash][ext]",
-      },
-    });
-
-    // 🔧 确保Node.js polyfill (主要针对client side)
-    if (!isServer) {
-      config.resolve.fallback = {
-        ...config.resolve.fallback,
-        fs: false,
-        path: false,
-      };
-    }
 
     return config;
   },
