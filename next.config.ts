@@ -10,11 +10,7 @@ const nextConfig: NextConfig = {
       // 🔧 确保支持顶级await
       topLevelAwait: true,
     };
-    // 🔧 WASM文件处理规则
-    config.module.rules.push({
-      test: /\.wasm$/,
-      type: "webassembly/async",
-    });
+
     // 🔧 确保Node.js polyfill (主要针对client side)
     if (!isServer) {
       config.resolve.fallback = {

@@ -545,14 +545,18 @@ function buildContextInfo(
     extractedInfo;
 
   // 根据提到的品牌过滤门店
-  let relevantStores = data.stores;
   let targetBrand = data.defaultBrand || getBrandName(data);
+  let relevantStores = data.stores;
 
   if (mentionedBrand && data.brands[mentionedBrand]) {
+    // 有明确提到的品牌，使用该品牌
     relevantStores = data.stores.filter(
       (store) => store.brand === mentionedBrand
     );
     targetBrand = mentionedBrand;
+  } else {
+    // 没有提到品牌，使用默认品牌的门店
+    relevantStores = data.stores.filter((store) => store.brand === targetBrand);
   }
 
   // 优先使用明确提到的工作城市进行过滤
