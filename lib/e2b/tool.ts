@@ -5,6 +5,11 @@ import { getDesktop, withTimeout } from "./utils";
 import { mapKeySequence } from "../utils";
 import { diagnoseE2BEnvironment } from "./diagnostic";
 import { compressImageServerV2 } from "../image-optimized";
+import {
+  loadZhipinData,
+  generateSmartReplyWithLLM,
+} from "../utils/zhipin-data-loader";
+import type { Store } from "../../types/zhipin";
 
 const wait = async (seconds: number) => {
   await new Promise((resolve) => setTimeout(resolve, seconds * 1000));
@@ -220,8 +225,8 @@ export const computerTool35 = (sandboxId: string) =>
           );
 
           const compressedData = await compressImageServerV2(base64Data, {
-            targetSizeKB: 150,
-            maxSizeKB: 200,
+            targetSizeKB: 350,
+            maxSizeKB: 400,
             enableAdaptive: true,
             preserveText: true,
           });
@@ -369,8 +374,8 @@ export const anthropicComputerTool = (sandboxId: string) =>
             `🖼️ 截图原始大小: ${(base64Data.length / 1024).toFixed(2)}KB`
           );
           const compressedData = await compressImageServerV2(base64Data, {
-            targetSizeKB: 150,
-            maxSizeKB: 200,
+            targetSizeKB: 350,
+            maxSizeKB: 400,
             enableAdaptive: true,
             preserveText: true,
           });
@@ -557,6 +562,7 @@ export const computerTool = (sandboxId: string) =>
           "check_fonts",
           "setup_chinese_input",
           "launch_app",
+          "generate_zhipin_reply",
         ])
         .describe("The action to perform"),
       coordinate: z
@@ -583,6 +589,38 @@ export const computerTool = (sandboxId: string) =>
         .enum(["google-chrome", "firefox", "vscode"])
         .optional()
         .describe("Name of the app to launch"),
+      candidate_message: z
+        .string()
+        .optional()
+        .describe(
+          "Based on the screenshot, the candidate's message content for generating reply, usually is the latest message at the left side of the chat bubble"
+        ),
+      reply_context: z
+        .enum([
+          "initial_inquiry",
+          "location_inquiry",
+          "schedule_inquiry",
+          "interview_request",
+          "general_chat",
+          "salary_inquiry",
+          "age_concern",
+          "insurance_inquiry",
+          "followup_chat",
+        ])
+        .optional()
+        .describe("The context/type of reply needed"),
+      auto_input: z
+        .boolean()
+        .optional()
+        .describe(
+          "Whether to automatically input the generated reply into the chat interface"
+        ),
+      conversation_history: z
+        .array(z.string())
+        .optional()
+        .describe(
+          "Previous conversation messages to provide context for better reply generation, usually the last 3-5 messages"
+        ),
     }),
     execute: async ({
       action,
@@ -593,6 +631,10 @@ export const computerTool = (sandboxId: string) =>
       scroll_direction,
       scroll_amount,
       app_name,
+      candidate_message,
+      reply_context,
+      auto_input,
+      conversation_history,
     }) => {
       const desktop = await getDesktop(sandboxId);
 
@@ -606,8 +648,10 @@ export const computerTool = (sandboxId: string) =>
             `🖼️ 截图原始大小: ${(base64Data.length / 1024).toFixed(2)}KB`
           );
           const compressedData = await compressImageServerV2(base64Data, {
-            targetSizeKB: 150,
-            maxSizeKB: 200,
+            targetSizeKB: 200,
+            maxSizeKB: 250,
+            maxQuality: 100,
+            minQuality: 60,
             enableAdaptive: true,
             preserveText: true,
           });
@@ -1109,6 +1153,79 @@ export const computerTool = (sandboxId: string) =>
             text: `Launched ${app_name}`,
           };
         }
+        case "generate_zhipin_reply": {
+          // Boss直聘回复生成工具
+          try {
+            console.log("🤖 开始生成Boss直聘回复...");
+
+            // 生成回复 (新函数内部会自动加载数据)
+            const generatedReply = await generateSmartReplyWithLLM(
+              candidate_message || "",
+              conversation_history || []
+            );
+
+            console.log(`📝 生成的回复内容: ${generatedReply}`);
+            console.log(
+              `🎯 传入的回复上下文: ${reply_context || "未指定(LLM自动识别)"}`
+            );
+            console.log(`💬 候选人消息: ${candidate_message}`);
+            console.log(
+              `📝 对话历史: ${conversation_history?.length || 0}条消息`
+            );
+            console.log(`⚙️ 自动输入: ${auto_input ? "是" : "否"}`);
+
+            // 为了显示统计信息，重新加载数据
+            const storeDatabase = await loadZhipinData();
+
+            let resultText = `✅ Boss直聘回复已生成：\n\n"${generatedReply}"\n\n📊 生成详情:\n• 候选人消息: ${
+              candidate_message || "无"
+            }\n• 回复类型: ${reply_context || "auto_detected"}\n• 对话历史: ${
+              conversation_history?.length || 0
+            }条消息\n• 使用数据: ${
+              storeDatabase.stores.length
+            }家门店，${storeDatabase.stores.reduce(
+              (sum: number, store: Store) => sum + store.positions.length,
+              0
+            )}个岗位`;
+
+            // 如果启用自动输入，尝试输入回复内容
+            if (auto_input) {
+              try {
+                resultText += "\n\n🚀 正在自动输入回复内容...";
+
+                // 自动输入生成的回复
+                const inputResult = await handleChineseInput(
+                  desktop,
+                  generatedReply
+                );
+                resultText += `\n✅ 自动输入完成: ${inputResult}`;
+                resultText +=
+                  "\n\n💡 提示: 现在可以按回车键发送消息，或手动检查后发送";
+              } catch (inputError) {
+                console.error("自动输入失败:", inputError);
+                resultText += `\n❌ 自动输入失败: ${
+                  inputError instanceof Error ? inputError.message : "未知错误"
+                }`;
+                resultText += `\n🔄 请手动使用 type 操作输入以下内容: "${generatedReply}"`;
+              }
+            } else {
+              resultText += `\n\n🚀 下一步操作: 请使用 type 动作输入以下回复内容：\n"${generatedReply}"\n\n💡 建议流程: 1. 执行 type 操作输入回复 → 2. 按回车发送`;
+            }
+
+            return {
+              type: "text" as const,
+              text: resultText,
+            };
+          } catch (error) {
+            console.error("❌ Boss直聘回复生成失败:", error);
+            return {
+              type: "text" as const,
+              text: `Boss直聘回复生成失败: ${
+                error instanceof Error ? error.message : "未知错误"
+              }`,
+            };
+          }
+        }
         default:
           throw new Error(`Unsupported action: ${action}`);
       }
@@ -1117,7 +1234,7 @@ export const computerTool = (sandboxId: string) =>
       if (typeof result === "string") {
         return [{ type: "text", text: result }];
       }
-      if (result.type === "image" && "data" in result) {
+      if (result.type === "image" && result.data) {
         return [
           {
             type: "image",
@@ -1126,7 +1243,7 @@ export const computerTool = (sandboxId: string) =>
           },
         ];
       }
-      if (result.type === "text" && "text" in result) {
+      if (result.type === "text" && result.text) {
         return [{ type: "text", text: result.text }];
       }
       throw new Error("Invalid result format");

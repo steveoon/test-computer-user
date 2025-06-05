@@ -274,7 +274,7 @@ async function lightOptimization(
   console.log(`📦 文件已小于目标大小，执行轻量级优化`);
 
   // 使用配置的质量参数进行轻量级优化
-  const quality = Math.min(config.maxQuality, 80);
+  const quality = Math.min(config.maxQuality, 90);
 
   const optimizedBuffer = await sharp(buffer)
     .jpeg({
