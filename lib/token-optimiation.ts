@@ -1,20 +1,43 @@
 import { get_encoding, type Tiktoken } from "tiktoken";
 import type { Message, ToolInvocation } from "ai";
 
-// 🧠 智能Token分析器 v2.1 (工具调用优化版)
+// 🧠 智能Token分析器 v2.2 (Vercel部署优化版)
 export class TokenAnalyzer {
   private encoding: Tiktoken | null = null;
+  private isServerless: boolean = false;
+  private initializationFailed: boolean = false;
+
+  constructor() {
+    // 🔍 检测是否在serverless环境中
+    this.isServerless = !!(
+      process.env.VERCEL ||
+      process.env.AWS_LAMBDA_FUNCTION_NAME ||
+      process.env.NETLIFY ||
+      process.env.NODE_ENV === "production"
+    );
+  }
 
   /**
-   * 🚀 初始化tokenizer (懒加载)
+   * 🚀 初始化tokenizer (懒加载 + 环境适配)
    */
-  private getEncoding(): Tiktoken {
+  private getEncoding(): Tiktoken | null {
+    if (this.initializationFailed) {
+      return null;
+    }
+
     if (!this.encoding) {
       try {
         this.encoding = get_encoding("cl100k_base");
+        console.log("✅ tiktoken 初始化成功");
       } catch (error) {
-        console.error("❌ tiktoken初始化失败:", error);
-        throw new Error("无法初始化token分析器");
+        console.warn("⚠️ tiktoken初始化失败，启用降级模式:", error);
+        this.initializationFailed = true;
+
+        if (this.isServerless) {
+          console.log("🔄 检测到serverless环境，将使用字符长度估算");
+        }
+
+        return null;
       }
     }
     return this.encoding;
@@ -35,11 +58,17 @@ export class TokenAnalyzer {
   }
 
   /**
-   * 🔧 安全编码文本内容
+   * 🔧 安全编码文本内容 (支持降级)
    */
-  private safeEncode(text: string, encoding?: Tiktoken): number {
+  private safeEncode(text: string, encoding?: Tiktoken | null): number {
+    const enc = encoding !== undefined ? encoding : this.getEncoding();
+
+    if (!enc) {
+      // 🆘 降级到字符长度估算
+      return Math.ceil(text.length / 4); // 1 token ≈ 4 字符
+    }
+
     try {
-      const enc = encoding || this.getEncoding();
       return enc.encode(text).length;
     } catch (error) {
       console.warn("⚠️ 编码文本失败:", error, "文本长度:", text.length);
@@ -53,7 +82,7 @@ export class TokenAnalyzer {
    */
   private calculateToolInvocationTokens(
     toolInvocation: ToolInvocation,
-    encoding?: Tiktoken
+    encoding?: Tiktoken | null
   ): {
     tokens: number;
     imageTokens: number;
@@ -131,7 +160,7 @@ export class TokenAnalyzer {
   }
 
   /**
-   * 📊 估算消息的Token使用情况 (改进版)
+   * 📊 估算消息的Token使用情况 (改进版 + Vercel优化)
    */
   estimateMessageTokens(
     messages: Message[],
@@ -153,6 +182,11 @@ export class TokenAnalyzer {
 
     try {
       const encoding = this.getEncoding();
+
+      // 🔄 如果tiktoken不可用，记录并继续使用降级模式
+      if (!encoding && !this.initializationFailed) {
+        console.log("📊 使用降级Token估算模式");
+      }
 
       messages.forEach((message) => {
         // 📝 基础文本内容

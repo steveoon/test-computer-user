@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build && npm run postbuild",
+    "postbuild": "node -e \"try { require('fs').copyFileSync(require.resolve('tiktoken/tiktoken_bg.wasm'), '.next/server/tiktoken_bg.wasm'); console.log('✅ WASM file copied for Vercel deployment'); } catch(e) { console.log('⚠️ WASM file copy failed (expected in some environments):', e.message); }\"",
     "start": "next start",
     "lint": "next lint"
   },
