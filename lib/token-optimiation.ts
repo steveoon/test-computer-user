@@ -1,77 +1,27 @@
-import { get_encoding, type Tiktoken } from "tiktoken";
 import type { Message, ToolInvocation } from "ai";
+import { encodeTextServer, cleanupEncodingServer } from "./token-server";
 
-// 🧠 智能Token分析器 v2.2 (Vercel部署优化版)
+// 🧠 智能Token分析器 v2.3 (服务端优化版)
 export class TokenAnalyzer {
-  private encoding: Tiktoken | null = null;
-  private isServerless: boolean = false;
-  private initializationFailed: boolean = false;
-
-  constructor() {
-    // 🔍 检测是否在serverless环境中
-    this.isServerless = !!(
-      process.env.VERCEL ||
-      process.env.AWS_LAMBDA_FUNCTION_NAME ||
-      process.env.NETLIFY ||
-      process.env.NODE_ENV === "production"
-    );
-  }
-
-  /**
-   * 🚀 初始化tokenizer (懒加载 + 环境适配)
-   */
-  private getEncoding(): Tiktoken | null {
-    if (this.initializationFailed) {
-      return null;
-    }
-
-    if (!this.encoding) {
-      try {
-        this.encoding = get_encoding("cl100k_base");
-        console.log("✅ tiktoken 初始化成功");
-      } catch (error) {
-        console.warn("⚠️ tiktoken初始化失败，启用降级模式:", error);
-        this.initializationFailed = true;
-
-        if (this.isServerless) {
-          console.log("🔄 检测到serverless环境，将使用字符长度估算");
-        }
-
-        return null;
-      }
-    }
-    return this.encoding;
-  }
-
   /**
    * 🧹 清理资源
    */
-  public cleanup(): void {
-    if (this.encoding) {
-      try {
-        this.encoding.free();
-        this.encoding = null;
-      } catch (error) {
-        console.warn("⚠️ tiktoken清理失败:", error);
-      }
+  public async cleanup(): Promise<void> {
+    try {
+      await cleanupEncodingServer();
+    } catch (error) {
+      console.warn("⚠️ 清理服务端资源失败:", error);
     }
   }
 
   /**
-   * 🔧 安全编码文本内容 (支持降级)
+   * 🔧 安全编码文本内容 (使用服务端)
    */
-  private safeEncode(text: string, encoding?: Tiktoken | null): number {
-    const enc = encoding !== undefined ? encoding : this.getEncoding();
-
-    if (!enc) {
-      // 🆘 降级到字符长度估算
-      return Math.ceil(text.length / 4); // 1 token ≈ 4 字符
-    }
-
+  private async safeEncode(text: string): Promise<number> {
     try {
-      return enc.encode(text).length;
+      return await encodeTextServer(text);
     } catch (error) {
-      console.warn("⚠️ 编码文本失败:", error, "文本长度:", text.length);
+      console.warn("⚠️ 服务端编码失败，使用本地估算:", error);
       // 降级估算: 1 token ≈ 4 字符
       return Math.ceil(text.length / 4);
     }
@@ -80,27 +30,26 @@ export class TokenAnalyzer {
   /**
    * 🛠️ 精确计算工具调用的Token消耗
    */
-  private calculateToolInvocationTokens(
-    toolInvocation: ToolInvocation,
-    encoding?: Tiktoken | null
-  ): {
+  private async calculateToolInvocationTokens(
+    toolInvocation: ToolInvocation
+  ): Promise<{
     tokens: number;
     imageTokens: number;
-  } {
+  }> {
     let tokens = 0;
     let imageTokens = 0;
 
     try {
       // 1. 🏷️ 工具名称 tokens
       if (toolInvocation.toolName) {
-        tokens += this.safeEncode(toolInvocation.toolName, encoding);
+        tokens += await this.safeEncode(toolInvocation.toolName);
       }
 
       // 2. 📝 工具参数 tokens
       if (toolInvocation.args) {
         try {
           const argsString = JSON.stringify(toolInvocation.args);
-          tokens += this.safeEncode(argsString, encoding);
+          tokens += await this.safeEncode(argsString);
         } catch (error) {
           console.warn("⚠️ 序列化工具参数失败:", error);
           // 降级估算: 假设args占用约20个token
@@ -117,7 +66,7 @@ export class TokenAnalyzer {
 
         if (typeof result === "string") {
           // 简单字符串结果 (如bash命令输出)
-          tokens += this.safeEncode(result, encoding);
+          tokens += await this.safeEncode(result);
         } else if (result && typeof result === "object") {
           // 结构化结果对象
           if (result.type === "image" && result.data) {
@@ -133,13 +82,13 @@ export class TokenAnalyzer {
             tokens += 5;
           } else if (result.type === "text" && result.data) {
             // 📝 文本结果处理
-            tokens += this.safeEncode(result.data, encoding);
+            tokens += await this.safeEncode(result.data);
             tokens += 3; // type字段等结构开销
           } else {
             // 其他类型的结构化结果
             try {
               const resultString = JSON.stringify(result);
-              tokens += this.safeEncode(resultString, encoding);
+              tokens += await this.safeEncode(resultString);
             } catch (error) {
               console.warn("⚠️ 序列化工具结果失败:", error);
               tokens += 50; // 降级估算
@@ -160,12 +109,12 @@ export class TokenAnalyzer {
   }
 
   /**
-   * 📊 估算消息的Token使用情况 (改进版 + Vercel优化)
+   * 📊 估算消息的Token使用情况 (服务端版本)
    */
-  estimateMessageTokens(
+  async estimateMessageTokens(
     messages: Message[],
     optimizationThreshold: number = 80000
-  ): {
+  ): Promise<{
     totalTokens: number;
     needsOptimization: boolean;
     imageTokens: number;
@@ -174,40 +123,32 @@ export class TokenAnalyzer {
       toolTokens: number;
       imageTokens: number;
     };
-  } {
+  }> {
     let totalTokens = 0;
     let imageTokens = 0;
     let textTokens = 0;
     let toolTokens = 0;
 
     try {
-      const encoding = this.getEncoding();
-
-      // 🔄 如果tiktoken不可用，记录并继续使用降级模式
-      if (!encoding && !this.initializationFailed) {
-        console.log("📊 使用降级Token估算模式");
-      }
-
-      messages.forEach((message) => {
+      for (const message of messages) {
         // 📝 基础文本内容
         if (message.content && typeof message.content === "string") {
-          const tokens = this.safeEncode(message.content, encoding);
+          const tokens = await this.safeEncode(message.content);
           textTokens += tokens;
           totalTokens += tokens;
         }
 
         // 🔍 分析parts中的内容
         if (message.parts) {
-          message.parts.forEach((part) => {
+          for (const part of message.parts) {
             if (part.type === "text" && part.text) {
-              const tokens = this.safeEncode(part.text, encoding);
+              const tokens = await this.safeEncode(part.text);
               textTokens += tokens;
               totalTokens += tokens;
             } else if (part.type === "tool-invocation") {
               // 🛠️ 精确计算工具调用tokens
-              const toolResult = this.calculateToolInvocationTokens(
-                part.toolInvocation,
-                encoding
+              const toolResult = await this.calculateToolInvocationTokens(
+                part.toolInvocation
               );
 
               toolTokens += toolResult.tokens;
@@ -222,12 +163,12 @@ export class TokenAnalyzer {
               totalTokens += 2;
               textTokens += 2;
             }
-          });
+          }
         }
 
         // 🏷️ 消息角色和元数据的开销
         totalTokens += 5; // role字段等基础结构
-      });
+      }
     } catch (error) {
       console.error("🚨 Token分析失败:", error);
       // 降级到改进的简单估算

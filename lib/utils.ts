@@ -48,7 +48,7 @@ type ProcessorFunction = (
   messages: Message[],
   config?: TokenConfig,
   analyzer?: TokenAnalyzer
-) => Message[];
+) => Promise<Message[]> | Message[];
 
 // 🎯 Token分析结果接口
 interface TokenAnalysis {
@@ -61,10 +61,10 @@ interface TokenAnalysis {
  * 🧠 智能消息优化器 v3.0
  * 基于动态策略选择和管道式处理的高级优化系统
  */
-export const prunedMessages = (
+export const prunedMessages = async (
   messages: Message[],
   config: Partial<TokenConfig> = {}
-): Message[] => {
+): Promise<Message[]> => {
   const finalConfig: TokenConfig = {
     maxTokens: config.maxTokens || 100000,
     targetTokens: config.targetTokens || 80000,
@@ -74,7 +74,7 @@ export const prunedMessages = (
 
   try {
     // 🔍 Step 1: 分析当前token使用情况
-    const analysis = analyzer.estimateMessageTokens(
+    const analysis = await analyzer.estimateMessageTokens(
       messages,
       finalConfig.targetTokens
     );
@@ -93,7 +93,7 @@ export const prunedMessages = (
     const strategy = selectOptimizationStrategy(analysis, finalConfig);
 
     // 🚀 Step 3: 执行优化策略
-    const optimizedMessages = executeStrategy(
+    const optimizedMessages = await executeStrategy(
       messages,
       strategy,
       finalConfig,
@@ -101,7 +101,7 @@ export const prunedMessages = (
     );
 
     // 📊 Step 4: 验证优化结果
-    const finalAnalysis = analyzer.estimateMessageTokens(
+    const finalAnalysis = await analyzer.estimateMessageTokens(
       optimizedMessages,
       finalConfig.targetTokens
     );
@@ -123,7 +123,7 @@ export const prunedMessages = (
     return fallbackPrunedMessages(messages, finalConfig.preserveRecentMessages);
   } finally {
     // 🧹 确保清理资源
-    analyzer.cleanup();
+    await analyzer.cleanup();
   }
 };
 
@@ -198,12 +198,12 @@ function selectOptimizationStrategy(
 /**
  * 🚀 执行优化策略
  */
-function executeStrategy(
+async function executeStrategy(
   messages: Message[],
   strategy: OptimizationStrategy,
   config: TokenConfig,
   analyzer: TokenAnalyzer
-): Message[] {
+): Promise<Message[]> {
   console.log(`🎯 执行策略: ${strategy.type} - ${strategy.reason}`);
 
   switch (strategy.type) {
@@ -253,17 +253,19 @@ function executeStrategy(
  */
 const pipeline =
   (processors: ProcessorFunction[]) =>
-  (
+  async (
     messages: Message[],
     config: TokenConfig,
     analyzer: TokenAnalyzer
-  ): Message[] => {
-    return processors.reduce((msgs, processor) => {
-      const result = processor(msgs, config, analyzer);
+  ): Promise<Message[]> => {
+    let currentMessages = messages;
+
+    for (const processor of processors) {
+      currentMessages = await processor(currentMessages, config, analyzer);
 
       // 实时检查是否已达到目标
-      const analysis = analyzer.estimateMessageTokens(
-        result,
+      const analysis = await analyzer.estimateMessageTokens(
+        currentMessages,
         config.targetTokens
       );
       console.log(
@@ -272,11 +274,11 @@ const pipeline =
 
       if (!analysis.needsOptimization) {
         console.log("✅ 已达到目标，提前结束优化");
-        return result;
+        return currentMessages;
       }
+    }
 
-      return result;
-    }, messages);
+    return currentMessages;
   };
 
 // 🔧 各种处理器函数实现
@@ -284,7 +286,7 @@ const pipeline =
 /**
  * 🗑️ 移除所有非保护图片
  */
-const removeAllImages: ProcessorFunction = (
+const removeAllImages: ProcessorFunction = async (
   messages,
   config = {} as TokenConfig
 ) => {
@@ -306,7 +308,7 @@ const removeAllImages: ProcessorFunction = (
 /**
  * 🗑️ 移除老旧图片
  */
-const removeOldImages: ProcessorFunction = (
+const removeOldImages: ProcessorFunction = async (
   messages,
   config = {} as TokenConfig
 ) => {
@@ -381,7 +383,7 @@ function removeImagesFromMessage(message: Message): Message {
 /**
  * 🗑️ 移除冗余图片
  */
-const removeRedundantImages: ProcessorFunction = (
+const removeRedundantImages: ProcessorFunction = async (
   messages,
   config = {} as TokenConfig
 ) => {
@@ -392,7 +394,7 @@ const removeRedundantImages: ProcessorFunction = (
 /**
  * 🔧 压缩工具结果
  */
-const compressToolResults: ProcessorFunction = (messages) => {
+const compressToolResults: ProcessorFunction = async (messages) => {
   return messages.map((message) => {
     if (!message.parts) return message;
 
@@ -429,7 +431,7 @@ const compressToolResults: ProcessorFunction = (messages) => {
 /**
  * 📝 总结旧消息
  */
-const summarizeOldMessages: ProcessorFunction = (
+const summarizeOldMessages: ProcessorFunction = async (
   messages,
   config = {} as TokenConfig
 ) => {
@@ -456,7 +458,7 @@ const summarizeOldMessages: ProcessorFunction = (
 /**
  * 🔧 压缩冗长消息
  */
-const compressVerboseMessages: ProcessorFunction = (messages) => {
+const compressVerboseMessages: ProcessorFunction = async (messages) => {
   return messages.map((message) => {
     if (
       message.content &&
@@ -477,28 +479,28 @@ const compressVerboseMessages: ProcessorFunction = (messages) => {
 /**
  * 🔧 优化工具调用
  */
-const optimizeToolCalls: ProcessorFunction = (messages) => {
+const optimizeToolCalls: ProcessorFunction = async (messages) => {
   return compressToolResults(messages);
 };
 
 /**
  * 🧹 清理工具结果
  */
-const cleanupToolResults: ProcessorFunction = (messages) => {
+const cleanupToolResults: ProcessorFunction = async (messages) => {
   return compressToolResults(messages);
 };
 
 /**
  * ✂️ 必要时截断
  */
-const truncateIfNeeded: ProcessorFunction = (
+const truncateIfNeeded: ProcessorFunction = async (
   messages,
   config = {} as TokenConfig,
   analyzer
 ) => {
   if (!analyzer) return messages;
 
-  const analysis = analyzer.estimateMessageTokens(
+  const analysis = await analyzer.estimateMessageTokens(
     messages,
     config.targetTokens || 80000
   );
@@ -511,14 +513,14 @@ const truncateIfNeeded: ProcessorFunction = (
 /**
  * ✅ 验证是否达到目标
  */
-const validateTokenTarget: ProcessorFunction = (
+const validateTokenTarget: ProcessorFunction = async (
   messages,
   config = {} as TokenConfig,
   analyzer
 ) => {
   if (!analyzer) return messages;
 
-  const analysis = analyzer.estimateMessageTokens(
+  const analysis = await analyzer.estimateMessageTokens(
     messages,
     config.targetTokens || 80000
   );
@@ -531,7 +533,7 @@ const validateTokenTarget: ProcessorFunction = (
 /**
  * 🔧 保留关键上下文
  */
-const preserveContext: ProcessorFunction = (messages) => {
+const preserveContext: ProcessorFunction = async (messages) => {
   // 简化实现：保持消息原样
   return messages;
 };
@@ -539,7 +541,7 @@ const preserveContext: ProcessorFunction = (messages) => {
 /**
  * 🎯 智能截断到目标
  */
-const truncateToTarget: ProcessorFunction = (
+const truncateToTarget: ProcessorFunction = async (
   messages,
   config = {} as TokenConfig,
   analyzer
@@ -554,7 +556,7 @@ const truncateToTarget: ProcessorFunction = (
 
   // 从最老的消息开始移除
   while (optimizedMessages.length > protectedCount) {
-    const currentAnalysis = analyzer.estimateMessageTokens(
+    const currentAnalysis = await analyzer.estimateMessageTokens(
       optimizedMessages,
       targetTokens
     );

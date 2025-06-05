@@ -32,7 +32,7 @@ export async function POST(req: Request) {
 
   try {
     // 🎯 对历史消息应用智能Token优化 (10K tokens阈值)
-    const processedMessages = prunedMessages(messages, {
+    const processedMessages = await prunedMessages(messages, {
       maxTokens: 15000, // 硬限制：15K tokens
       targetTokens: 8000, // 目标：8K tokens时开始优化
       preserveRecentMessages: 2, // 保护最近2条消息
