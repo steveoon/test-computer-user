@@ -8,8 +8,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Input } from "@/components/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { DeployButton, ProjectInfo } from "@/components/project-info";
-import { AISDKLogo } from "@/components/icons";
+import { ProjectInfo } from "@/components/project-info";
 import { PromptSuggestions } from "@/components/prompt-suggestions";
 import {
   ResizableHandle,
@@ -17,8 +16,14 @@ import {
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
 import { ABORTED } from "@/lib/utils";
+import { BrandSelector } from "@/components/brand-selector";
+import { useBrand } from "@/lib/contexts/brand-context";
+import { Bot, Server, Cpu, Loader2 } from "lucide-react";
 
 export default function Chat() {
+  // 🏪 品牌管理
+  const { currentBrand } = useBrand();
+
   // Create separate refs for mobile and desktop to ensure both scroll properly
   const [desktopContainerRef, desktopEndRef] = useScrollToBottom();
   const [mobileContainerRef, mobileEndRef] = useScrollToBottom();
@@ -30,6 +35,16 @@ export default function Chat() {
   const [sandboxStatus, setSandboxStatus] = useState<
     "running" | "paused" | "unknown"
   >("unknown");
+
+  // 🎯 检查是否为请求过大错误
+  const isPayloadTooLargeError = (error: Error) => {
+    return (
+      error.message.includes("Request Entity Too Large") ||
+      error.message.includes("FUNCTION_PAYLOAD_TOO_LARGE") ||
+      error.message.includes("Payload Too Large") ||
+      error.message.includes("413")
+    );
+  };
 
   const {
     messages,
@@ -47,6 +62,7 @@ export default function Chat() {
     id: sandboxId ?? undefined,
     body: {
       sandboxId,
+      currentBrand, // 🎯 传递当前选择的品牌
     },
     maxSteps: 30,
     onError: (error) => {
@@ -58,11 +74,80 @@ export default function Chat() {
         message: error.message,
         stack: error.stack,
       });
+
+      // 🎯 处理请求过大错误
+      if (isPayloadTooLargeError(error)) {
+        console.warn("💾 检测到请求载荷过大错误，准备智能清理");
+
+        // 延迟执行，确保错误状态已更新
+        setTimeout(() => {
+          const wasHandled = handlePayloadTooLargeError();
+          if (!wasHandled) {
+            toast.error("请求过大", {
+              description: "请考虑清空部分对话历史后重试",
+              richColors: true,
+              position: "top-center",
+              action: {
+                label: "清空对话",
+                onClick: clearMessages,
+              },
+            });
+          }
+        }, 100);
+      } else {
+        // 其他类型错误的通用处理
+        toast.error("请求失败", {
+          description: "请检查网络连接或稍后重试",
+          richColors: true,
+          position: "top-center",
+        });
+      }
     },
     onFinish: (message) => {
       console.log("Chat finished:", message);
     },
   });
+
+  // 🧹 智能消息清理策略
+  const handlePayloadTooLargeError = useCallback(() => {
+    const messageCount = messages.length;
+
+    if (messageCount <= 3) {
+      // 如果消息很少，说明是单个消息太大
+      toast.error("消息内容过大，请尝试分步骤描述或简化需求", {
+        description: "建议将复杂任务分解为多个小步骤",
+        richColors: true,
+        position: "top-center",
+        duration: 5000,
+      });
+      return false; // 不自动清理
+    }
+
+    // 计算需要保留的消息数量（保留最近的30%，至少3条）
+    const keepCount = Math.max(3, Math.floor(messageCount * 0.3));
+    const removeCount = messageCount - keepCount;
+
+    if (
+      window.confirm(
+        `对话历史过长导致请求失败。是否自动清理前${removeCount}条消息？\n\n` +
+          `将保留最近的${keepCount}条消息以维持上下文连续性。`
+      )
+    ) {
+      // 智能保留策略：优先保留最近的消息
+      const recentMessages = messages.slice(-keepCount);
+      setMessages(recentMessages);
+
+      toast.success(`已清理${removeCount}条历史消息`, {
+        description: `保留了最近的${keepCount}条消息`,
+        richColors: true,
+        position: "top-center",
+      });
+
+      return true; // 表示已清理
+    }
+
+    return false; // 用户拒绝清理
+  }, [messages, setMessages]);
 
   const stop = () => {
     stopGeneration();
@@ -113,16 +198,91 @@ export default function Chat() {
     }
   };
 
+  // 🎯 智能部分清理 - 清理一半的历史消息
+  const smartClearMessages = useCallback(() => {
+    if (messages.length <= 2) {
+      toast.info("消息太少，无需清理", {
+        richColors: true,
+        position: "top-center",
+      });
+      return;
+    }
+
+    const keepCount = Math.ceil(messages.length / 2);
+    const recentMessages = messages.slice(-keepCount);
+
+    if (window.confirm(`保留最近的${keepCount}条消息，清理其余历史记录？`)) {
+      setMessages(recentMessages);
+      toast.success(`已清理${messages.length - keepCount}条历史消息`, {
+        description: `保持了最近的${keepCount}条消息`,
+        richColors: true,
+        position: "top-center",
+      });
+    }
+  }, [messages, setMessages]);
+
   const isLoading = status !== "ready";
 
   // 自定义提交处理器，根据AI SDK文档建议在错误时移除最后一条消息
   const customSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    // 🎯 预防性检查：估算消息大小
+    const messageSize = JSON.stringify(messages).length;
+    const estimatedSizeMB = messageSize / (1024 * 1024);
+
+    console.log(
+      `📊 消息历史大小: ${estimatedSizeMB.toFixed(2)}MB (${
+        messages.length
+      }条消息)`
+    );
+
+    // 如果消息历史过大，给出警告
+    if (estimatedSizeMB > 5) {
+      console.warn("⚠️ 消息历史可能过大，建议清理");
+      toast.warning("对话历史较长，可能影响响应速度", {
+        description: "建议适时清理历史消息以提升性能",
+        richColors: true,
+        position: "top-center",
+        action: {
+          label: "智能清理",
+          onClick: smartClearMessages,
+        },
+      });
+    }
+
     if (error != null) {
       console.log("Removing last message due to error before retry");
+
+      // 🎯 特殊处理：如果是载荷过大错误，不重复发送
+      if (isPayloadTooLargeError(error)) {
+        console.log("🚫 载荷过大错误，跳过重试以避免重复错误");
+        event.preventDefault();
+        return;
+      }
+
       setMessages(messages.slice(0, -1)); // 移除最后一条消息
     }
+
     handleSubmit(event);
   };
+
+  // 监听消息数量变化，给出提示
+  useEffect(() => {
+    if (messages.length > 0 && messages.length % 20 === 0) {
+      console.log(`📝 对话已达到${messages.length}条消息`);
+
+      if (messages.length >= 50) {
+        toast.info("对话历史较长", {
+          description: "建议适时清理以避免请求过大错误",
+          richColors: true,
+          position: "top-center",
+          action: {
+            label: "智能清理",
+            onClick: smartClearMessages,
+          },
+        });
+      }
+    }
+  }, [messages.length, smartClearMessages]);
 
   // 监听错误状态变化
   useEffect(() => {
@@ -410,19 +570,78 @@ export default function Chat() {
             minSize={25}
             className="flex flex-col border-l border-zinc-200"
           >
-            <div className="bg-white py-4 px-4 flex justify-between items-center">
-              <AISDKLogo />
-              <div className="flex items-center gap-2">
-                <Button
-                  onClick={clearMessages}
-                  variant="outline"
-                  size="sm"
-                  className="text-xs h-8 px-3 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
-                  disabled={isLoading}
-                >
-                  清空对话
-                </Button>
-                <DeployButton />
+            <div className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-slate-200 py-2.5 px-4">
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                  <Bot className="w-4 h-4 text-blue-600" />
+                  <h1 className="text-base font-semibold text-slate-800">
+                    AI 助手
+                  </h1>
+                </div>
+                <div className="flex items-center gap-2">
+                  <BrandSelector />
+                  <div className="h-4 w-px bg-slate-300"></div>
+                  <Button
+                    onClick={smartClearMessages}
+                    variant="outline"
+                    size="sm"
+                    className="text-xs h-7 px-2 text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300 transition-colors"
+                    disabled={isLoading || messages.length <= 2}
+                    title="保留最近一半消息，清理其余历史"
+                  >
+                    智能清理
+                  </Button>
+                  <Button
+                    onClick={clearMessages}
+                    variant="outline"
+                    size="sm"
+                    className="text-xs h-7 px-2 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300 transition-colors"
+                    disabled={isLoading}
+                  >
+                    清空
+                  </Button>
+                </div>
+              </div>
+              {/* 状态栏 */}
+              <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/50">
+                <div className="flex items-center gap-4 text-xs text-slate-600">
+                  <div className="flex items-center gap-1">
+                    <Server className="w-3 h-3" />
+                    <div
+                      className={`w-1.5 h-1.5 rounded-full ${
+                        sandboxStatus === "running"
+                          ? "bg-green-500"
+                          : sandboxStatus === "paused"
+                          ? "bg-yellow-500"
+                          : "bg-gray-400"
+                      }`}
+                    ></div>
+                    <span>
+                      {sandboxStatus === "running"
+                        ? "运行中"
+                        : sandboxStatus === "paused"
+                        ? "已暂停"
+                        : "未知"}
+                    </span>
+                  </div>
+                  {currentBrand && (
+                    <div className="flex items-center gap-1">
+                      <Cpu className="w-3 h-3" />
+                      <span>{currentBrand}</span>
+                    </div>
+                  )}
+                  <div className="text-xs text-slate-500 bg-white/70 px-2 py-1 rounded-full">
+                    {messages.length}
+                  </div>
+                </div>
+                <div className="text-xs text-slate-500">
+                  {isLoading && (
+                    <div className="flex items-center gap-1">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      <span>思考中...</span>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -451,20 +670,36 @@ export default function Chat() {
                     <div className="flex items-center gap-2">
                       <div className="w-2 h-2 bg-red-500 rounded-full"></div>
                       <span className="text-sm text-red-700 font-medium">
-                        Something went wrong
+                        {isPayloadTooLargeError(error)
+                          ? "请求内容过大"
+                          : "Something went wrong"}
                       </span>
                     </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => reload()}
-                      className="text-xs h-7 px-2 border-red-200 text-red-700 hover:bg-red-50"
-                    >
-                      Retry
-                    </Button>
+                    <div className="flex gap-2">
+                      {isPayloadTooLargeError(error) && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={smartClearMessages}
+                          className="text-xs h-7 px-2 border-blue-200 text-blue-700 hover:bg-blue-50"
+                        >
+                          智能清理
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => reload()}
+                        className="text-xs h-7 px-2 border-red-200 text-red-700 hover:bg-red-50"
+                      >
+                        Retry
+                      </Button>
+                    </div>
                   </div>
                   <p className="text-xs text-red-600 mt-1">
-                    Please try again. If the problem persists, refresh the page.
+                    {isPayloadTooLargeError(error)
+                      ? "对话历史过长，请清理部分消息后重试"
+                      : "Please try again. If the problem persists, refresh the page."}
                   </p>
                 </div>
               </div>
@@ -497,19 +732,75 @@ export default function Chat() {
 
       {/* Mobile View (Chat Only) */}
       <div className="w-full xl:hidden flex flex-col">
-        <div className="bg-white py-4 px-4 flex justify-between items-center">
-          <AISDKLogo />
-          <div className="flex items-center gap-2">
-            <Button
-              onClick={clearMessages}
-              variant="outline"
-              size="sm"
-              className="text-xs h-8 px-3 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
-              disabled={isLoading}
-            >
-              清空对话
-            </Button>
-            <DeployButton />
+        <div className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-slate-200 py-2.5 px-4">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              <Bot className="w-4 h-4 text-blue-600" />
+              <h1 className="text-sm font-semibold text-slate-800">AI 助手</h1>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="text-xs text-slate-500 bg-white/70 px-2 py-0.5 rounded-full">
+                {messages.length}
+              </div>
+              <BrandSelector />
+              <Button
+                onClick={smartClearMessages}
+                variant="outline"
+                size="sm"
+                className="text-xs h-7 px-2 text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300 transition-colors"
+                disabled={isLoading || messages.length <= 2}
+                title="智能清理"
+              >
+                清理
+              </Button>
+              <Button
+                onClick={clearMessages}
+                variant="outline"
+                size="sm"
+                className="text-xs h-7 px-2 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300 transition-colors"
+                disabled={isLoading}
+              >
+                清空
+              </Button>
+            </div>
+          </div>
+          {/* 移动端状态栏 */}
+          <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/50">
+            <div className="flex items-center gap-3 text-xs text-slate-600">
+              <div className="flex items-center gap-1">
+                <Server className="w-3 h-3" />
+                <div
+                  className={`w-1.5 h-1.5 rounded-full ${
+                    sandboxStatus === "running"
+                      ? "bg-green-500"
+                      : sandboxStatus === "paused"
+                      ? "bg-yellow-500"
+                      : "bg-gray-400"
+                  }`}
+                ></div>
+                <span>
+                  {sandboxStatus === "running"
+                    ? "运行中"
+                    : sandboxStatus === "paused"
+                    ? "已暂停"
+                    : "未知"}
+                </span>
+              </div>
+              {currentBrand && (
+                <div className="flex items-center gap-1">
+                  <Cpu className="w-3 h-3" />
+                  <span>{currentBrand}</span>
+                </div>
+              )}
+            </div>
+            <div className="text-xs text-slate-500">
+              {isLoading && (
+                <div className="flex items-center gap-1">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  <span>思考中...</span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

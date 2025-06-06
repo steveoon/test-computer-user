@@ -1,14 +1,46 @@
 "use client";
 
 import { useState } from "react";
+import { BrandSelector } from "@/components/brand-selector";
+import { useBrand } from "@/lib/contexts/brand-context";
+import {
+  clearBrandPreferences,
+  getBrandStats,
+} from "@/lib/utils/brand-storage";
 
 export default function TestLLMReplyPage() {
+  const { currentBrand } = useBrand();
   const [message, setMessage] = useState("");
   const [reply, setReply] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [currentTestMessage, setCurrentTestMessage] = useState("");
   const [clickedButton, setClickedButton] = useState<number | null>(null);
+  const [brandStats, setBrandStats] = useState<{
+    historyCount: number;
+    currentBrand: string | null;
+  } | null>(null);
+
+  // 🗑️ 清除品牌偏好
+  const handleClearPreferences = async () => {
+    try {
+      await clearBrandPreferences();
+      alert("品牌偏好已清除！页面将刷新以重置状态。");
+      window.location.reload();
+    } catch (error) {
+      alert("清除失败：" + error);
+    }
+  };
+
+  // 📊 加载品牌统计信息
+  const loadBrandStats = async () => {
+    try {
+      const stats = await getBrandStats();
+      setBrandStats(stats);
+    } catch (error) {
+      console.warn("加载品牌统计失败:", error);
+    }
+  };
 
   const testPresetMessages = [
     "你好，我想找兼职工作",
@@ -41,7 +73,10 @@ export default function TestLLMReplyPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ message: messageToTest }),
+        body: JSON.stringify({
+          message: messageToTest,
+          brand: currentBrand,
+        }),
       });
 
       if (!response.ok) {
@@ -60,7 +95,13 @@ export default function TestLLMReplyPage() {
 
   return (
     <div className="container mx-auto p-6 max-w-4xl">
-      <h1 className="text-2xl font-bold mb-6">LLM 智能回复测试</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold">LLM 智能回复测试</h1>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-gray-600">当前品牌：</span>
+          <BrandSelector showHistory={true} />
+        </div>
+      </div>
 
       {/* 预设消息快速测试 */}
       <div className="mb-6">
@@ -121,6 +162,9 @@ export default function TestLLMReplyPage() {
             <div className="mt-2 text-sm text-gray-600">
               测试消息：
               <span className="font-medium">"{currentTestMessage}"</span>
+              <br />
+              使用品牌：
+              <span className="font-medium text-blue-600">{currentBrand}</span>
             </div>
           )}
         </div>
@@ -150,6 +194,7 @@ export default function TestLLMReplyPage() {
           <li>• 支持多品牌识别：成都你六姐、海底捞等</li>
           <li>• 回复内容会根据现有门店数据动态生成</li>
           <li>• 如果 LLM 调用失败，会自动降级到原有的规则引擎</li>
+          <li>• 🎯 使用右上角品牌选择器切换不同品牌进行测试</li>
         </ul>
       </div>
 
@@ -196,6 +241,68 @@ export default function TestLLMReplyPage() {
           <div>
             💡 <strong>测试验证：</strong>{" "}
             尝试"大米先生有招聘吗？"测试不存在品牌的处理逻辑
+          </div>
+        </div>
+      </div>
+
+      {/* 品牌切换测试说明 */}
+      <div className="mt-4 p-4 bg-orange-50 rounded">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="font-semibold text-orange-800">
+            🔄 品牌切换测试指南：
+          </h3>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={loadBrandStats}
+              className="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
+            >
+              📊 查看统计
+            </button>
+            <button
+              onClick={handleClearPreferences}
+              className="px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600"
+            >
+              🗑️ 清除偏好
+            </button>
+          </div>
+        </div>
+
+        {brandStats && (
+          <div className="mb-3 p-2 bg-white rounded border text-xs">
+            <strong>💾 存储状态：</strong>
+            当前品牌：
+            <span className="text-blue-600">
+              {brandStats.currentBrand || "默认"}
+            </span>{" "}
+            | 历史记录：
+            <span className="text-green-600">{brandStats.historyCount}条</span>
+          </div>
+        )}
+
+        <div className="text-orange-700 text-sm space-y-2">
+          <div>
+            1️⃣ <strong>切换品牌：</strong>{" "}
+            使用右上角的品牌选择器切换到不同品牌（如：成都你六姐 ↔ 海底捞）
+          </div>
+          <div>
+            2️⃣ <strong>测试场景：</strong>{" "}
+            发送相同的消息，观察不同品牌下回复内容的差异
+          </div>
+          <div>
+            3️⃣ <strong>重点验证：</strong>{" "}
+            门店位置、职位信息、薪资标准是否正确匹配到选中品牌
+          </div>
+          <div>
+            4️⃣ <strong>建议测试：</strong> "五角场附近有工作吗？" -
+            在不同品牌下查看门店匹配结果
+          </div>
+          <div>
+            💾 <strong>持久化：</strong>{" "}
+            您的品牌选择会自动保存，下次打开页面时会记住您的偏好
+          </div>
+          <div>
+            ⚠️ <strong>注意：</strong>{" "}
+            品牌切换后的效果会立即应用到下一次测试请求中
           </div>
         </div>
       </div>

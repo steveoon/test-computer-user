@@ -1,34 +1,39 @@
 import { registry } from "@/lib/model-registry";
-import { ZhipinData, SampleData } from "../../types/zhipin";
+import { ZhipinData } from "../../types/zhipin";
 import { generateText, generateObject } from "ai";
 import { z } from "zod";
+import { zhipinData } from "../data/sample-data";
 
 /**
- * 加载Boss直聘相关数据
+ * 🎯 加载Boss直聘相关数据 - 优化版
+ * @param preferredBrand 优先使用的品牌（可选）
  * @returns Promise<ZhipinData> 返回加载的数据
  */
-export async function loadZhipinData(): Promise<ZhipinData> {
+export async function loadZhipinData(
+  preferredBrand?: string
+): Promise<ZhipinData> {
   try {
-    // 在服务端环境中加载数据
-    if (typeof window === "undefined") {
-      const fs = await import("fs").then((m) => m.promises);
-      const path = await import("path");
-      const dataPath = path.join(process.cwd(), "public", "sample-data.json");
-      const jsonData = await fs.readFile(dataPath, "utf-8");
-      const data: SampleData = JSON.parse(jsonData);
+    // 🎯 如果指定了品牌，动态更新默认品牌
+    const effectiveData =
+      preferredBrand && zhipinData.brands[preferredBrand]
+        ? {
+            ...zhipinData,
+            defaultBrand: preferredBrand,
+          }
+        : zhipinData;
 
-      console.log(`✅ 已从文件加载 ${data.zhipin.stores.length} 家门店数据`);
-      return data.zhipin;
-    } else {
-      // 在客户端环境中通过 fetch 加载
-      const response = await fetch("/sample-data.json");
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const data: SampleData = await response.json();
-      console.log(`✅ 已通过API加载 ${data.zhipin.stores.length} 家门店数据`);
-      return data.zhipin;
-    }
+    const totalPositions = effectiveData.stores.reduce(
+      (sum, store) => sum + store.positions.length,
+      0
+    );
+    console.log(
+      `✅ 已加载 ${
+        effectiveData.stores.length
+      } 家门店数据 (${totalPositions} 个岗位)${
+        preferredBrand ? ` - 当前品牌: ${preferredBrand}` : ""
+      }`
+    );
+    return effectiveData;
   } catch (error) {
     console.warn("⚠️ 无法加载JSON数据，使用备用数据:", error);
 
@@ -296,11 +301,12 @@ export function generateSmartReply(
  */
 export async function generateSmartReplyWithLLM(
   message: string = "",
-  conversationHistory: string[] = []
+  conversationHistory: string[] = [],
+  preferredBrand?: string
 ): Promise<string> {
   try {
-    // 加载Boss直聘数据
-    const data = await loadZhipinData();
+    // 加载Boss直聘数据（支持品牌选择）
+    const data = await loadZhipinData(preferredBrand);
 
     // 构建对话历史上下文
     const conversationContext =

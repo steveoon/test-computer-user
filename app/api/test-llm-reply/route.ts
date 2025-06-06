@@ -3,7 +3,7 @@ import { generateSmartReplyWithLLM } from "../../../lib/utils/zhipin-data-loader
 
 export async function POST(request: NextRequest) {
   try {
-    const { message } = await request.json();
+    const { message, brand } = await request.json();
 
     if (!message || typeof message !== "string") {
       return NextResponse.json(
@@ -12,8 +12,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 调用LLM智能回复生成函数
-    const reply = await generateSmartReplyWithLLM(message.trim());
+    // 调用LLM智能回复生成函数（支持品牌选择）
+    const reply = await generateSmartReplyWithLLM(
+      message.trim(),
+      [], // 对话历史
+      brand // 品牌参数
+    );
 
     return NextResponse.json({
       success: true,
