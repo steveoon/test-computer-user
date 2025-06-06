@@ -1,6 +1,6 @@
 "use server";
 
-import { get_encoding, type Tiktoken } from "tiktoken";
+import { getEncoding, type Tiktoken } from "js-tiktoken";
 
 let encoding: Tiktoken | null = null;
 
@@ -12,14 +12,14 @@ export async function encodeTextServer(text: string): Promise<number> {
   try {
     // 懒加载编码器
     if (!encoding) {
-      encoding = get_encoding("cl100k_base");
-      console.log("✅ [Server] tiktoken 初始化成功");
+      encoding = getEncoding("cl100k_base");
+      console.log("✅ [Server] js-tiktoken 初始化成功");
     }
 
     const tokens = encoding.encode(text);
     return tokens.length;
   } catch (error) {
-    console.warn("⚠️ [Server] tiktoken 编码失败:", error);
+    console.warn("⚠️ [Server] js-tiktoken 编码失败:", error);
     // 降级到字符长度估算
     return Math.ceil(text.length / 4);
   }
@@ -31,11 +31,11 @@ export async function encodeTextServer(text: string): Promise<number> {
 export async function cleanupEncodingServer(): Promise<void> {
   if (encoding) {
     try {
-      encoding.free();
+      // js-tiktoken 是纯 JS 实现，不需要手动释放资源
       encoding = null;
-      console.log("✅ [Server] tiktoken 资源已清理");
+      console.log("✅ [Server] js-tiktoken 资源已清理");
     } catch (error) {
-      console.warn("⚠️ [Server] tiktoken 清理失败:", error);
+      console.warn("⚠️ [Server] js-tiktoken 清理失败:", error);
     }
   }
 }
@@ -48,8 +48,8 @@ export async function encodeTextsServer(texts: string[]): Promise<number[]> {
   try {
     // 懒加载编码器
     if (!encoding) {
-      encoding = get_encoding("cl100k_base");
-      console.log("✅ [Server] tiktoken 批量编码初始化成功");
+      encoding = getEncoding("cl100k_base");
+      console.log("✅ [Server] js-tiktoken 批量编码初始化成功");
     }
 
     return texts.map((text) => {
@@ -65,7 +65,7 @@ export async function encodeTextsServer(texts: string[]): Promise<number[]> {
       }
     });
   } catch (error) {
-    console.warn("⚠️ [Server] tiktoken 批量编码失败:", error);
+    console.warn("⚠️ [Server] js-tiktoken 批量编码失败:", error);
     // 降级到字符长度估算
     return texts.map((text) => Math.ceil(text.length / 4));
   }

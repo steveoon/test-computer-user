@@ -2,16 +2,6 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /* config options here */
-  webpack(config) {
-    // 🎯 官方推荐的 tiktoken 配置（严格按照文档）
-    config.experiments = {
-      asyncWebAssembly: true,
-      layers: true,
-    };
-
-    return config;
-  },
-
   async headers() {
     return [
       {
