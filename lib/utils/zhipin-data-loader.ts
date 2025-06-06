@@ -235,7 +235,7 @@ export async function classifyUserMessage(
 
   // 使用generateObject进行智能分类
   const { object: classification } = await generateObject({
-    model: registry.languageModel("openrouter/openai/gpt-4.1"),
+    model: registry.languageModel("openai/gpt-4.1-mini"),
     schema: z.object({
       replyType: z
         .enum([

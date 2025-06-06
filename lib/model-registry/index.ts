@@ -20,11 +20,6 @@ export const registry = createProviderRegistry(
       apiKey: process.env.ANTHROPIC_API_KEY,
       baseURL: "https://c-z0-api-01.hash070.com/v1",
     }),
-    ohmygpt: createOpenAICompatible({
-      name: "ohmygpt",
-      apiKey: process.env.ANTHROPIC_API_KEY,
-      baseURL: "https://c-z0-api-01.hash070.com/v1",
-    }),
     openrouter: createOpenAICompatible({
       name: "openrouter",
       baseURL: "https://openrouter.ai/api/v1",
