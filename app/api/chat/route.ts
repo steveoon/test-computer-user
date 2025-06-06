@@ -27,7 +27,11 @@ async function cleanupSandboxIfNeeded(
 }
 
 export async function POST(req: Request) {
-  const { messages, sandboxId }: { messages: UIMessage[]; sandboxId: string } =
+  const {
+    messages,
+    sandboxId,
+    preferredBrand,
+  }: { messages: UIMessage[]; sandboxId: string; preferredBrand: string } =
     await req.json();
 
   try {
@@ -73,7 +77,7 @@ export async function POST(req: Request) {
         "8. **If elements are not visible**, scroll or navigate to find them before attempting to click.",
       messages: processedMessages,
       tools: {
-        computer: computerTool(sandboxId),
+        computer: computerTool(sandboxId, preferredBrand),
         bash: bashTool(sandboxId),
       },
       providerOptions: {

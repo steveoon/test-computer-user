@@ -535,7 +535,7 @@ export const anthropicBashTool = (sandboxId?: string) =>
   });
 
 // Universal computer tool compatible with all providers
-export const computerTool = (sandboxId: string) =>
+export const computerTool = (sandboxId: string, preferredBrand: string) =>
   tool({
     description:
       "Use a computer to interact with applications and websites. Takes screenshots, clicks, types, and performs other computer actions.",
@@ -1161,7 +1161,8 @@ export const computerTool = (sandboxId: string) =>
             // 生成回复 (新函数内部会自动加载数据)
             const generatedReply = await generateSmartReplyWithLLM(
               candidate_message || "",
-              conversation_history || []
+              conversation_history || [],
+              preferredBrand
             );
 
             console.log(`📝 生成的回复内容: ${generatedReply}`);

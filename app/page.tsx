@@ -62,7 +62,7 @@ export default function Chat() {
     id: sandboxId ?? undefined,
     body: {
       sandboxId,
-      currentBrand, // 🎯 传递当前选择的品牌
+      preferredBrand: currentBrand, // 🎯 传递当前选择的品牌
     },
     maxSteps: 30,
     onError: (error) => {

@@ -297,6 +297,7 @@ export function generateSmartReply(
  * 基于LLM的智能回复生成函数
  * @param message 候选人消息
  * @param conversationHistory 对话历史（可选）
+ * @param preferredBrand 优先使用的品牌（可选）
  * @returns Promise<string> 生成的智能回复
  */
 export async function generateSmartReplyWithLLM(
