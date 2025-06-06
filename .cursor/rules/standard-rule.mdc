@@ -1,7 +1,7 @@
 ---
-description: 
+description: 这是 AI-SDK Computer Use 项目的核心开发规范，定义了 Next.js 15 + React 19 + TypeScript 生态系统下的完整开发标准。包含架构设计原则、代码风格指南、性能优化策略、类型安全保障和质量控制体系，确保 AI 助手生成的代码达到生产级别的质量标准。
 globs: 
-alwaysApply: true
+alwaysApply: false
 ---
 # 🎯 终极 Cursor Rules 架构师
 

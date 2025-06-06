@@ -69,6 +69,8 @@ export interface SampleData {
 export type ReplyContext =
   | "initial_inquiry"
   | "location_inquiry"
+  | "location_match"
+  | "no_location_match"
   | "schedule_inquiry"
   | "interview_request"
   | "general_chat"
@@ -161,3 +163,21 @@ export type LLMToolArgs =
   | InsuranceInquiryReplyArgs
   | FollowupChatReplyArgs
   | GeneralChatReplyArgs;
+
+// 新增：消息分类结果类型（统一到types中）
+export interface MessageClassification {
+  replyType: ReplyContext; // 复用ReplyContext类型
+  extractedInfo: {
+    mentionedBrand?: string | null;
+    city?: string | null;
+    mentionedLocations?: Array<{
+      location: string;
+      confidence: number;
+    }> | null;
+    mentionedDistrict?: string | null;
+    specificAge?: number | null;
+    hasUrgency?: boolean | null;
+    preferredSchedule?: string | null;
+  };
+  reasoning: string;
+}

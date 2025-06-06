@@ -189,15 +189,15 @@ export const sampleData: SampleData = {
             "您好！我是大米先生招聘专员，目前{city}各区都有岗位空缺，方便告知您的位置吗？",
           ],
           location_match: [
-            "太好了！{district}{store_name}正在招{position}，{schedule}班次，离您很近哦～",
-            "找到了！{location}这边的大米先生，{position}岗位{schedule}班次，薪资{salary}元/时起",
+            "嗯嗯，{district}{store_name}正在招{position}，{schedule}班次，离您很近哦～",
+            "有了，{location}这边的大米先生，{position}岗位{schedule}班次，薪资{salary}元/时起",
           ],
           no_match: [
             "您附近暂无空缺，但{alternative_location}大米先生在招聘，{transport_info}，可以考虑吗？",
             "目前您周边没有合适岗位，{alternative_area}店有空缺，愿意了解吗？",
           ],
           interview: [
-            "太棒了！我可以安排您和{store_name}店长面试，方便加您微信详细沟通吗？",
+            "嗯嗯，我可以安排您和{store_name}店长面试，方便加您微信详细沟通吗？",
             "好的！我帮您约店长面谈，需要您的基本信息，可以加您微信吗？",
           ],
           followup: [

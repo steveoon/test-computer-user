@@ -129,6 +129,47 @@ export default function TestLLMReplyPage() {
         </div>
       </div>
 
+      {/* 分类功能测试区域 */}
+      <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded">
+        <h3 className="text-lg font-semibold text-yellow-800 mb-2">
+          🔬 分类功能测试
+        </h3>
+        <p className="text-sm text-yellow-700 mb-3">
+          测试新的分类提取功能：现在降级时也会使用智能分类而不是硬编码
+          "initial_inquiry"
+        </p>
+        <div className="flex gap-2">
+          <button
+            onClick={() => handleSubmit("我想找服务员工作")}
+            disabled={loading}
+            className="px-3 py-1 bg-yellow-500 text-white rounded text-sm hover:bg-yellow-600 disabled:opacity-50"
+          >
+            初次咨询测试
+          </button>
+          <button
+            onClick={() => handleSubmit("工资多少钱")}
+            disabled={loading}
+            className="px-3 py-1 bg-yellow-500 text-white rounded text-sm hover:bg-yellow-600 disabled:opacity-50"
+          >
+            薪资咨询测试
+          </button>
+          <button
+            onClick={() => handleSubmit("徐汇区有吗")}
+            disabled={loading}
+            className="px-3 py-1 bg-yellow-500 text-white rounded text-sm hover:bg-yellow-600 disabled:opacity-50"
+          >
+            位置咨询测试
+          </button>
+          <button
+            onClick={() => handleSubmit("我30岁可以吗")}
+            disabled={loading}
+            className="px-3 py-1 bg-yellow-500 text-white rounded text-sm hover:bg-yellow-600 disabled:opacity-50"
+          >
+            年龄咨询测试
+          </button>
+        </div>
+      </div>
+
       {/* 自定义消息测试 */}
       <div className="mb-6">
         <h2 className="text-lg font-semibold mb-3">自定义测试消息：</h2>
@@ -196,6 +237,36 @@ export default function TestLLMReplyPage() {
           <li>• 如果 LLM 调用失败，会自动降级到原有的规则引擎</li>
           <li>• 🎯 使用右上角品牌选择器切换不同品牌进行测试</li>
         </ul>
+      </div>
+
+      {/* 最新重构说明 */}
+      <div className="mt-4 p-4 bg-green-50 rounded">
+        <h3 className="font-semibold text-green-800 mb-2">
+          🆕 最新重构亮点 (2024.06.06)：
+        </h3>
+        <div className="text-green-700 text-sm space-y-2">
+          <div>
+            ✅ <strong>分类功能独立化：</strong> 将 generateObject
+            分类提取为独立的 classifyUserMessage 函数
+          </div>
+          <div>
+            ✅ <strong>智能降级：</strong>{" "}
+            即使LLM生成失败，降级时也能使用智能分类而不是硬编码
+            "initial_inquiry"
+          </div>
+          <div>
+            ✅ <strong>三层容错：</strong> LLM智能回复 → 智能分类+规则引擎 →
+            通用错误信息
+          </div>
+          <div>
+            ✅ <strong>类型安全：</strong> 新增 MessageClassification
+            接口定义，提升代码质量
+          </div>
+          <div>
+            📊 <strong>测试验证：</strong> "年龄有要求吗" → age_concern →
+            "您的年龄没问题的"
+          </div>
+        </div>
       </div>
 
       {/* 多品牌支持说明 */}

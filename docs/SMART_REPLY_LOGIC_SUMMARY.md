@@ -1,6 +1,68 @@
 # 智能回复逻辑详细总结
 
-## 🎯 核心架构：两步式 AI 回复系统
+## 🆕 最新重构 (2024.06.06)
+
+### 提取分类功能到独立函数
+
+**重构目标**: 将 `generateObject` 分类功能从 `generateSmartReplyWithLLM` 中提取出来，使降级时也能使用智能分类而不是硬编码 `"initial_inquiry"`。
+
+**新增函数**:
+
+```typescript
+export async function classifyUserMessage(
+  message: string = "",
+  conversationHistory: string[] = [],
+  data: ZhipinData
+): Promise<MessageClassification>;
+```
+
+**改进的降级逻辑**:
+
+```typescript
+try {
+  // LLM 智能回复逻辑
+  return await generateSmartReplyWithLLM(message);
+} catch (error) {
+  console.error("LLM智能回复生成失败:", error);
+
+  try {
+    // 降级到原有逻辑，但先尝试进行分类
+    const data = await loadZhipinData(preferredBrand);
+
+    // 🆕 尝试使用分类功能确定回复类型
+    let replyContext = "initial_inquiry"; // 默认值
+
+    try {
+      const classification = await classifyUserMessage(
+        message,
+        conversationHistory,
+        data
+      );
+      replyContext = classification.replyType;
+      console.log(`✅ 降级模式使用分类结果: ${replyContext}`);
+    } catch (classificationError) {
+      console.error("分类功能也失败，使用默认分类:", classificationError);
+      // 保持默认值 "initial_inquiry"
+    }
+
+    return generateSmartReply(data, message, replyContext);
+  } catch (dataError) {
+    // 最终降级：通用错误回复
+    return "抱歉，当前系统繁忙，请稍后再试或直接联系我们的客服。";
+  }
+}
+```
+
+**重构优势**:
+
+- ✅ **分离关注点**: 分类逻辑独立，便于测试和维护
+- ✅ **降级增强**: 即使 LLM 生成失败，仍能使用智能分类
+- ✅ **类型安全**: 新增 `MessageClassification` 接口定义
+- ✅ **向后兼容**: 不影响现有调用方式
+
+---
+
+## �� 核心架构：两步式 AI 回复系统
 
 ### 架构概览
 

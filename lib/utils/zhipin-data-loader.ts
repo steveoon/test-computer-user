@@ -1,5 +1,5 @@
 import { registry } from "@/lib/model-registry";
-import { ZhipinData } from "../../types/zhipin";
+import { ZhipinData, MessageClassification } from "../../types/zhipin";
 import { generateText, generateObject } from "ai";
 import { z } from "zod";
 import { zhipinData } from "../data/sample-data";
@@ -35,88 +35,9 @@ export async function loadZhipinData(
     );
     return effectiveData;
   } catch (error) {
-    console.warn("⚠️ 无法加载JSON数据，使用备用数据:", error);
-
-    // 备用数据
-    return {
-      city: "上海",
-      defaultBrand: "某知名餐饮品牌",
-      stores: [
-        {
-          id: "store_001",
-          name: "徐汇店",
-          location: "徐汇区漕溪路",
-          district: "徐汇区",
-          subarea: "徐汇",
-          coordinates: { lat: 31.1956, lng: 121.4349 },
-          transportation: "地铁1号线",
-          brand: "某知名餐饮品牌",
-          positions: [
-            {
-              id: "pos_001",
-              name: "服务员",
-              timeSlots: ["09:00~17:00", "17:00~22:00", "09:00~14:00"],
-              baseSalary: 22,
-              levelSalary: "表现优秀可达25-28元/小时",
-              workHours: "6~8",
-              benefits: "有商业保险",
-              requirements: ["18-45岁", "有服务经验优先"],
-              urgent: true,
-            },
-          ],
-        },
-      ],
-      brands: {
-        某知名餐饮品牌: {
-          templates: {
-            proactive: [
-              "你好，上海各区有{brand}门店岗位空缺，兼职排班 {hours} 小时。基本薪资：{salary} 元/小时。{level_salary}",
-            ],
-            inquiry: [
-              "你好，{city}目前各区有门店岗位空缺，你在什么位置？我可以查下你附近",
-            ],
-            location_match: ["目前离你比较近在 {location}，空缺 {schedule}"],
-            no_match: [
-              "目前你附近没有岗位空缺呢，{alternative_location}的门店考虑吗？",
-            ],
-            interview: [
-              "可以帮您和店长约面试呢，麻烦加一下我微信吧，需要几项简单的个人信息",
-            ],
-            followup: [
-              "门店除了{position1}岗位还有{position2}岗位也空缺的，如果{position1}觉得不合适，可以和店长商量呢",
-            ],
-          },
-          screening: {
-            age: { min: 18, max: 50, preferred: [20, 30, 40] },
-            blacklistKeywords: ["骗子", "不靠谱", "假的"],
-            preferredKeywords: ["经验", "稳定", "长期"],
-          },
-        },
-      },
-      templates: {
-        proactive: [
-          "你好，上海各区有门店岗位空缺，兼职排班 {hours} 小时。基本薪资：{salary} 元/小时。{level_salary}",
-        ],
-        inquiry: [
-          "你好，上海目前各区有门店岗位空缺，你在什么位置？我可以查下你附近",
-        ],
-        location_match: ["目前离你比较近在 {location}，空缺 {schedule}"],
-        no_match: [
-          "目前你附近没有岗位空缺呢，{alternative_location}的门店考虑吗？",
-        ],
-        interview: [
-          "可以帮您和店长约面试呢，麻烦加一下我微信吧，需要几项简单的个人信息",
-        ],
-        followup: [
-          "门店除了{position1}岗位还有{position2}岗位也空缺的，如果{position1}觉得不合适，可以和店长商量呢",
-        ],
-      },
-      screening: {
-        age: { min: 18, max: 50, preferred: [20, 30, 40] },
-        blacklistKeywords: ["骗子", "不靠谱", "假的"],
-        preferredKeywords: ["经验", "稳定", "长期"],
-      },
-    };
+    console.error("❌ 数据加载失败:", error);
+    // 简化：直接抛出错误，让调用方处理
+    throw new Error("数据加载失败，请检查数据文件或网络连接");
   }
 }
 
@@ -154,10 +75,10 @@ export function generateSmartReply(
     msg.includes("兼职") ||
     msg.includes("工作")
   ) {
-    // 优先使用默认品牌的门店
-    const defaultBrand = getBrandName(data);
+    // 🎯 使用数据对象中的默认品牌（已在 loadZhipinData 中设置为用户选择的品牌）
+    const targetBrand = getBrandName(data);
     const brandStores = data.stores.filter(
-      (store) => store.brand === defaultBrand
+      (store) => store.brand === targetBrand
     );
     const availableStores = brandStores.length > 0 ? brandStores : data.stores;
 
@@ -168,8 +89,8 @@ export function generateSmartReply(
         Math.floor(Math.random() * randomStore.positions.length)
       ];
 
-    const brandName = getBrandName(data, randomStore.brand);
-    let reply = `你好，上海各区有${brandName}门店岗位空缺，兼职排班 ${randomPosition.workHours} 小时。基本薪资：${randomPosition.baseSalary} 元/小时。`;
+    const brandName = getBrandName(data);
+    let reply = `你好，${data.city}各区有${brandName}门店岗位空缺，兼职排班 ${randomPosition.workHours} 小时。基本薪资：${randomPosition.baseSalary} 元/小时。`;
     if (randomPosition.levelSalary) {
       reply += `阶梯薪资：${randomPosition.levelSalary}`;
     }
@@ -212,10 +133,10 @@ export function generateSmartReply(
     msg.includes("班次") ||
     msg.includes("排班")
   ) {
-    // 优先使用默认品牌的门店
-    const defaultBrand = getBrandName(data);
+    // 🎯 使用数据对象中的默认品牌（已在 loadZhipinData 中设置为用户选择的品牌）
+    const targetBrand = getBrandName(data);
     const brandStores = data.stores.filter(
-      (store) => store.brand === defaultBrand
+      (store) => store.brand === targetBrand
     );
     const availableStores = brandStores.length > 0 ? brandStores : data.stores;
 
@@ -258,10 +179,10 @@ export function generateSmartReply(
 
   // 8. 薪资咨询
   if (msg.includes("工资") || msg.includes("薪资") || msg.includes("多少钱")) {
-    // 优先使用默认品牌的门店
-    const defaultBrand = getBrandName(data);
+    // 🎯 使用数据对象中的默认品牌（已在 loadZhipinData 中设置为用户选择的品牌）
+    const targetBrand = getBrandName(data);
     const brandStores = data.stores.filter(
-      (store) => store.brand === defaultBrand
+      (store) => store.brand === targetBrand
     );
     const availableStores = brandStores.length > 0 ? brandStores : data.stores;
 
@@ -278,19 +199,170 @@ export function generateSmartReply(
 
   // 9. 通用私聊话术（保持联系）
   if (context === "general_chat") {
+    // 🎯 使用数据对象中的默认品牌（已在 loadZhipinData 中设置为用户选择的品牌）
+    const brandName = getBrandName(data);
+
     const alternatives = [
       `门店除了服务员岗位还有洗碗工岗位也空缺的，如果服务员觉得不合适，可以和店长商量呢`,
       `门店除了早班空缺，还有晚班也空缺呢，如果对排班时间有要求，可以和店长商量呢`,
       `这家门店不合适也没关系的，以后还有其他店空缺的，到时候可以再报名呢`,
-      `${getBrandName(
-        data
-      )}您愿意做吗？我同时还负责其他品牌的招募，您要有兴趣的话，可以看看呢？`,
+      `${brandName}您愿意做吗？我同时还负责其他品牌的招募，您要有兴趣的话，可以看看呢？`,
     ];
     return alternatives[Math.floor(Math.random() * alternatives.length)];
   }
 
   // 10. 默认回复
   return `你好，${data.city}目前各区有门店岗位空缺，你在什么位置？我可以查下你附近`;
+}
+
+/**
+ * 使用LLM分析候选人消息的意图和提取关键信息
+ * @param message 候选人消息
+ * @param conversationHistory 对话历史（可选）
+ * @param data Boss直聘数据
+ * @returns Promise<Classification> 分类结果
+ */
+export async function classifyUserMessage(
+  message: string = "",
+  conversationHistory: string[] = [],
+  data: ZhipinData
+): Promise<MessageClassification> {
+  // 构建对话历史上下文
+  const conversationContext =
+    conversationHistory.length > 0
+      ? `\n对话历史：${conversationHistory.slice(-3).join("\n")}`
+      : "";
+
+  // 使用generateObject进行智能分类
+  const { object: classification } = await generateObject({
+    model: registry.languageModel("openrouter/openai/gpt-4.1"),
+    schema: z.object({
+      replyType: z
+        .enum([
+          "initial_inquiry", // 初次咨询
+          "location_inquiry", // 位置咨询
+          "location_match", // 位置匹配
+          "no_location_match", // 无位置匹配
+          "schedule_inquiry", // 时间安排咨询
+          "interview_request", // 面试邀约
+          "salary_inquiry", // 薪资咨询
+          "age_concern", // 年龄相关
+          "insurance_inquiry", // 保险咨询
+          "followup_chat", // 跟进聊天
+          "general_chat", // 一般聊天
+        ])
+        .describe("回复类型分类"),
+      extractedInfo: z
+        .object({
+          mentionedBrand: z
+            .string()
+            .nullable()
+            .optional()
+            .describe("提到的品牌名称"),
+          city: z.string().nullable().optional().describe("提到的工作城市"),
+          mentionedLocations: z
+            .array(
+              z.object({
+                location: z.string().describe("地点名称"),
+                confidence: z
+                  .number()
+                  .min(0)
+                  .max(1)
+                  .describe("地点识别置信度 0-1"),
+              })
+            )
+            .max(3)
+            .nullable()
+            .optional()
+            .describe("提到的具体位置（按置信度排序，最多3个）"),
+          mentionedDistrict: z
+            .string()
+            .nullable()
+            .optional()
+            .describe("提到的区域"),
+          specificAge: z
+            .number()
+            .nullable()
+            .optional()
+            .describe("提到的具体年龄"),
+          hasUrgency: z
+            .boolean()
+            .nullable()
+            .optional()
+            .describe("是否表达紧急需求"),
+          preferredSchedule: z
+            .string()
+            .nullable()
+            .optional()
+            .describe("偏好的工作时间"),
+        })
+        .describe("从消息中提取的关键信息"),
+      reasoning: z.string().describe("分类依据和分析过程"),
+    }),
+    prompt: `分析这条候选人消息的意图类型，并提取关键信息：
+
+    候选人消息："${message}"${conversationContext}
+
+    当前可招聘的品牌和门店信息：
+    ${Object.keys(data.brands)
+      .map((brand) => {
+        const brandStores = data.stores.filter(
+          (store) => store.brand === brand
+        );
+        return `\n【${brand}】- ${brandStores.length}家门店：
+    ${brandStores
+      .map(
+        (store) =>
+          `  • ${store.name}（${store.district}${store.subarea}）：${
+            store.location
+          }
+        职位：${store.positions
+          .map(
+            (pos) =>
+              `${pos.name}（${pos.timeSlots.join("、")}，${
+                pos.baseSalary
+              }元/时）`
+          )
+          .join("、")}`
+      )
+      .join("\n")}`;
+      })
+      .join("\n")}
+
+    🏷️ 品牌关键词：${Object.keys(data.brands)
+      .map((brand) => `"${brand}"`)
+      .join("、")}
+    ⭐ 默认品牌：${data.defaultBrand || getBrandName(data)}
+    🌍 工作城市：${data.city}
+
+    ⚠️ 重要提示：
+    - 品牌名称中可能包含城市名（如"成都你六姐"），请勿将品牌名中的城市误识别为工作地点
+    - 实际工作城市是：${data.city}
+    - 只有候选人明确询问具体区域/位置时，才提取为mentionedLocations
+    - 品牌名中的地点信息不应影响地点识别
+
+    分类规则：
+    - initial_inquiry: 初次咨询工作机会，没有具体指向
+    - location_inquiry: 询问位置信息，但没提到具体位置
+    - location_match: 同时提到品牌和具体位置，可以精确匹配
+    - no_location_match: 提到位置但无法匹配到门店
+    - salary_inquiry: 询问薪资待遇
+    - schedule_inquiry: 询问工作时间安排
+    - interview_request: 表达面试意向
+    - age_concern: 询问年龄要求（敏感话题，需按固定话术回复）
+    - insurance_inquiry: 询问保险福利（敏感话题，固定回复"有商业保险"）
+    - followup_chat: 需要跟进的聊天
+    - general_chat: 一般性对话
+    
+    🚨 敏感话题识别关键词：
+    年龄相关：年龄、岁、多大、老了、小了
+    保险相关：保险、社保、五险一金
+    身体相关：残疾、身体、健康问题
+
+    请准确识别意图类型，提取关键信息，并说明分类依据。`,
+  });
+
+  return classification;
 }
 
 /**
@@ -309,140 +381,12 @@ export async function generateSmartReplyWithLLM(
     // 加载Boss直聘数据（支持品牌选择）
     const data = await loadZhipinData(preferredBrand);
 
-    // 构建对话历史上下文
-    const conversationContext =
-      conversationHistory.length > 0
-        ? `\n对话历史：${conversationHistory.slice(-3).join("\n")}`
-        : "";
-
-    // 第一步：使用generateObject进行智能分类
-    const { object: classification } = await generateObject({
-      model: registry.languageModel("qwen/qwen-max-2025-01-25"),
-      schema: z.object({
-        replyType: z
-          .enum([
-            "initial_inquiry", // 初次咨询
-            "location_inquiry", // 位置咨询
-            "location_match", // 位置匹配
-            "no_location_match", // 无位置匹配
-            "schedule_inquiry", // 时间安排咨询
-            "interview_request", // 面试邀约
-            "salary_inquiry", // 薪资咨询
-            "age_concern", // 年龄相关
-            "insurance_inquiry", // 保险咨询
-            "followup_chat", // 跟进聊天
-            "general_chat", // 一般聊天
-          ])
-          .describe("回复类型分类"),
-        extractedInfo: z
-          .object({
-            mentionedBrand: z
-              .string()
-              .nullable()
-              .optional()
-              .describe("提到的品牌名称"),
-            city: z.string().nullable().optional().describe("提到的工作城市"),
-            mentionedLocations: z
-              .array(
-                z.object({
-                  location: z.string().describe("地点名称"),
-                  confidence: z
-                    .number()
-                    .min(0)
-                    .max(1)
-                    .describe("地点识别置信度 0-1"),
-                })
-              )
-              .max(3)
-              .nullable()
-              .optional()
-              .describe("提到的具体位置（按置信度排序，最多3个）"),
-            mentionedDistrict: z
-              .string()
-              .nullable()
-              .optional()
-              .describe("提到的区域"),
-            specificAge: z
-              .number()
-              .nullable()
-              .optional()
-              .describe("提到的具体年龄"),
-            hasUrgency: z
-              .boolean()
-              .nullable()
-              .optional()
-              .describe("是否表达紧急需求"),
-            preferredSchedule: z
-              .string()
-              .nullable()
-              .optional()
-              .describe("偏好的工作时间"),
-          })
-          .describe("从消息中提取的关键信息"),
-        reasoning: z.string().describe("分类依据和分析过程"),
-      }),
-      prompt: `分析这条候选人消息的意图类型，并提取关键信息：
-
-      候选人消息："${message}"${conversationContext}
-
-      当前可招聘的品牌和门店信息：
-      ${Object.keys(data.brands)
-        .map((brand) => {
-          const brandStores = data.stores.filter(
-            (store) => store.brand === brand
-          );
-          return `\n【${brand}】- ${brandStores.length}家门店：
-      ${brandStores
-        .map(
-          (store) =>
-            `  • ${store.name}（${store.district}${store.subarea}）：${
-              store.location
-            }
-          职位：${store.positions
-            .map(
-              (pos) =>
-                `${pos.name}（${pos.timeSlots.join("、")}，${
-                  pos.baseSalary
-                }元/时）`
-            )
-            .join("、")}`
-        )
-        .join("\n")}`;
-        })
-        .join("\n")}
-
-      🏷️ 品牌关键词：${Object.keys(data.brands)
-        .map((brand) => `"${brand}"`)
-        .join("、")}
-      ⭐ 默认品牌：${data.defaultBrand || getBrandName(data)}
-      🌍 工作城市：${data.city}
-
-      ⚠️ 重要提示：
-      - 品牌名称中可能包含城市名（如"成都你六姐"），请勿将品牌名中的城市误识别为工作地点
-      - 实际工作城市是：${data.city}
-      - 只有候选人明确询问具体区域/位置时，才提取为mentionedLocations
-      - 品牌名中的地点信息不应影响地点识别
-
-      分类规则：
-      - initial_inquiry: 初次咨询工作机会，没有具体指向
-      - location_inquiry: 询问位置信息，但没提到具体位置
-      - location_match: 同时提到品牌和具体位置，可以精确匹配
-      - no_location_match: 提到位置但无法匹配到门店
-      - salary_inquiry: 询问薪资待遇
-      - schedule_inquiry: 询问工作时间安排
-      - interview_request: 表达面试意向
-      - age_concern: 询问年龄要求（敏感话题，需按固定话术回复）
-      - insurance_inquiry: 询问保险福利（敏感话题，固定回复"有商业保险"）
-      - followup_chat: 需要跟进的聊天
-      - general_chat: 一般性对话
-      
-      🚨 敏感话题识别关键词：
-      年龄相关：年龄、岁、多大、老了、小了
-      保险相关：保险、社保、五险一金
-      身体相关：残疾、身体、健康问题
-
-      请准确识别意图类型，提取关键信息，并说明分类依据。`,
-    });
+    // 第一步：使用独立的分类函数进行智能分类
+    const classification = await classifyUserMessage(
+      message,
+      conversationHistory,
+      data
+    );
 
     // 第二步：基于分类结果生成智能回复
     const replySystemPrompts = {
@@ -518,15 +462,43 @@ export async function generateSmartReplyWithLLM(
       • 避免给人"骗子"印象，营造机会丰富感
       
       请基于以上信息生成自然、专业且符合模板的回复。回复要简洁有力，大约10-20字。`,
-      prompt: `候选人消息："${message}"${conversationContext}`,
+      prompt: `候选人消息："${message}"${
+        conversationHistory.length > 0
+          ? `\n对话历史：${conversationHistory.slice(-3).join("\n")}`
+          : ""
+      }`,
     });
 
     return finalReply.text;
   } catch (error) {
     console.error("LLM智能回复生成失败:", error);
-    // 降级到原有逻辑
-    const data = await loadZhipinData();
-    return generateSmartReply(data, message, "initial_inquiry");
+
+    try {
+      // 降级到原有逻辑，但先尝试进行分类
+      const data = await loadZhipinData(preferredBrand);
+
+      // 尝试使用分类功能确定回复类型
+      let replyContext = "initial_inquiry"; // 默认值
+
+      try {
+        const classification = await classifyUserMessage(
+          message,
+          conversationHistory,
+          data
+        );
+        replyContext = classification.replyType;
+        console.log(`✅ 降级模式使用分类结果: ${replyContext}`);
+      } catch (classificationError) {
+        console.error("分类功能也失败，使用默认分类:", classificationError);
+        // 保持默认值 "initial_inquiry"
+      }
+
+      return generateSmartReply(data, message, replyContext);
+    } catch (dataError) {
+      console.error("数据加载失败，返回通用错误回复:", dataError);
+      // 最终降级：返回通用错误回复
+      return "抱歉，当前系统繁忙，请稍后再试或直接联系我们的客服。";
+    }
   }
 }
 
