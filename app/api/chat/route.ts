@@ -1,8 +1,9 @@
 import { streamText, UIMessage } from "ai";
 import { killDesktop } from "@/lib/e2b/utils";
-import { bashTool, computerTool } from "@/lib/e2b/tool";
+import { bashTool, computerTool, feishuBotTool } from "@/lib/e2b/tool";
 import { prunedMessages, shouldCleanupSandbox } from "@/lib/utils";
 import { registry } from "@/lib/model-registry";
+import { getBossZhipinSystemPrompt } from "@/lib/system-prompts";
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 300;
@@ -60,25 +61,12 @@ export async function POST(req: Request) {
 
     const result = streamText({
       model: registry.languageModel("anthropic/claude-sonnet-4-20250514"), // Using Sonnet for computer use
-      system:
-        "You are a helpful assistant with access to a computer. " +
-        "Use the computer tool to help the user with their requests. " +
-        "Use the bash tool to execute commands on the computer. You can create files and folders using the bash tool. Always prefer the bash tool where it is viable for the task. " +
-        "Be sure to advise the user when waiting is necessary. " +
-        "If the browser opens with a setup wizard, YOU MUST IGNORE IT and move straight to the next step (e.g. input the url in the search bar). " +
-        "\n\n**IMPORTANT SCREEN INTERACTION GUIDELINES:**\n" +
-        "1. **ALWAYS take a screenshot first** before performing any mouse operations (clicks, double-clicks, right-clicks) to see the current state of the screen.\n" +
-        "2. **Verify target elements** are visible and at the expected locations before clicking.\n" +
-        "3. **Take another screenshot after each click** to confirm the action was successful and see the result.\n" +
-        "4. **If a click doesn't work as expected**, take a new screenshot to reassess the situation and try alternative approaches.\n" +
-        "5. **For complex UI interactions**, break them down into smaller steps with screenshots between each step.\n" +
-        "6. **Wait appropriately** after clicks before taking verification screenshots to allow UI updates to complete.\n" +
-        "7. **Be precise with coordinates** - use the center of clickable elements when possible.\n" +
-        "8. **If elements are not visible**, scroll or navigate to find them before attempting to click.",
+      system: getBossZhipinSystemPrompt(),
       messages: processedMessages,
       tools: {
         computer: computerTool(sandboxId, preferredBrand),
         bash: bashTool(sandboxId),
+        feishu: feishuBotTool(),
       },
       providerOptions: {
         anthropic: { cacheControl: { type: "ephemeral" } },

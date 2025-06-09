@@ -10,6 +10,7 @@ import {
   generateSmartReplyWithLLM,
 } from "../utils/zhipin-data-loader";
 import type { Store } from "../../types/zhipin";
+import { sendFeishuMessage } from "../send-feishu-message";
 
 const wait = async (seconds: number) => {
   await new Promise((resolve) => setTimeout(resolve, seconds * 1000));
@@ -1273,6 +1274,77 @@ export const bashTool = (sandboxId?: string) =>
         } else {
           return `Error executing command: ${String(error)}`;
         }
+      }
+    },
+  });
+
+// 飞书机器人工具
+export const feishuBotTool = () =>
+  tool({
+    description:
+      "向飞书机器人发送候选人微信信息通知，主要用于推送Boss直聘上获取到的候选人联系方式",
+    parameters: z.object({
+      candidate_name: z
+        .string()
+        .describe("候选人姓名，从聊天界面或个人信息中提取"),
+      wechat_id: z.string().describe("候选人微信号，从聊天消息中提取"),
+      message: z
+        .string()
+        .optional()
+        .describe("自定义消息内容，如果不提供将自动生成标准格式"),
+      messageType: z
+        .enum(["text", "rich_text"])
+        .optional()
+        .default("text")
+        .describe("消息类型，默认为text"),
+    }),
+    execute: async ({
+      candidate_name,
+      wechat_id,
+      message,
+      messageType = "text",
+    }) => {
+      // 参数验证
+      if (!candidate_name || candidate_name.trim() === "") {
+        return {
+          type: "text" as const,
+          text: "❌ 候选人姓名不能为空",
+        };
+      }
+
+      if (!wechat_id || wechat_id.trim() === "") {
+        return {
+          type: "text" as const,
+          text: "❌ 微信号不能为空",
+        };
+      }
+
+      // 如果没有提供自定义消息，生成标准格式
+      const finalMessage =
+        message ||
+        `【候选人微信】姓名: ${candidate_name.trim()}, 微信: ${wechat_id.trim()}`;
+
+      console.log(
+        `🤖 准备发送飞书候选人信息: ${finalMessage.substring(0, 100)}${
+          finalMessage.length > 100 ? "..." : ""
+        }`
+      );
+
+      // 发送消息
+      const result = await sendFeishuMessage(finalMessage, messageType);
+
+      if (result.success) {
+        return {
+          type: "text" as const,
+          text: `✅ 候选人微信信息已成功推送到飞书！\n\n👤 候选人: ${candidate_name}\n💬 微信号: ${wechat_id}\n📝 消息内容: ${finalMessage}\n📊 响应状态: ${
+            result.data?.StatusMessage || result.data?.msg || "success"
+          }\n⏰ 发送时间: ${new Date().toLocaleString("zh-CN")}`,
+        };
+      } else {
+        return {
+          type: "text" as const,
+          text: `❌ 候选人信息推送失败\n\n👤 候选人: ${candidate_name}\n💬 微信号: ${wechat_id}\n🔍 错误信息: ${result.error}\n📝 尝试发送的消息: ${finalMessage}\n💡 请检查FEISHU_BOT_WEBHOOK环境变量是否正确配置`,
+        };
       }
     },
   });

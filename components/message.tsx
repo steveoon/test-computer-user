@@ -19,6 +19,7 @@ import {
   MousePointerClick,
   ScrollText,
   StopCircle,
+  MessageCircle,
 } from "lucide-react";
 
 const PurePreviewMessage = ({
@@ -244,6 +245,54 @@ const PurePreviewMessage = ({
                             )
                           ) : state === "result" ? (
                             <CheckCircle size={14} className="text-green-600" />
+                          ) : null}
+                        </div>
+                      </motion.div>
+                    );
+                  }
+                  if (toolName === "feishu") {
+                    const { message: msgContent } = args;
+
+                    return (
+                      <motion.div
+                        initial={{ y: 5, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        key={`message-${message.id}-part-${i}`}
+                        className="flex items-center gap-2 p-2 mb-3 text-sm bg-blue-50 dark:bg-blue-900/20 rounded-md border border-blue-200 dark:border-blue-800"
+                      >
+                        <div className="flex items-center justify-center w-8 h-8 bg-blue-100 dark:bg-blue-800 rounded-full">
+                          <MessageCircle className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="font-medium flex items-baseline gap-2 text-blue-800 dark:text-blue-200">
+                            发送飞书消息
+                            {msgContent && (
+                              <span className="text-xs text-blue-600 dark:text-blue-400 font-normal max-w-xs truncate">
+                                "{msgContent.slice(0, 30)}
+                                {msgContent.length > 30 ? "..." : ""}"
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="w-5 h-5 flex items-center justify-center">
+                          {state === "call" ? (
+                            isLatestMessage && status !== "ready" ? (
+                              <Loader2 className="animate-spin h-4 w-4 text-blue-500" />
+                            ) : (
+                              <StopCircle className="h-4 w-4 text-red-500" />
+                            )
+                          ) : state === "result" ? (
+                            part.toolInvocation.result === ABORTED ? (
+                              <CircleSlash
+                                size={14}
+                                className="text-amber-600"
+                              />
+                            ) : (
+                              <CheckCircle
+                                size={14}
+                                className="text-green-600"
+                              />
+                            )
                           ) : null}
                         </div>
                       </motion.div>

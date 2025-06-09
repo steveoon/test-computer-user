@@ -18,6 +18,7 @@
 
 - Streaming text responses powered by the [AI SDK by Vercel](https://sdk.vercel.ai/docs), allowing multiple AI providers to be used interchangeably with just a few lines of code.
 - Integration with Anthropic Claude 3.7 Sonnet's computer use tool and bash tool capabilities.
+- **飞书机器人集成**: 支持 AI 助手向飞书群组发送消息，详见 [飞书机器人集成指南](docs/feishu-bot-integration.md)
 - Sandbox environment with [e2b](https://e2b.dev) for secure execution.
 - [shadcn/ui](https://ui.shadcn.com/) components for a modern, responsive UI powered by [Tailwind CSS](https://tailwindcss.com).
 - Built with the latest [Next.js](https://nextjs.org) App Router.
