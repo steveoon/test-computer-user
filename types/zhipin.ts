@@ -34,6 +34,8 @@ export interface Templates {
   no_match: string[];
   interview: string[];
   followup: string[];
+  salary_inquiry: string[];
+  schedule_inquiry: string[];
 }
 
 export interface ScreeningRules {

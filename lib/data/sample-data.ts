@@ -146,30 +146,38 @@ export const sampleData: SampleData = {
       成都你六姐: {
         templates: {
           proactive: [
-            "你好，上海各区有{brand}门店岗位空缺，兼职排班 {hours} 小时。基本薪资：{salary} 元/小时。{level_salary}",
-            "Hi～{location}这边{position}岗位有空缺，{schedule}班次，薪资{salary}元/小时{level_salary_info}，感兴趣吗？",
+            "你好，{brand}在上海各区有兼职，排班{hours}小时，时薪{salary}元，{level_salary}。",
+            "在{location}的{position}岗位有空缺，班次{schedule}，时薪{salary}元，有兴趣吗？",
           ],
           inquiry: [
-            "你好，{city}目前各区有门店岗位空缺，你在什么位置？我可以查下你附近",
-            "您好～我们{brand}在{city}多个区域都有门店，请问您希望在哪个区域工作呢？",
+            "你好，{city}各区都有门店，你在什么位置？我帮你查下附近。",
+            "你好，我们{brand}在{city}多个区都有门店，你想在哪个区工作？",
           ],
           location_match: [
-            "目前离你比较近在 {location}，空缺 {schedule}",
-            "好的，{district}这边有{store_name}，{position}岗位空缺，时间是{schedule}，距离您应该比较方便",
+            "离你比较近在 {location}，空缺 {schedule} 班次。",
+            "好的，{district}这边有{store_name}，{position}岗位空缺，时间是{schedule}，离你应该比较方便。",
           ],
           no_match: [
-            "目前你附近没有岗位空缺呢，{alternative_location}的门店考虑吗？{transport_info}",
-            "您附近暂时没有空缺，不过{alternative_area}有合适的，{distance_info}，可以考虑吗？",
+            "你附近暂时没岗位，{alternative_location}的门店考虑吗？{transport_info}",
+            "你附近暂时没有空缺，不过{alternative_area}有合适的，{distance_info}，可以考虑吗？",
           ],
           interview: [
-            "可以帮您和店长约面试呢，我可以加您微信吗？需要几项简单的个人信息",
-            "好的，我可以安排您和{store_name}店长面谈，方便加您微信沟通具体时间和准备材料吗？",
+            "可以帮你和店长约面试，加我微信吧，需要几个简单的个人信息。",
+            "好的，我可以安排你和{store_name}店长面谈，方便加微信沟通具体时间和准备材料吗？",
+          ],
+          salary_inquiry: [
+            "基本薪资是{salary}元/小时，{level_salary}。",
+            "时薪{salary}元起，根据每月工时有阶梯，最高能到28元。",
+          ],
+          schedule_inquiry: [
+            "排班比较灵活，一般是2-4小时，具体可以和店长商量。",
+            "门店除了{time1}空缺，还有{time2}也空缺呢，时间有要求可以和店长商量。",
           ],
           followup: [
-            "门店除了{position1}岗位还有{position2}岗位也空缺的，如果{position1}觉得不合适，可以和店长商量呢",
-            "门店除了{shift1}空缺，还有{shift2}也空缺呢，如果对排班时间有要求，可以和店长商量呢",
-            "这家门店不合适也没关系的，以后还有其他店空缺的，到时候可以再报名呢",
-            "{brand}您愿意做吗？我同时还负责其他品牌的招募，您要有兴趣的话，可以看看呢？",
+            "门店除了{position1}岗位还有{position2}岗位也空缺的，如果{position1}觉得不合适，可以和店长商量。",
+            "门店除了{shift1}空缺，还有{shift2}也空缺呢，如果对排班时间有要求，可以和店长商量。",
+            "这家门店不合适也没关系，以后还有其他店空缺的，到时候可以再报名。",
+            "{brand}你愿意做吗？我同时还负责其他品牌的招募，你有兴趣的话，可以看看。",
           ],
         },
         screening: {
@@ -181,30 +189,36 @@ export const sampleData: SampleData = {
       大米先生: {
         templates: {
           proactive: [
-            "您好！大米先生{location}店现招聘{position}，{schedule}班次，时薪{salary}元起！欢迎咨询～",
-            "Hi～大米先生{district}店{position}岗位招聘中，薪资{salary}-28元/时，有意向吗？",
+            "你好，大米先生{location}店在招{position}，{schedule}班次，时薪{salary}元起。",
+            "Hi，大米先生{district}店{position}岗位在招人，薪资{salary}-28元/时，有兴趣吗？",
           ],
           inquiry: [
-            "您好～大米先生在上海多个区域都有门店招聘，请问您期望在哪个区域工作？我帮您查下附近门店",
-            "您好！我是大米先生招聘专员，目前{city}各区都有岗位空缺，方便告知您的位置吗？",
+            "你好，大米先生在上海多个区都有招聘，你期望在哪个区工作？我帮你查下附近门店。",
+            "你好，我是大米先生招聘的，目前{city}各区都有岗位，方便说下你的位置吗？",
           ],
           location_match: [
-            "嗯嗯，{district}{store_name}正在招{position}，{schedule}班次，离您很近哦～",
-            "有了，{location}这边的大米先生，{position}岗位{schedule}班次，薪资{salary}元/时起",
+            "嗯，{district}{store_name}正在招{position}，{schedule}班次，离你很近。",
+            "找到了，{location}这边的大米先生，{position}岗位{schedule}班次，薪资{salary}元/时起。",
           ],
           no_match: [
-            "您附近暂无空缺，但{alternative_location}大米先生在招聘，{transport_info}，可以考虑吗？",
-            "目前您周边没有合适岗位，{alternative_area}店有空缺，愿意了解吗？",
+            "你附近暂无空缺，但{alternative_location}大米先生在招聘，{transport_info}，可以考虑吗？",
+            "目前你周边没有合适岗位，{alternative_area}店有空缺，愿意了解下吗？",
           ],
           interview: [
-            "嗯嗯，我可以安排您和{store_name}店长面试，方便加您微信详细沟通吗？",
-            "好的！我帮您约店长面谈，需要您的基本信息，可以加您微信吗？",
+            "可以，我可以安排你和{store_name}店长面试，方便加微信详细沟通吗？",
+            "好的，我帮你约店长面谈，需要你的基本信息，可以加下微信吗？",
+          ],
+          salary_inquiry: [
+            "基本时薪是{salary}元，最高可以到28元，具体看店长安排。",
+          ],
+          schedule_inquiry: [
+            "排班时间比较灵活，具体可以和店长沟通，一般是3-4小时的班。",
           ],
           followup: [
-            "大米先生除了{position1}还有其他岗位，如果{position1}不合适，可以和店长商量呢！",
-            "这个时间段不合适的话，还有{alternative_time}班次，排班比较灵活的～",
-            "这家店不合适也没关系，以后还有其他店空缺的，到时候可以再报名呢！",
-            "大米先生您考虑吗？我同时还负责其他品牌的招募，您要有兴趣的话，可以看看呢？",
+            "大米先生除了{position1}还有其他岗位，如果{position1}不合适，可以和店长商量。",
+            "这个时间段不合适的话，还有{alternative_time}班次，排班比较灵活的。",
+            "这家店不合适也没关系，以后还有其他店空缺的，到时候可以再报名。",
+            "大米先生你考虑吗？我同时还负责其他品牌的招募，你有兴趣的话，可以看看。",
           ],
         },
         screening: {
@@ -216,20 +230,20 @@ export const sampleData: SampleData = {
     },
     templates: {
       proactive: [
-        "你好，上海各区有门店岗位空缺，兼职排班 {hours} 小时。基本薪资：{salary} 元/小时。{level_salary}",
+        "你好，上海各区有门店岗位空缺，兼职排班 {hours} 小时。基本薪资：{salary}元/小时。{level_salary}",
       ],
       inquiry: [
-        "你好，上海目前各区有门店岗位空缺，你在什么位置？我可以查下你附近",
+        "你好，上海目前各区有门店岗位空缺，你在什么位置？我帮你查下附近",
       ],
-      location_match: ["目前离你比较近在 {location}，空缺 {schedule}"],
-      no_match: [
-        "目前你附近没有岗位空缺呢，{alternative_location}的门店考虑吗？",
+      salary_inquiry: [
+        "基本时薪是{salary}元，最高可以到28元，具体看店长安排。",
       ],
-      interview: [
-        "可以帮您和店长约面试呢，我可以加您微信吗？需要几项简单的个人信息",
-      ],
+      schedule_inquiry: ["排班比较灵活，一般是2-4小时，具体可以和店长商量。"],
+      location_match: ["离你比较近在 {location}，空缺 {schedule}"],
+      no_match: ["你附近暂时没岗位，{alternative_location}的门店考虑吗？"],
+      interview: ["可以帮你和店长约面试，加我微信吧，需要几项简单的个人信息"],
       followup: [
-        "门店除了{position1}岗位还有{position2}岗位也空缺的，如果{position1}觉得不合适，可以和店长商量呢",
+        "门店除了{position1}岗位还有{position2}岗位也空缺的，如果{position1}觉得不合适，可以和店长商量",
       ],
     },
     screening: {
