@@ -619,11 +619,15 @@ function buildContextInfo(
     for (const key in templateMap) {
       if (
         Object.prototype.hasOwnProperty.call(brandConfig.templates, key) &&
-        (brandConfig.templates as any)[key]?.length > 0
+        brandConfig.templates[key as keyof typeof brandConfig.templates]
+          ?.length > 0
       ) {
         const templateName = templateMap[key];
-        const templateContent = (brandConfig.templates as any)[key][0];
-        context += `${templateName}：${templateContent}\n`;
+        const templateContent =
+          brandConfig.templates[key as keyof typeof brandConfig.templates]?.[0];
+        if (templateContent) {
+          context += `${templateName}：${templateContent}\n`;
+        }
       }
     }
   }
