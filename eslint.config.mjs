@@ -11,6 +11,7 @@ const compat = new FlatCompat({
 
 const eslintConfig = [
   ...compat.extends("next/core-web-vitals", "next/typescript"),
+  ...compat.extends("plugin:@typescript-eslint/recommended"),
   {
     rules: {
       // TypeScript 严格类型检查 - 这些是最重要的规则
@@ -40,6 +41,7 @@ const eslintConfig = [
       // 禁用一些可能产生噪音的规则
       "react/no-unescaped-entities": "off",
     },
+    ignores: ["node_modules", "dist", ".next", "out"],
   },
 ];
 

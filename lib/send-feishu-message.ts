@@ -1,12 +1,20 @@
 "use server";
 
+// 飞书API响应类型定义
+interface FeishuApiResponse {
+  code: number;
+  msg?: string;
+  StatusMessage?: string;
+  data?: unknown;
+}
+
 // 飞书机器人消息发送函数
 export const sendFeishuMessage = async (
   message: string,
   messageType: "text" | "rich_text" = "text"
 ): Promise<{
   success: boolean;
-  data?: any;
+  data?: FeishuApiResponse;
   error?: string;
 }> => {
   try {
@@ -44,7 +52,7 @@ export const sendFeishuMessage = async (
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    const result = await response.json();
+    const result = (await response.json()) as FeishuApiResponse;
 
     console.log("📨 飞书API响应:", result);
 
