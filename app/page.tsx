@@ -19,7 +19,18 @@ import { ABORTED } from "@/lib/utils";
 import { BrandSelector } from "@/components/brand-selector";
 import { useBrand } from "@/lib/contexts/brand-context";
 import { Bot, Server, Cpu, Loader2 } from "lucide-react";
+import type {
+  FeishuNotificationType,
+  FeishuNotificationOptions,
+} from "@/types";
+import { FEISHU_NOTIFICATION_LABELS } from "@/types";
 
+/**
+ * 🏠 主聊天界面组件
+ *
+ * 集成了桌面沙盒、AI助手对话、飞书通知等功能
+ * 支持智能载荷管理、任务状态监控和自动通知推送
+ */
 export default function Chat() {
   // 🏪 品牌管理
   const { currentBrand } = useBrand();
@@ -79,6 +90,14 @@ export default function Chat() {
       if (isPayloadTooLargeError(error)) {
         console.warn("💾 检测到请求载荷过大错误，准备智能清理");
 
+        // 🚨 发送飞书载荷过大错误通知
+        sendFeishuNotification("payload_error", {
+          additional_info: `对话历史包含${messages.length}条消息，估算大小${(
+            JSON.stringify(messages).length /
+            (1024 * 1024)
+          ).toFixed(2)}MB，触发载荷过大限制。错误信息：${error.message}`,
+        });
+
         // 延迟执行，确保错误状态已更新
         setTimeout(() => {
           const wasHandled = handlePayloadTooLargeError();
@@ -103,10 +122,93 @@ export default function Chat() {
         });
       }
     },
-    onFinish: (message) => {
+    onFinish: (message, { finishReason }) => {
       console.log("Chat finished:", message);
+      // console.log("Finish reason:", finishReason);
+
+      // 🎯 发送任务完成通知 - 避免飞书通知工具的循环调用
+      setTimeout(() => {
+        // 检查是否正常停止且不是飞书通知工具调用
+        if (finishReason === "stop") {
+          // 检查最后一个工具调用是否为飞书工具，避免循环
+          const lastToolCall = message.parts?.findLast(
+            (part) => part.type === "tool-invocation"
+          );
+
+          const isFeishuToolCall =
+            lastToolCall?.toolInvocation?.toolName === "feishu";
+
+          // 检查是否包含非飞书的工具调用
+          const hasNonFeishuToolUsage = message.parts?.some(
+            (part) =>
+              part.type === "tool-invocation" &&
+              part.toolInvocation?.state === "result" &&
+              part.toolInvocation?.toolName !== "feishu"
+          );
+
+          // 只有在包含非飞书工具调用且最后一个不是飞书工具时才发送通知
+          if (hasNonFeishuToolUsage && !isFeishuToolCall) {
+            console.log("📋 检测到业务工具调用完成，发送任务完成通知");
+            sendFeishuNotification("task_completed", {
+              additional_info: `本轮AI助手任务已完成，共处理${
+                messages.length + 1
+              }条消息，包含工具调用操作，当前状态已就绪等待新指令`,
+            });
+          } else if (isFeishuToolCall) {
+            console.log("🔄 跳过飞书工具调用的完成通知，避免循环");
+          }
+        }
+      }, 1000); // 延迟1秒确保状态稳定
     },
   });
+
+  // 📢 统一的飞书通知发送函数
+  const sendFeishuNotification = useCallback(
+    (
+      notificationType: FeishuNotificationType,
+      options: FeishuNotificationOptions = {}
+    ) => {
+      const {
+        candidate_name,
+        wechat_id,
+        additional_info,
+        message: customMessage,
+        messageType = "text",
+      } = options;
+
+      // 构建工具参数
+      const toolParams: Record<string, string | undefined> = {
+        notification_type: notificationType,
+        messageType,
+      };
+
+      // 根据通知类型添加必要参数
+      if (candidate_name) toolParams.candidate_name = candidate_name;
+      if (wechat_id) toolParams.wechat_id = wechat_id;
+      if (additional_info) toolParams.additional_info = additional_info;
+      if (customMessage) toolParams.message = customMessage;
+
+      // 生成格式化的消息内容
+      const formattedContent = `请使用feishu工具发送${getNotificationLabel(
+        notificationType
+      )}：
+${JSON.stringify(toolParams, null, 2)}`;
+
+      console.log(`📢 准备发送飞书通知 [${notificationType}]`);
+
+      // 发送消息到LLM
+      append({
+        role: "user",
+        content: formattedContent,
+      });
+    },
+    [append]
+  );
+
+  // 🏷️ 获取通知类型的中文标签
+  const getNotificationLabel = (type: FeishuNotificationType): string => {
+    return FEISHU_NOTIFICATION_LABELS[type] || "通知";
+  };
 
   // 🧹 智能消息清理策略
   const handlePayloadTooLargeError = useCallback(() => {

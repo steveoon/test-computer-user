@@ -251,30 +251,97 @@ const PurePreviewMessage = ({
                     );
                   }
                   if (toolName === "feishu") {
-                    const { message: msgContent } = args;
+                    const {
+                      notification_type,
+                      message: msgContent,
+                      candidate_name,
+                      wechat_id,
+                    } = args;
+
+                    // 根据通知类型设置图标和样式
+                    let bgColor = "bg-blue-50 dark:bg-blue-900/20";
+                    let borderColor = "border-blue-200 dark:border-blue-800";
+                    let iconBgColor = "bg-blue-100 dark:bg-blue-800";
+                    let iconColor = "text-blue-600 dark:text-blue-400";
+                    let textColor = "text-blue-800 dark:text-blue-200";
+                    let label = "发送飞书消息";
+                    let detail = "";
+
+                    if (notification_type === "candidate_wechat") {
+                      label = "推送候选人微信";
+                      detail = candidate_name || wechat_id || "";
+                      bgColor = "bg-green-50 dark:bg-green-900/20";
+                      borderColor = "border-green-200 dark:border-green-800";
+                      iconBgColor = "bg-green-100 dark:bg-green-800";
+                      iconColor = "text-green-600 dark:text-green-400";
+                      textColor = "text-green-800 dark:text-green-200";
+                    } else if (notification_type === "payload_error") {
+                      label = "系统错误警告";
+                      detail = "载荷过大错误";
+                      bgColor = "bg-red-50 dark:bg-red-900/20";
+                      borderColor = "border-red-200 dark:border-red-800";
+                      iconBgColor = "bg-red-100 dark:bg-red-800";
+                      iconColor = "text-red-600 dark:text-red-400";
+                      textColor = "text-red-800 dark:text-red-200";
+                    } else if (notification_type === "task_completed") {
+                      label = "任务完成通知";
+                      detail = "AI助手任务已完成";
+                      bgColor = "bg-green-50 dark:bg-green-900/20";
+                      borderColor = "border-green-200 dark:border-green-800";
+                      iconBgColor = "bg-green-100 dark:bg-green-800";
+                      iconColor = "text-green-600 dark:text-green-400";
+                      textColor = "text-green-800 dark:text-green-200";
+                    } else if (notification_type === "task_interrupted") {
+                      label = "任务中断通知";
+                      detail = "AI助手任务被中断";
+                      bgColor = "bg-yellow-50 dark:bg-yellow-900/20";
+                      borderColor = "border-yellow-200 dark:border-yellow-800";
+                      iconBgColor = "bg-yellow-100 dark:bg-yellow-800";
+                      iconColor = "text-yellow-600 dark:text-yellow-400";
+                      textColor = "text-yellow-800 dark:text-yellow-200";
+                    } else if (notification_type === "system_warning") {
+                      label = "系统警告通知";
+                      detail = "系统异常警告";
+                      bgColor = "bg-orange-50 dark:bg-orange-900/20";
+                      borderColor = "border-orange-200 dark:border-orange-800";
+                      iconBgColor = "bg-orange-100 dark:bg-orange-800";
+                      iconColor = "text-orange-600 dark:text-orange-400";
+                      textColor = "text-orange-800 dark:text-orange-200";
+                    }
+
+                    if (msgContent) {
+                      detail =
+                        msgContent.slice(0, 30) +
+                        (msgContent.length > 30 ? "..." : "");
+                    }
 
                     return (
                       <motion.div
                         initial={{ y: 5, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
                         key={`message-${message.id}-part-${i}`}
-                        className="flex items-center gap-2 p-2 mb-3 text-sm bg-blue-50 dark:bg-blue-900/20 rounded-md border border-blue-200 dark:border-blue-800"
+                        className={`flex items-center gap-2 p-2 mb-3 text-sm ${bgColor} rounded-md border ${borderColor}`}
                       >
-                        <div className="flex items-center justify-center w-8 h-8 bg-blue-100 dark:bg-blue-800 rounded-full">
-                          <MessageCircle className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                        <div
+                          className={`flex items-center justify-center w-8 h-8 ${iconBgColor} rounded-full flex-shrink-0`}
+                        >
+                          <MessageCircle className={`w-4 h-4 ${iconColor}`} />
                         </div>
-                        <div className="flex-1">
-                          <div className="font-medium flex items-baseline gap-2 text-blue-800 dark:text-blue-200">
-                            发送飞书消息
-                            {msgContent && (
-                              <span className="text-xs text-blue-600 dark:text-blue-400 font-normal max-w-xs truncate">
-                                "{msgContent.slice(0, 30)}
-                                {msgContent.length > 30 ? "..." : ""}"
+                        <div className="flex-1 min-w-0">
+                          <div
+                            className={`font-medium flex items-baseline gap-2 ${textColor}`}
+                          >
+                            <span className="truncate">{label}</span>
+                            {detail && (
+                              <span
+                                className={`text-xs ${iconColor} font-normal max-w-[200px] truncate flex-shrink-0`}
+                              >
+                                "{detail}"
                               </span>
                             )}
                           </div>
                         </div>
-                        <div className="w-5 h-5 flex items-center justify-center">
+                        <div className="w-5 h-5 flex items-center justify-center flex-shrink-0">
                           {state === "call" ? (
                             isLatestMessage && status !== "ready" ? (
                               <Loader2 className="animate-spin h-4 w-4 text-blue-500" />

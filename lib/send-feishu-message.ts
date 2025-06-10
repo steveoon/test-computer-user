@@ -1,22 +1,12 @@
 "use server";
 
-// 飞书API响应类型定义
-interface FeishuApiResponse {
-  code: number;
-  msg?: string;
-  StatusMessage?: string;
-  data?: unknown;
-}
+import type { FeishuApiResponse, FeishuMessageResult } from "@/types";
 
 // 飞书机器人消息发送函数
 export const sendFeishuMessage = async (
   message: string,
   messageType: "text" | "rich_text" = "text"
-): Promise<{
-  success: boolean;
-  data?: FeishuApiResponse;
-  error?: string;
-}> => {
+): Promise<FeishuMessageResult> => {
   try {
     // 获取飞书机器人webhook地址
     const webhookUrl = process.env.FEISHU_BOT_WEBHOOK;
