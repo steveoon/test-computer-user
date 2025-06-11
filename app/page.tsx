@@ -24,6 +24,9 @@ import type {
   FeishuNotificationOptions,
 } from "@/types";
 import { FEISHU_NOTIFICATION_LABELS } from "@/types";
+import { UserNav } from "@/components/user-nav";
+import { StorageDebug } from "@/components/storage-debug";
+import { useAuthStore } from "@/lib/stores/auth-store";
 
 /**
  * 🏠 主聊天界面组件
@@ -32,6 +35,9 @@ import { FEISHU_NOTIFICATION_LABELS } from "@/types";
  * 支持智能载荷管理、任务状态监控和自动通知推送
  */
 export default function Chat() {
+  // 🔐 用户认证状态
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuthStore();
+
   // 🏪 品牌管理
   const { currentBrand } = useBrand();
 
@@ -327,6 +333,17 @@ ${JSON.stringify(toolParams, null, 2)}`;
 
   // 自定义提交处理器，根据AI SDK文档建议在错误时移除最后一条消息
   const customSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    // 🔐 检查用户认证状态
+    if (!isAuthenticated) {
+      event.preventDefault();
+      toast.error("请先登录", {
+        description: "您需要登录后才能使用AI助手功能",
+        richColors: true,
+        position: "top-center",
+      });
+      return;
+    }
+
     // 🎯 预防性检查：估算消息大小
     const messageSize = JSON.stringify(messages).length;
     const estimatedSizeMB = messageSize / (1024 * 1024);
@@ -555,7 +572,17 @@ ${JSON.stringify(toolParams, null, 2)}`;
   }, [sandboxId, checkSandboxStatus]);
 
   useEffect(() => {
-    // Initialize desktop and get stream URL when the component mounts
+    // 只有在用户认证后才初始化E2B桌面
+    if (!isAuthenticated || isAuthLoading) {
+      // 如果用户未认证或正在加载认证状态，重置E2B相关状态
+      setStreamUrl(null);
+      setSandboxId(null);
+      setSandboxStatus("unknown");
+      setIsInitializing(false);
+      return;
+    }
+
+    // Initialize desktop and get stream URL when user is authenticated
     const init = async () => {
       try {
         setIsInitializing(true);
@@ -578,7 +605,7 @@ ${JSON.stringify(toolParams, null, 2)}`;
     init();
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isAuthenticated, isAuthLoading]);
 
   return (
     <div className="flex h-dvh relative">
@@ -596,7 +623,38 @@ ${JSON.stringify(toolParams, null, 2)}`;
             minSize={40}
             className="bg-black relative items-center justify-center"
           >
-            {streamUrl ? (
+            {!isAuthenticated ? (
+              // 未登录状态 - 显示登录提示
+              <div className="flex flex-col items-center justify-center h-full text-white p-8">
+                <div className="text-center max-w-md">
+                  <div className="w-16 h-16 mx-auto mb-6 bg-blue-600/20 rounded-full flex items-center justify-center">
+                    <Bot className="w-8 h-8 text-blue-400" />
+                  </div>
+                  <h2 className="text-xl font-semibold mb-3">
+                    AI 助手沙盒环境
+                  </h2>
+                  <p className="text-gray-300 mb-6 leading-relaxed">
+                    沙盒环境需要用户登录后才能启动。请先登录您的账户以使用完整的
+                    AI 助手功能。
+                  </p>
+                  <div className="space-y-3 text-sm text-gray-400">
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
+                      <span>安全的隔离环境</span>
+                    </div>
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                      <span>实时屏幕操作</span>
+                    </div>
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="w-2 h-2 bg-purple-400 rounded-full"></div>
+                      <span>AI 智能控制</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : streamUrl ? (
+              // 已登录且有沙盒 - 显示正常界面
               <>
                 <iframe
                   src={streamUrl}
@@ -656,6 +714,7 @@ ${JSON.stringify(toolParams, null, 2)}`;
                 </div>
               </>
             ) : (
+              // 已登录但沙盒正在初始化
               <div className="flex items-center justify-center h-full text-white">
                 {isInitializing
                   ? "Initializing desktop..."
@@ -672,7 +731,8 @@ ${JSON.stringify(toolParams, null, 2)}`;
             minSize={25}
             className="flex flex-col border-l border-zinc-200"
           >
-            <div className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-slate-200 py-2.5 px-4">
+            <div className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-slate-200 py-3 px-4">
+              {/* 主标题行 */}
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-2">
                   <Bot className="w-4 h-4 text-blue-600" />
@@ -680,14 +740,23 @@ ${JSON.stringify(toolParams, null, 2)}`;
                     AI 助手
                   </h1>
                 </div>
-                <div className="flex items-center gap-2">
+                <UserNav />
+              </div>
+
+              {/* 控制按钮行 */}
+              <div className="flex items-center justify-between mt-3 pt-2 border-t border-white/40">
+                <div className="flex items-center gap-3">
                   <BrandSelector />
-                  <div className="h-4 w-px bg-slate-300"></div>
+                  <div className="text-xs text-slate-500 bg-white/70 px-2 py-1 rounded-full font-medium">
+                    {messages.length} 条消息
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
                   <Button
                     onClick={smartClearMessages}
                     variant="outline"
                     size="sm"
-                    className="text-xs h-7 px-2 text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300 transition-colors"
+                    className="text-xs h-7 px-3 text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300 transition-colors font-medium"
                     disabled={isLoading || messages.length <= 2}
                     title="保留最近一半消息，清理其余历史"
                   >
@@ -697,17 +766,18 @@ ${JSON.stringify(toolParams, null, 2)}`;
                     onClick={clearMessages}
                     variant="outline"
                     size="sm"
-                    className="text-xs h-7 px-2 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300 transition-colors"
+                    className="text-xs h-7 px-3 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300 transition-colors font-medium"
                     disabled={isLoading}
                   >
                     清空
                   </Button>
                 </div>
               </div>
+
               {/* 状态栏 */}
-              <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/50">
+              <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/30">
                 <div className="flex items-center gap-4 text-xs text-slate-600">
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1.5">
                     <Server className="w-3 h-3" />
                     <div
                       className={`w-1.5 h-1.5 rounded-full ${
@@ -718,7 +788,7 @@ ${JSON.stringify(toolParams, null, 2)}`;
                           : "bg-gray-400"
                       }`}
                     ></div>
-                    <span>
+                    <span className="font-medium">
                       {sandboxStatus === "running"
                         ? "运行中"
                         : sandboxStatus === "paused"
@@ -727,20 +797,17 @@ ${JSON.stringify(toolParams, null, 2)}`;
                     </span>
                   </div>
                   {currentBrand && (
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1.5">
                       <Cpu className="w-3 h-3" />
-                      <span>{currentBrand}</span>
+                      <span className="font-medium">{currentBrand}</span>
                     </div>
                   )}
-                  <div className="text-xs text-slate-500 bg-white/70 px-2 py-1 rounded-full">
-                    {messages.length}
-                  </div>
                 </div>
                 <div className="text-xs text-slate-500">
                   {isLoading && (
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1.5">
                       <Loader2 className="w-3 h-3 animate-spin" />
-                      <span>思考中...</span>
+                      <span className="font-medium">思考中...</span>
                     </div>
                   )}
                 </div>
@@ -809,10 +876,18 @@ ${JSON.stringify(toolParams, null, 2)}`;
 
             {/* PromptSuggestions 始终显示在输入框上方 */}
             <PromptSuggestions
-              disabled={isInitializing}
-              submitPrompt={(prompt: string) =>
-                append({ role: "user", content: prompt })
-              }
+              disabled={isInitializing || !isAuthenticated}
+              submitPrompt={(prompt: string) => {
+                if (!isAuthenticated) {
+                  toast.error("请先登录", {
+                    description: "您需要登录后才能使用AI助手功能",
+                    richColors: true,
+                    position: "top-center",
+                  });
+                  return;
+                }
+                append({ role: "user", content: prompt });
+              }}
             />
 
             <div className="bg-white">
@@ -825,6 +900,7 @@ ${JSON.stringify(toolParams, null, 2)}`;
                   status={status}
                   stop={stop}
                   error={error}
+                  isAuthenticated={isAuthenticated}
                 />
               </form>
             </div>
@@ -834,74 +910,85 @@ ${JSON.stringify(toolParams, null, 2)}`;
 
       {/* Mobile View (Chat Only) */}
       <div className="w-full xl:hidden flex flex-col">
-        <div className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-slate-200 py-2.5 px-4">
+        <div className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-slate-200 py-3 px-4">
+          {/* 主标题行 */}
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-2">
               <Bot className="w-4 h-4 text-blue-600" />
               <h1 className="text-sm font-semibold text-slate-800">AI 助手</h1>
             </div>
-            <div className="flex items-center gap-1">
-              <div className="text-xs text-slate-500 bg-white/70 px-2 py-0.5 rounded-full">
-                {messages.length}
-              </div>
-              <BrandSelector />
-              <Button
-                onClick={smartClearMessages}
-                variant="outline"
-                size="sm"
-                className="text-xs h-7 px-2 text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300 transition-colors"
-                disabled={isLoading || messages.length <= 2}
-                title="智能清理"
-              >
-                清理
-              </Button>
-              <Button
-                onClick={clearMessages}
-                variant="outline"
-                size="sm"
-                className="text-xs h-7 px-2 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300 transition-colors"
-                disabled={isLoading}
-              >
-                清空
-              </Button>
-            </div>
+            <UserNav />
           </div>
-          {/* 移动端状态栏 */}
-          <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/50">
-            <div className="flex items-center gap-3 text-xs text-slate-600">
-              <div className="flex items-center gap-1">
-                <Server className="w-3 h-3" />
-                <div
-                  className={`w-1.5 h-1.5 rounded-full ${
-                    sandboxStatus === "running"
-                      ? "bg-green-500"
-                      : sandboxStatus === "paused"
-                      ? "bg-yellow-500"
-                      : "bg-gray-400"
-                  }`}
-                ></div>
-                <span>
-                  {sandboxStatus === "running"
-                    ? "运行中"
-                    : sandboxStatus === "paused"
-                    ? "已暂停"
-                    : "未知"}
-                </span>
+
+          {/* 控制按钮行 - 移动端采用垂直排列 */}
+          <div className="mt-3 pt-2 border-t border-white/40 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <BrandSelector />
+                <div className="text-xs text-slate-500 bg-white/70 px-2 py-1 rounded-full font-medium">
+                  {messages.length}
+                </div>
               </div>
-              {currentBrand && (
-                <div className="flex items-center gap-1">
-                  <Cpu className="w-3 h-3" />
-                  <span>{currentBrand}</span>
-                </div>
-              )}
+              <div className="flex items-center gap-1">
+                <Button
+                  onClick={smartClearMessages}
+                  variant="outline"
+                  size="sm"
+                  className="text-xs h-6 px-2 text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300 transition-colors font-medium"
+                  disabled={isLoading || messages.length <= 2}
+                  title="智能清理"
+                >
+                  清理
+                </Button>
+                <Button
+                  onClick={clearMessages}
+                  variant="outline"
+                  size="sm"
+                  className="text-xs h-6 px-2 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300 transition-colors font-medium"
+                  disabled={isLoading}
+                >
+                  清空
+                </Button>
+              </div>
             </div>
-            <div className="text-xs text-slate-500">
-              {isLoading && (
-                <div className="flex items-center gap-1">
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                  <span>思考中...</span>
+
+            {/* 移动端状态栏 */}
+            <div className="flex items-center justify-between text-xs text-slate-600">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5">
+                  <Server className="w-3 h-3" />
+                  <div
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      sandboxStatus === "running"
+                        ? "bg-green-500"
+                        : sandboxStatus === "paused"
+                        ? "bg-yellow-500"
+                        : "bg-gray-400"
+                    }`}
+                  ></div>
+                  <span className="font-medium">
+                    {sandboxStatus === "running"
+                      ? "运行中"
+                      : sandboxStatus === "paused"
+                      ? "已暂停"
+                      : "未知"}
+                  </span>
                 </div>
-              )}
+                {currentBrand && (
+                  <div className="flex items-center gap-1.5">
+                    <Cpu className="w-3 h-3" />
+                    <span className="font-medium">{currentBrand}</span>
+                  </div>
+                )}
+              </div>
+              <div className="text-xs text-slate-500">
+                {isLoading && (
+                  <div className="flex items-center gap-1.5">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    <span className="font-medium">思考中...</span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -925,10 +1012,18 @@ ${JSON.stringify(toolParams, null, 2)}`;
 
         {/* PromptSuggestions 始终显示在输入框上方 */}
         <PromptSuggestions
-          disabled={isInitializing}
-          submitPrompt={(prompt: string) =>
-            append({ role: "user", content: prompt })
-          }
+          disabled={isInitializing || !isAuthenticated}
+          submitPrompt={(prompt: string) => {
+            if (!isAuthenticated) {
+              toast.error("请先登录", {
+                description: "您需要登录后才能使用AI助手功能",
+                richColors: true,
+                position: "top-center",
+              });
+              return;
+            }
+            append({ role: "user", content: prompt });
+          }}
         />
 
         <div className="bg-white">
@@ -941,10 +1036,14 @@ ${JSON.stringify(toolParams, null, 2)}`;
               status={status}
               stop={stop}
               error={error}
+              isAuthenticated={isAuthenticated}
             />
           </form>
         </div>
       </div>
+
+      {/* Debug component - remove in production */}
+      {process.env.VERCEL_ENV !== "production" && <StorageDebug />}
     </div>
   );
 }

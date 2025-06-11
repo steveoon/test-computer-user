@@ -14,24 +14,32 @@ export const ProjectInfo = () => {
         </p>
         <h3 className="text-center text-2xl font-bold">Computer Use Agent</h3>
         <p>
-          This demo showcases a Computer Use Agent built with the{" "}
-          <StyledLink href="https://sdk.vercel.ai">AI SDK</StyledLink>,{" "}
+          该智能体（Agent）能够自动操控沙盒环境，并为您自动回复 Boss
+          直聘上的招聘消息。
+          <br />
+          如果需要在沙盒环境中正常显示中文，请在初始化沙盒后，先让 Agent
+          安装中文字体（如 <code>fonts-noto-cjk</code> 或{" "}
+          <code>fonts-noto</code>）。
+        </p>
+        <p>
+          本项目基于{" "}
+          <StyledLink href="https://sdk.vercel.ai">AI SDK</StyledLink>、
           <StyledLink href="https://www.anthropic.com/claude/sonnet">
             Anthropic Claude Sonnet 3.7
           </StyledLink>
-          , and <StyledLink href="https://e2b.dev">e2b desktop</StyledLink>.
+          以及 <StyledLink href="https://e2b.dev">e2b desktop</StyledLink>{" "}
+          构建。
         </p>
         <p>
-          {" "}
-          Learn more about{" "}
+          了解更多关于
           <Link
             className="text-blue-500 dark:text-blue-400"
             href="https://sdk.vercel.ai/docs/guides/computer-use"
             target="_blank"
           >
-            Computer Use{" "}
+            Computer Use
           </Link>
-          with the AI SDK.
+          与 AI SDK 的信息。
         </p>
       </div>
     </motion.div>

@@ -9,6 +9,7 @@ interface InputProps {
   status: string;
   stop: () => void;
   error?: Error | null;
+  isAuthenticated?: boolean;
 }
 
 export const Input = ({
@@ -19,16 +20,20 @@ export const Input = ({
   status,
   stop,
   error,
+  isAuthenticated = true,
 }: InputProps) => {
-  // 更智能的禁用逻辑：只有在真正加载中且没有错误时才禁用
-  const shouldDisable = (isLoading && !error) || isInitializing;
+  // 更智能的禁用逻辑：只有在真正加载中且没有错误时才禁用，或者用户未认证
+  const shouldDisable =
+    (isLoading && !error) || isInitializing || !isAuthenticated;
   return (
     <div className="relative w-full">
       <ShadcnInput
         className="bg-secondary py-6 w-full rounded-xl pr-12"
         value={input}
         autoFocus
-        placeholder={"Tell me what to do..."}
+        placeholder={
+          !isAuthenticated ? "请先登录以使用AI助手..." : "Tell me what to do..."
+        }
         onChange={handleInputChange}
         disabled={shouldDisable}
       />

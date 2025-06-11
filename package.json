@@ -15,9 +15,12 @@
     "@ai-sdk/openai-compatible": "^0.2.14",
     "@ai-sdk/react": "^1.2.12",
     "@e2b/desktop": "1.9.1-beta.1",
+    "@radix-ui/react-dialog": "^1.1.14",
     "@radix-ui/react-label": "^2.1.2",
     "@radix-ui/react-select": "^2.2.5",
     "@radix-ui/react-slot": "^1.1.2",
+    "@supabase/ssr": "^0.6.1",
+    "@supabase/supabase-js": "^2.50.0",
     "@vercel/analytics": "^1.5.0",
     "ai": "^4.3.16",
     "class-variance-authority": "^0.7.1",
@@ -39,7 +42,8 @@
     "sonner": "^2.0.1",
     "tailwind-merge": "^3.0.2",
     "tailwindcss-animate": "^1.0.7",
-    "zod": "^3.24.2"
+    "zod": "^3.24.2",
+    "zustand": "^5.0.5"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
