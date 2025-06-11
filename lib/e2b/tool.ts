@@ -11,6 +11,7 @@ import {
 } from "../utils/zhipin-data-loader";
 import type { Store } from "../../types/zhipin";
 import { sendFeishuMessage } from "../send-feishu-message";
+import type { ModelConfig } from "../config/models";
 
 const wait = async (seconds: number) => {
   await new Promise((resolve) => setTimeout(resolve, seconds * 1000));
@@ -536,7 +537,11 @@ export const anthropicBashTool = (sandboxId?: string) =>
   });
 
 // Universal computer tool compatible with all providers
-export const computerTool = (sandboxId: string, preferredBrand: string) =>
+export const computerTool = (
+  sandboxId: string,
+  preferredBrand: string,
+  modelConfig: ModelConfig
+) =>
   tool({
     description:
       "Use a computer to interact with applications and websites. Takes screenshots, clicks, types, and performs other computer actions.",
@@ -1163,7 +1168,8 @@ export const computerTool = (sandboxId: string, preferredBrand: string) =>
             const generatedReply = await generateSmartReplyWithLLM(
               candidate_message || "",
               conversation_history || [],
-              preferredBrand
+              preferredBrand,
+              modelConfig
             );
 
             console.log(`📝 生成的回复内容: ${generatedReply}`);

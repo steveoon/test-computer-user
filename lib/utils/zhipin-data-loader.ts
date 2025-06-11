@@ -7,7 +7,7 @@ import {
   DEFAULT_PROVIDER_CONFIGS,
   DEFAULT_MODEL_CONFIG,
 } from "@/lib/config/models";
-import type { ModelId, ProviderConfig } from "@/lib/config/models";
+import type { ModelConfig } from "@/lib/config/models";
 
 /**
  * 🎯 加载Boss直聘相关数据 - 优化版
@@ -232,10 +232,7 @@ export async function classifyUserMessage(
   message: string = "",
   conversationHistory: string[] = [],
   data: ZhipinData,
-  modelConfig?: {
-    classifyModel?: ModelId;
-    providerConfigs?: Record<string, ProviderConfig>;
-  }
+  modelConfig?: ModelConfig
 ): Promise<MessageClassification> {
   // 🎯 获取配置的模型和provider设置
   const classifyModel =
@@ -398,11 +395,7 @@ export async function generateSmartReplyWithLLM(
   message: string = "",
   conversationHistory: string[] = [],
   preferredBrand?: string,
-  modelConfig?: {
-    classifyModel?: ModelId;
-    replyModel?: ModelId;
-    providerConfigs?: Record<string, ProviderConfig>;
-  }
+  modelConfig?: ModelConfig
 ): Promise<string> {
   try {
     // 🎯 获取配置的模型和provider设置

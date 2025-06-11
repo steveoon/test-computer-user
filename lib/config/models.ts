@@ -120,6 +120,13 @@ export const MODEL_DICTIONARY = {
 // 模型ID类型
 export type ModelId = keyof typeof MODEL_DICTIONARY;
 
+export type ModelConfig = {
+  chatModel?: ModelId;
+  classifyModel?: ModelId;
+  replyModel?: ModelId;
+  providerConfigs?: Record<string, ProviderConfig>;
+};
+
 // 模型提供商配置
 export interface ProviderConfig {
   name: string;

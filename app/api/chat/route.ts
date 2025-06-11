@@ -8,7 +8,7 @@ import {
   DEFAULT_PROVIDER_CONFIGS,
   DEFAULT_MODEL_CONFIG,
 } from "@/lib/config/models";
-import type { ModelId, ProviderConfig } from "@/lib/config/models";
+import type { ModelConfig } from "@/lib/config/models";
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 300;
@@ -42,10 +42,7 @@ export async function POST(req: Request) {
     messages: UIMessage[];
     sandboxId: string;
     preferredBrand: string;
-    modelConfig?: {
-      chatModel?: ModelId;
-      providerConfigs?: Record<string, ProviderConfig>;
-    };
+    modelConfig?: ModelConfig;
   } = await req.json();
 
   try {
@@ -87,7 +84,7 @@ export async function POST(req: Request) {
       system: getBossZhipinSystemPrompt(),
       messages: processedMessages,
       tools: {
-        computer: computerTool(sandboxId, preferredBrand),
+        computer: computerTool(sandboxId, preferredBrand, modelConfig!),
         bash: bashTool(sandboxId),
         feishu: feishuBotTool(),
       },

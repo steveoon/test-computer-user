@@ -18,7 +18,7 @@ import {
 import { ABORTED } from "@/lib/utils";
 import { BrandSelector } from "@/components/brand-selector";
 import { useBrand } from "@/lib/contexts/brand-context";
-import { Bot, Server, Cpu, Loader2 } from "lucide-react";
+import { Bot, Server, Cpu, Loader2, Settings2 } from "lucide-react";
 import type {
   FeishuNotificationType,
   FeishuNotificationOptions,
@@ -28,6 +28,12 @@ import { UserNav } from "@/components/user-nav";
 import { StorageDebug } from "@/components/storage-debug";
 import { useAuthStore } from "@/lib/stores/auth-store";
 import { useModelConfig } from "@/lib/stores/model-config-store";
+import { MODEL_DICTIONARY } from "@/lib/config/models";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 /**
  * 🏠 主聊天界面组件
@@ -43,7 +49,8 @@ export default function Chat() {
   const { currentBrand } = useBrand();
 
   // 🤖 模型配置
-  const { chatModel, providerConfigs } = useModelConfig();
+  const { chatModel, classifyModel, replyModel, providerConfigs } =
+    useModelConfig();
 
   // Create separate refs for mobile and desktop to ensure both scroll properly
   const [desktopContainerRef, desktopEndRef] = useScrollToBottom();
@@ -86,6 +93,8 @@ export default function Chat() {
       preferredBrand: currentBrand, // 🎯 传递当前选择的品牌
       modelConfig: {
         chatModel,
+        classifyModel,
+        replyModel,
         providerConfigs,
       }, // 🎯 传递模型配置
     },
@@ -810,6 +819,68 @@ ${JSON.stringify(toolParams, null, 2)}`;
                       <span className="font-medium">{currentBrand}</span>
                     </div>
                   )}
+                  {/* 模型配置显示 */}
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button className="flex items-center gap-1.5 hover:bg-white/50 px-2 py-1 rounded-md transition-colors">
+                        <Settings2 className="w-3 h-3" />
+                        <span className="font-medium">模型配置</span>
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-80 p-4">
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h3 className="font-semibold text-sm">
+                            当前模型配置
+                          </h3>
+                          <a
+                            href="/agent-config"
+                            className="text-xs text-blue-600 hover:text-blue-800 underline"
+                          >
+                            修改配置
+                          </a>
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="bg-slate-50 rounded-lg p-3">
+                            <div className="text-xs text-slate-600 mb-1">
+                              主聊天模型
+                            </div>
+                            <div className="font-medium text-sm">
+                              {MODEL_DICTIONARY[chatModel].name}
+                            </div>
+                            <div className="text-xs text-slate-500">
+                              {chatModel}
+                            </div>
+                          </div>
+
+                          <div className="bg-slate-50 rounded-lg p-3">
+                            <div className="text-xs text-slate-600 mb-1">
+                              消息分类模型
+                            </div>
+                            <div className="font-medium text-sm">
+                              {MODEL_DICTIONARY[classifyModel].name}
+                            </div>
+                            <div className="text-xs text-slate-500">
+                              {classifyModel}
+                            </div>
+                          </div>
+
+                          <div className="bg-slate-50 rounded-lg p-3">
+                            <div className="text-xs text-slate-600 mb-1">
+                              智能回复模型
+                            </div>
+                            <div className="font-medium text-sm">
+                              {MODEL_DICTIONARY[replyModel].name}
+                            </div>
+                            <div className="text-xs text-slate-500">
+                              {replyModel}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
                 </div>
                 <div className="text-xs text-slate-500">
                   {isLoading && (
@@ -988,6 +1059,50 @@ ${JSON.stringify(toolParams, null, 2)}`;
                     <span className="font-medium">{currentBrand}</span>
                   </div>
                 )}
+                {/* 移动端模型配置显示 */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button className="flex items-center gap-1.5 hover:bg-white/50 px-1 py-0.5 rounded transition-colors">
+                      <Settings2 className="w-3 h-3" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-72 p-3">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-semibold text-sm">模型配置</h3>
+                        <a
+                          href="/agent-config"
+                          className="text-xs text-blue-600 hover:text-blue-800 underline"
+                        >
+                          修改
+                        </a>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="bg-slate-50 rounded p-2">
+                          <div className="text-xs text-slate-600">主聊天</div>
+                          <div className="font-medium text-xs">
+                            {MODEL_DICTIONARY[chatModel].name}
+                          </div>
+                        </div>
+
+                        <div className="bg-slate-50 rounded p-2">
+                          <div className="text-xs text-slate-600">分类</div>
+                          <div className="font-medium text-xs">
+                            {MODEL_DICTIONARY[classifyModel].name}
+                          </div>
+                        </div>
+
+                        <div className="bg-slate-50 rounded p-2">
+                          <div className="text-xs text-slate-600">回复</div>
+                          <div className="font-medium text-xs">
+                            {MODEL_DICTIONARY[replyModel].name}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
               </div>
               <div className="text-xs text-slate-500">
                 {isLoading && (
