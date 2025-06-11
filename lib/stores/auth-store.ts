@@ -81,7 +81,7 @@ export const useAuthStore = create<AuthStore>()(
       }),
       // 🔄 数据迁移 - 将旧的localStorage数据迁移到IndexedDB
       onRehydrateStorage: () => {
-        return async (state, error) => {
+        return async (_state, error) => {
           if (error) {
             console.error("[AUTH STORE] 恢复状态时出错:", error);
           } else {
