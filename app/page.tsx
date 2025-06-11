@@ -1043,7 +1043,7 @@ ${JSON.stringify(toolParams, null, 2)}`;
       </div>
 
       {/* Debug component - remove in production */}
-      {process.env.VERCEL_ENV !== "production" && <StorageDebug />}
+      {process.env.NODE_ENV === "development" && <StorageDebug />}
     </div>
   );
 }
