@@ -2,8 +2,13 @@ import { streamText, UIMessage } from "ai";
 import { killDesktop } from "@/lib/e2b/utils";
 import { bashTool, computerTool, feishuBotTool } from "@/lib/e2b/tool";
 import { prunedMessages, shouldCleanupSandbox } from "@/lib/utils";
-import { registry } from "@/lib/model-registry";
+import { getDynamicRegistry } from "@/lib/model-registry/dynamic-registry";
 import { getBossZhipinSystemPrompt } from "@/lib/system-prompts";
+import {
+  DEFAULT_PROVIDER_CONFIGS,
+  DEFAULT_MODEL_CONFIG,
+} from "@/lib/config/models";
+import type { ModelId, ProviderConfig } from "@/lib/config/models";
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 300;
@@ -32,10 +37,28 @@ export async function POST(req: Request) {
     messages,
     sandboxId,
     preferredBrand,
-  }: { messages: UIMessage[]; sandboxId: string; preferredBrand: string } =
-    await req.json();
+    modelConfig,
+  }: {
+    messages: UIMessage[];
+    sandboxId: string;
+    preferredBrand: string;
+    modelConfig?: {
+      chatModel?: ModelId;
+      providerConfigs?: Record<string, ProviderConfig>;
+    };
+  } = await req.json();
 
   try {
+    // 🎯 获取配置的模型和provider设置
+    const chatModel = modelConfig?.chatModel || DEFAULT_MODEL_CONFIG.chatModel;
+    const providerConfigs =
+      modelConfig?.providerConfigs || DEFAULT_PROVIDER_CONFIGS;
+
+    // 使用动态registry
+    const dynamicRegistry = getDynamicRegistry(providerConfigs);
+
+    console.log(`[CHAT API] 使用模型: ${chatModel}`);
+
     // 🎯 对历史消息应用智能Token优化 (10K tokens阈值)
     const processedMessages = await prunedMessages(messages, {
       maxTokens: 15000, // 硬限制：15K tokens
@@ -60,7 +83,7 @@ export async function POST(req: Request) {
     );
 
     const result = streamText({
-      model: registry.languageModel("anthropic/claude-sonnet-4-20250514"), // Using Sonnet for computer use
+      model: dynamicRegistry.languageModel(chatModel), // 使用配置的模型
       system: getBossZhipinSystemPrompt(),
       messages: processedMessages,
       tools: {

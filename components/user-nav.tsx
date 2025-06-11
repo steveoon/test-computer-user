@@ -7,7 +7,8 @@ import { useAuthStore } from "@/lib/stores/auth-store";
 import { logoutAction } from "@/lib/actions/auth-actions";
 import { createClient } from "@/lib/utils/supabase/client";
 import { toast } from "sonner";
-import { User, LogOut } from "lucide-react";
+import { User, LogOut, Settings } from "lucide-react";
+import Link from "next/link";
 
 export function UserNav() {
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
@@ -60,6 +61,18 @@ export function UserNav() {
             {displayName}
           </span>
         </div>
+
+        {/* 配置按钮 */}
+        <Link href="/agent-config">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="p-1.5 h-auto hover:bg-blue-50 text-slate-500 hover:text-blue-600"
+            title="Agent配置"
+          >
+            <Settings className="w-3.5 h-3.5" />
+          </Button>
+        </Link>
 
         {/* 紧凑的登出按钮 */}
         <Button

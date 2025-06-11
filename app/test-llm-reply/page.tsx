@@ -7,9 +7,13 @@ import {
   clearBrandPreferences,
   getBrandStats,
 } from "@/lib/utils/brand-storage";
+import { useModelConfig } from "@/lib/stores/model-config-store";
+import { Settings } from "lucide-react";
+import Link from "next/link";
 
 export default function TestLLMReplyPage() {
   const { currentBrand } = useBrand();
+  const { classifyModel, replyModel, providerConfigs } = useModelConfig();
   const [message, setMessage] = useState("");
   const [reply, setReply] = useState("");
   const [loading, setLoading] = useState(false);
@@ -76,6 +80,11 @@ export default function TestLLMReplyPage() {
         body: JSON.stringify({
           message: messageToTest,
           brand: currentBrand,
+          modelConfig: {
+            classifyModel,
+            replyModel,
+            providerConfigs,
+          },
         }),
       });
 
@@ -97,10 +106,38 @@ export default function TestLLMReplyPage() {
     <div className="container mx-auto p-6 max-w-4xl">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">LLM 智能回复测试</h1>
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-600">当前品牌：</span>
-          <BrandSelector showHistory={true} />
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600">当前品牌：</span>
+            <BrandSelector showHistory={true} />
+          </div>
+          <Link href="/agent-config">
+            <button className="flex items-center gap-1 px-3 py-1.5 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors">
+              <Settings className="w-4 h-4" />
+              模型配置
+            </button>
+          </Link>
         </div>
+      </div>
+
+      {/* 当前模型配置显示 */}
+      <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded">
+        <h2 className="text-lg font-semibold text-blue-800 mb-3">
+          🤖 当前模型配置
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+          <div>
+            <span className="font-medium text-blue-700">分类模型：</span>
+            <span className="text-blue-600">{classifyModel}</span>
+          </div>
+          <div>
+            <span className="font-medium text-blue-700">回复模型：</span>
+            <span className="text-blue-600">{replyModel}</span>
+          </div>
+        </div>
+        <p className="text-xs text-blue-600 mt-2">
+          💡 点击右上角"模型配置"按钮可以修改使用的AI模型
+        </p>
       </div>
 
       {/* 预设消息快速测试 */}
@@ -236,7 +273,36 @@ export default function TestLLMReplyPage() {
           <li>• 回复内容会根据现有门店数据动态生成</li>
           <li>• 如果 LLM 调用失败，会自动降级到原有的规则引擎</li>
           <li>• 🎯 使用右上角品牌选择器切换不同品牌进行测试</li>
+          <li>• ⚙️ 使用"模型配置"按钮可以自定义分类和回复模型</li>
         </ul>
+      </div>
+
+      {/* 最新配置功能说明 */}
+      <div className="mt-4 p-4 bg-purple-50 rounded">
+        <h3 className="font-semibold text-purple-800 mb-2">
+          🆕 模型配置功能 (2024.12.22)：
+        </h3>
+        <div className="text-purple-700 text-sm space-y-2">
+          <div>
+            ✅ <strong>动态模型配置：</strong>{" "}
+            支持在Agent配置页面动态切换分类和回复模型
+          </div>
+          <div>
+            ✅ <strong>多Provider支持：</strong>{" "}
+            支持Qwen、Google、Anthropic、OpenAI、OpenRouter等多个模型供应商
+          </div>
+          <div>
+            ✅ <strong>实时生效：</strong>{" "}
+            配置修改后立即应用到测试页面，无需重启应用
+          </div>
+          <div>
+            ✅ <strong>baseURL配置：</strong> 支持自定义Provider的API端点URL
+          </div>
+          <div>
+            📊 <strong>当前使用：</strong> 分类模型({classifyModel}) + 回复模型(
+            {replyModel})
+          </div>
+        </div>
       </div>
 
       {/* 最新重构说明 */}

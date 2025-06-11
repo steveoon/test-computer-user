@@ -1,0 +1,132 @@
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+import type { ModelId, ProviderConfig } from "@/lib/config/models";
+import {
+  DEFAULT_MODEL_CONFIG,
+  DEFAULT_PROVIDER_CONFIGS,
+} from "@/lib/config/models";
+
+/**
+ * 🤖 模型配置管理Store
+ */
+
+interface ModelConfigState {
+  // 模型配置
+  chatModel: ModelId; // Chat API 使用的主模型
+  classifyModel: ModelId; // 分类消息使用的模型
+  replyModel: ModelId; // 生成回复使用的模型
+
+  // Provider配置
+  providerConfigs: Record<string, ProviderConfig>;
+}
+
+interface ModelConfigActions {
+  // 模型配置方法
+  setChatModel: (model: ModelId) => void;
+  setClassifyModel: (model: ModelId) => void;
+  setReplyModel: (model: ModelId) => void;
+
+  // Provider配置方法
+  updateProviderConfig: (provider: string, config: ProviderConfig) => void;
+  resetProviderConfig: (provider: string) => void;
+  resetAllProviderConfigs: () => void;
+
+  // 重置方法
+  resetToDefaults: () => void;
+}
+
+type ModelConfigStore = ModelConfigState & ModelConfigActions;
+
+export const useModelConfigStore = create<ModelConfigStore>()(
+  persist(
+    (set, _get) => ({
+      // 初始状态
+      chatModel: DEFAULT_MODEL_CONFIG.chatModel,
+      classifyModel: DEFAULT_MODEL_CONFIG.classifyModel,
+      replyModel: DEFAULT_MODEL_CONFIG.replyModel,
+      providerConfigs: { ...DEFAULT_PROVIDER_CONFIGS },
+
+      // 模型配置方法
+      setChatModel: (model: ModelId) => {
+        set({ chatModel: model });
+        console.log(`[MODEL CONFIG] Chat模型已更新为: ${model}`);
+      },
+
+      setClassifyModel: (model: ModelId) => {
+        set({ classifyModel: model });
+        console.log(`[MODEL CONFIG] 分类模型已更新为: ${model}`);
+      },
+
+      setReplyModel: (model: ModelId) => {
+        set({ replyModel: model });
+        console.log(`[MODEL CONFIG] 回复模型已更新为: ${model}`);
+      },
+
+      // Provider配置方法
+      updateProviderConfig: (provider: string, config: ProviderConfig) => {
+        set((state) => ({
+          providerConfigs: {
+            ...state.providerConfigs,
+            [provider]: config,
+          },
+        }));
+        console.log(`[MODEL CONFIG] Provider ${provider} 配置已更新:`, config);
+      },
+
+      resetProviderConfig: (provider: string) => {
+        const defaultConfig = DEFAULT_PROVIDER_CONFIGS[provider];
+        if (defaultConfig) {
+          set((state) => ({
+            providerConfigs: {
+              ...state.providerConfigs,
+              [provider]: { ...defaultConfig },
+            },
+          }));
+          console.log(`[MODEL CONFIG] Provider ${provider} 配置已重置为默认值`);
+        }
+      },
+
+      resetAllProviderConfigs: () => {
+        set({ providerConfigs: { ...DEFAULT_PROVIDER_CONFIGS } });
+        console.log(`[MODEL CONFIG] 所有Provider配置已重置为默认值`);
+      },
+
+      // 重置所有配置
+      resetToDefaults: () => {
+        set({
+          chatModel: DEFAULT_MODEL_CONFIG.chatModel,
+          classifyModel: DEFAULT_MODEL_CONFIG.classifyModel,
+          replyModel: DEFAULT_MODEL_CONFIG.replyModel,
+          providerConfigs: { ...DEFAULT_PROVIDER_CONFIGS },
+        });
+        console.log(`[MODEL CONFIG] 所有配置已重置为默认值`);
+      },
+    }),
+    {
+      name: "model-config-storage",
+      partialize: (state) => ({
+        chatModel: state.chatModel,
+        classifyModel: state.classifyModel,
+        replyModel: state.replyModel,
+        providerConfigs: state.providerConfigs,
+      }),
+    }
+  )
+);
+
+// 导出便捷的选择器hooks
+export const useChatModel = () =>
+  useModelConfigStore((state) => state.chatModel);
+export const useClassifyModel = () =>
+  useModelConfigStore((state) => state.classifyModel);
+export const useReplyModel = () =>
+  useModelConfigStore((state) => state.replyModel);
+export const useProviderConfigs = () =>
+  useModelConfigStore((state) => state.providerConfigs);
+
+// 获取特定provider的配置
+export const useProviderConfig = (provider: string) =>
+  useModelConfigStore((state) => state.providerConfigs[provider]);
+
+// 导出完整的store供组件使用
+export const useModelConfig = () => useModelConfigStore();

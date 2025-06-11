@@ -1,8 +1,13 @@
-import { registry } from "@/lib/model-registry";
+import { getDynamicRegistry } from "@/lib/model-registry/dynamic-registry";
 import { ZhipinData, MessageClassification } from "../../types/zhipin";
 import { generateText, generateObject } from "ai";
 import { z } from "zod";
 import { zhipinData } from "../data/sample-data";
+import {
+  DEFAULT_PROVIDER_CONFIGS,
+  DEFAULT_MODEL_CONFIG,
+} from "@/lib/config/models";
+import type { ModelId, ProviderConfig } from "@/lib/config/models";
 
 /**
  * 🎯 加载Boss直聘相关数据 - 优化版
@@ -220,13 +225,29 @@ export function generateSmartReply(
  * @param message 候选人消息
  * @param conversationHistory 对话历史（可选）
  * @param data Boss直聘数据
+ * @param modelConfig 模型配置（可选）
  * @returns Promise<Classification> 分类结果
  */
 export async function classifyUserMessage(
   message: string = "",
   conversationHistory: string[] = [],
-  data: ZhipinData
+  data: ZhipinData,
+  modelConfig?: {
+    classifyModel?: ModelId;
+    providerConfigs?: Record<string, ProviderConfig>;
+  }
 ): Promise<MessageClassification> {
+  // 🎯 获取配置的模型和provider设置
+  const classifyModel =
+    modelConfig?.classifyModel || DEFAULT_MODEL_CONFIG.classifyModel;
+  const providerConfigs =
+    modelConfig?.providerConfigs || DEFAULT_PROVIDER_CONFIGS;
+
+  // 使用动态registry
+  const dynamicRegistry = getDynamicRegistry(providerConfigs);
+
+  console.log(`[CLASSIFY] 使用模型: ${classifyModel}`);
+
   // 构建对话历史上下文
   const conversationContext =
     conversationHistory.length > 0
@@ -235,7 +256,7 @@ export async function classifyUserMessage(
 
   // 使用generateObject进行智能分类
   const { object: classification } = await generateObject({
-    model: registry.languageModel("qwen/qwen-max-latest"),
+    model: dynamicRegistry.languageModel(classifyModel),
     schema: z.object({
       replyType: z
         .enum([
@@ -370,14 +391,31 @@ export async function classifyUserMessage(
  * @param message 候选人消息
  * @param conversationHistory 对话历史（可选）
  * @param preferredBrand 优先使用的品牌（可选）
+ * @param modelConfig 模型配置（可选）
  * @returns Promise<string> 生成的智能回复
  */
 export async function generateSmartReplyWithLLM(
   message: string = "",
   conversationHistory: string[] = [],
-  preferredBrand?: string
+  preferredBrand?: string,
+  modelConfig?: {
+    classifyModel?: ModelId;
+    replyModel?: ModelId;
+    providerConfigs?: Record<string, ProviderConfig>;
+  }
 ): Promise<string> {
   try {
+    // 🎯 获取配置的模型和provider设置
+    const replyModel =
+      modelConfig?.replyModel || DEFAULT_MODEL_CONFIG.replyModel;
+    const providerConfigs =
+      modelConfig?.providerConfigs || DEFAULT_PROVIDER_CONFIGS;
+
+    // 使用动态registry
+    const dynamicRegistry = getDynamicRegistry(providerConfigs);
+
+    console.log(`[REPLY] 使用模型: ${replyModel}`);
+
     // 加载Boss直聘数据（支持品牌选择）
     const data = await loadZhipinData(preferredBrand);
 
@@ -385,7 +423,8 @@ export async function generateSmartReplyWithLLM(
     const classification = await classifyUserMessage(
       message,
       conversationHistory,
-      data
+      data,
+      modelConfig // 传递模型配置
     );
 
     // 第二步：基于分类结果生成智能回复
@@ -428,7 +467,7 @@ export async function generateSmartReplyWithLLM(
 
     // 生成最终回复
     const finalReply = await generateText({
-      model: registry.languageModel("qwen/qwen-plus-latest"),
+      model: dynamicRegistry.languageModel(replyModel),
       system: `你是专业的招聘助手。
 
       # 回复规则
@@ -478,7 +517,8 @@ export async function generateSmartReplyWithLLM(
         const classification = await classifyUserMessage(
           message,
           conversationHistory,
-          data
+          data,
+          modelConfig // 传递模型配置
         );
         replyContext = classification.replyType;
         console.log(`✅ 降级模式使用分类结果: ${replyContext}`);

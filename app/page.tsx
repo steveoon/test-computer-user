@@ -27,6 +27,7 @@ import { FEISHU_NOTIFICATION_LABELS } from "@/types";
 import { UserNav } from "@/components/user-nav";
 import { StorageDebug } from "@/components/storage-debug";
 import { useAuthStore } from "@/lib/stores/auth-store";
+import { useModelConfig } from "@/lib/stores/model-config-store";
 
 /**
  * 🏠 主聊天界面组件
@@ -40,6 +41,9 @@ export default function Chat() {
 
   // 🏪 品牌管理
   const { currentBrand } = useBrand();
+
+  // 🤖 模型配置
+  const { chatModel, providerConfigs } = useModelConfig();
 
   // Create separate refs for mobile and desktop to ensure both scroll properly
   const [desktopContainerRef, desktopEndRef] = useScrollToBottom();
@@ -80,6 +84,10 @@ export default function Chat() {
     body: {
       sandboxId,
       preferredBrand: currentBrand, // 🎯 传递当前选择的品牌
+      modelConfig: {
+        chatModel,
+        providerConfigs,
+      }, // 🎯 传递模型配置
     },
     maxSteps: 30,
     onError: (error) => {
@@ -129,7 +137,7 @@ export default function Chat() {
       }
     },
     onFinish: (message, { finishReason }) => {
-      console.log("Chat finished:", message);
+      // console.log("Chat finished:", message);
       // console.log("Finish reason:", finishReason);
 
       // 🎯 发送任务完成通知 - 避免飞书通知工具的循环调用

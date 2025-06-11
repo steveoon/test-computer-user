@@ -14,7 +14,7 @@ export const registry = createProviderRegistry(
     // register provider with prefix and default setup:
     anthropic: createAnthropic({
       apiKey: process.env.ANTHROPIC_API_KEY,
-      baseURL: "https://apic.ohmygpt.com/v1",
+      baseURL: "https://c-z0-api-01.hash070.com/v1",
     }),
     openai: createOpenAI({
       apiKey: process.env.ANTHROPIC_API_KEY,
