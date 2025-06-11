@@ -17,9 +17,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AI SDK Computer Use Demo",
+  title: "AI智能招聘助手 - 餐饮兼职招聘平台",
   description:
-    "A Next.js app that uses the AI SDK and Anthropic to create a computer using agent.",
+    "基于AI的智能招聘助手平台，专为餐饮品牌提供高效的兼职招聘解决方案。支持多品牌门店管理、智能候选人匹配、自动化面试邀约，让招聘更精准、更高效。",
 };
 
 export default function RootLayout({

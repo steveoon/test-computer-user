@@ -21,48 +21,28 @@ export const ProjectInfo = () => {
           安装中文字体（如 <code>fonts-noto-cjk</code> 或{" "}
           <code>fonts-noto</code>）。
         </p>
-        <p>
-          本项目基于{" "}
-          <StyledLink href="https://sdk.vercel.ai">AI SDK</StyledLink>、
-          <StyledLink href="https://www.anthropic.com/claude/sonnet">
-            Anthropic Claude Sonnet 3.7
-          </StyledLink>
-          以及 <StyledLink href="https://e2b.dev">e2b desktop</StyledLink>{" "}
-          构建。
-        </p>
-        <p>
-          了解更多关于
-          <Link
-            className="text-blue-500 dark:text-blue-400"
-            href="https://sdk.vercel.ai/docs/guides/computer-use"
-            target="_blank"
-          >
-            Computer Use
-          </Link>
-          与 AI SDK 的信息。
-        </p>
       </div>
     </motion.div>
   );
 };
 
-const StyledLink = ({
-  children,
-  href,
-}: {
-  children: React.ReactNode;
-  href: string;
-}) => {
-  return (
-    <Link
-      className="text-blue-500 dark:text-blue-400"
-      href={href}
-      target="_blank"
-    >
-      {children}
-    </Link>
-  );
-};
+// const StyledLink = ({
+//   children,
+//   href,
+// }: {
+//   children: React.ReactNode;
+//   href: string;
+// }) => {
+//   return (
+//     <Link
+//       className="text-blue-500 dark:text-blue-400"
+//       href={href}
+//       target="_blank"
+//     >
+//       {children}
+//     </Link>
+//   );
+// };
 
 // const Code = ({ text }: { text: string }) => {
 //   return <code className="">{text}</code>;
