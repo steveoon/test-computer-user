@@ -200,19 +200,62 @@ export function useDesktopSandbox() {
   const initializeDesktop = useCallback(async () => {
     try {
       setIsInitializing(true);
+      console.log("Starting desktop initialization...");
 
       // Use the provided ID or create a new one
       const { streamUrl: newStreamUrl, id } = await getDesktopURL(
         sandboxId ?? undefined
       );
 
+      console.log("Desktop initialized successfully:", {
+        sandboxId: id,
+        streamUrl: newStreamUrl ? "URL received" : "No URL",
+      });
+
       setStreamUrl(newStreamUrl);
       setSandboxId(id);
       setSandboxStatus("running");
     } catch (err) {
       console.error("Failed to initialize desktop:", err);
-      toast.error("Failed to initialize desktop");
+
+      // 更详细的错误信息
+      const errorMessage = err instanceof Error ? err.message : "Unknown error";
+      const errorDetails = {
+        message: errorMessage,
+        sandboxId: sandboxId,
+        timestamp: new Date().toISOString(),
+      };
+
+      console.error("Desktop initialization error details:", errorDetails);
+
+      // 根据错误类型显示不同的提示
+      if (errorMessage.includes("cache key") || errorMessage.includes("API")) {
+        toast.error("API 配置错误", {
+          description: "请检查 E2B API 密钥配置",
+          richColors: true,
+          position: "top-center",
+        });
+      } else if (
+        errorMessage.includes("network") ||
+        errorMessage.includes("fetch")
+      ) {
+        toast.error("网络连接失败", {
+          description: "请检查网络连接后重试",
+          richColors: true,
+          position: "top-center",
+        });
+      } else {
+        toast.error("初始化桌面失败", {
+          description: errorMessage,
+          richColors: true,
+          position: "top-center",
+        });
+      }
+
       setSandboxStatus("unknown");
+      // 清理状态，允许重试
+      setSandboxId(null);
+      setStreamUrl(null);
     } finally {
       setIsInitializing(false);
     }
@@ -232,8 +275,14 @@ export function useDesktopSandbox() {
       return;
     }
 
+    // 防止重复初始化
+    if (isInitializing || sandboxId || streamUrl) {
+      return;
+    }
+
     initializeDesktop();
-  }, [isAuthenticated, isAuthLoading, reset, initializeDesktop]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, isAuthLoading]); // 移除不必要的依赖项，避免循环
 
   return {
     sandboxId,

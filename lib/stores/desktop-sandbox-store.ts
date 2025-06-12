@@ -1,4 +1,4 @@
-import { create } from "zustand";
+import { create, StateCreator } from "zustand";
 import { devtools } from "zustand/middleware";
 
 interface DesktopSandboxState {
@@ -26,22 +26,52 @@ const initialState = {
   isPausing: false,
 };
 
-export const useDesktopSandboxStore = create<DesktopSandboxState>()(
-  devtools(
-    (set) => ({
-      ...initialState,
+// 检查是否可以安全使用 devtools
+const canUseDevtools = () => {
+  if (typeof window === "undefined") return false;
 
-      setSandboxId: (id) => set({ sandboxId: id }),
-      setStreamUrl: (url) => set({ streamUrl: url }),
-      setSandboxStatus: (status) => set({ sandboxStatus: status }),
-      setIsInitializing: (initializing) =>
-        set({ isInitializing: initializing }),
-      setIsPausing: (pausing) => set({ isPausing: pausing }),
+  // 检查是否在开发环境
+  if (process.env.NODE_ENV !== "development") return false;
 
-      reset: () => set(initialState),
-    }),
-    {
-      name: "desktop-sandbox-store",
-    }
-  )
-);
+  // 尝试访问 localStorage 以确保没有权限问题
+  try {
+    const testKey = "__zustand_devtools_test__";
+    window.localStorage.setItem(testKey, "test");
+    window.localStorage.removeItem(testKey);
+    return true;
+  } catch {
+    console.warn("Cannot access localStorage, disabling Zustand devtools");
+    return false;
+  }
+};
+
+// 创建 store 的函数
+const createStore = () => {
+  const storeCreator: StateCreator<DesktopSandboxState> = (set) => ({
+    ...initialState,
+
+    setSandboxId: (id: string | null) => set({ sandboxId: id }),
+    setStreamUrl: (url: string | null) => set({ streamUrl: url }),
+    setSandboxStatus: (status: "running" | "paused" | "unknown") =>
+      set({ sandboxStatus: status }),
+    setIsInitializing: (initializing: boolean) =>
+      set({ isInitializing: initializing }),
+    setIsPausing: (pausing: boolean) => set({ isPausing: pausing }),
+
+    reset: () => set(initialState),
+  });
+
+  // 只在可以使用 devtools 时才包装
+  if (canUseDevtools()) {
+    return create<DesktopSandboxState>()(
+      devtools(storeCreator, {
+        name: "desktop-sandbox-store",
+      })
+    );
+  }
+
+  // 否则直接创建 store
+  return create<DesktopSandboxState>()(storeCreator);
+};
+
+export const useDesktopSandboxStore = createStore();
