@@ -38,13 +38,28 @@ export const detectEnvironment = () => {
     }
   }
 
-  /* 本地开发 */
+  /* 本地开发 - 只在客户端且 window 可用时检测 */
   if (typeof window !== "undefined") {
     const host = window.location.hostname;
     if (host === "localhost" || host.startsWith("127.")) return "local";
   }
 
   return "unknown";
+};
+
+/**
+ * 安全的环境检测 - 避免 hydration 不匹配
+ * 在服务端和客户端初始渲染时都返回 "unknown"，
+ * 客户端会在 hydration 后通过 useEffect 更新为正确值
+ */
+export const detectEnvironmentSafe = () => {
+  // 在服务端或客户端初始渲染时返回默认值
+  if (typeof window === "undefined") {
+    return "unknown";
+  }
+
+  // 客户端 hydration 后的正确检测
+  return detectEnvironment();
 };
 
 /**
@@ -91,10 +106,10 @@ export const getEnvironmentLimits = (): EnvironmentLimits => {
 };
 
 /**
- * 获取环境描述信息
+ * 获取环境描述信息 - 避免 hydration 不匹配的安全版本
  */
 export const getEnvironmentInfo = () => {
-  const env = detectEnvironment();
+  const env = detectEnvironmentSafe();
   const limits = getEnvironmentLimits();
 
   return {
