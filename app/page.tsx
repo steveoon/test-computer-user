@@ -30,6 +30,10 @@ import { useAuthStore } from "@/lib/stores/auth-store";
 import { useModelConfig } from "@/lib/stores/model-config-store";
 import { MODEL_DICTIONARY } from "@/lib/config/models";
 import {
+  getEnvironmentLimits,
+  getEnvironmentInfo,
+} from "@/lib/utils/environment";
+import {
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -63,6 +67,13 @@ export default function Chat() {
   const [sandboxStatus, setSandboxStatus] = useState<
     "running" | "paused" | "unknown"
   >("unknown");
+
+  // 🔄 防止飞书通知循环调用的标志
+  const [isProcessingError, setIsProcessingError] = useState(false);
+
+  // 🌍 环境适配配置
+  const envLimits = getEnvironmentLimits();
+  const envInfo = getEnvironmentInfo();
 
   // 🎯 检查是否为请求过大错误
   const isPayloadTooLargeError = (error: Error) => {
@@ -109,11 +120,18 @@ export default function Chat() {
         stack: error.stack,
       });
 
+      // 🔄 防止错误处理循环
+      if (isProcessingError) {
+        console.warn("🚫 正在处理错误中，跳过重复处理");
+        return;
+      }
+
       // 🎯 处理请求过大错误
       if (isPayloadTooLargeError(error)) {
+        setIsProcessingError(true);
         console.warn("💾 检测到请求载荷过大错误，准备智能清理");
 
-        // 🚨 发送飞书载荷过大错误通知
+        // 🚨 发送飞书载荷过大错误通知（仅一次）
         sendFeishuNotification("payload_error", {
           additional_info: `对话历史包含${messages.length}条消息，估算大小${(
             JSON.stringify(messages).length /
@@ -128,9 +146,11 @@ export default function Chat() {
             // 🎯 清理成功后自动重试
             setTimeout(() => {
               console.log("🔄 载荷过大错误处理完成，自动重试请求");
+              setIsProcessingError(false); // 重置错误处理标志
               reload();
             }, 1000);
           } else {
+            setIsProcessingError(false); // 重置错误处理标志
             toast.error("请求过大", {
               description: "请考虑清空部分对话历史后重试",
               richColors: true,
@@ -394,9 +414,15 @@ ${JSON.stringify(toolParams, null, 2)}`;
       `📊 消息历史大小: ${estimatedSizeMB.toFixed(2)}MB (${messageCount}条消息)`
     );
 
-    // 🚨 自动清理策略：严重超量时直接清理
-    if (estimatedSizeMB > 8 || messageCount > 80) {
-      console.warn("🔄 检测到消息历史严重超量，执行自动清理");
+    // 🚨 环境自适应自动清理阈值
+    if (
+      estimatedSizeMB > envLimits.maxSizeMB ||
+      messageCount > envLimits.maxMessageCount
+    ) {
+      console.warn(
+        `🔄 检测到消息历史超过${envInfo.environment}环境限制，执行自动清理`
+      );
+      console.log(`📊 当前环境: ${envInfo.description}`);
       event.preventDefault(); // 先阻止提交
 
       const cleanResult = smartClearMessages(true); // 自动清理
@@ -409,13 +435,16 @@ ${JSON.stringify(toolParams, null, 2)}`;
       return;
     }
 
-    // 🟡 警告阈值：提示用户清理
-    else if (estimatedSizeMB > 5 || messageCount > 50) {
+    // 🟡 环境自适应警告阈值
+    else if (
+      estimatedSizeMB > envLimits.warningSizeMB ||
+      messageCount > envLimits.warningMessageCount
+    ) {
       console.warn("⚠️ 消息历史可能过大，建议清理");
       toast.warning("对话历史较长，可能影响响应速度", {
         description: `当前${messageCount}条消息，${estimatedSizeMB.toFixed(
           2
-        )}MB`,
+        )}MB (${envInfo.environment}环境)`,
         richColors: true,
         position: "top-center",
         action: {
@@ -445,20 +474,22 @@ ${JSON.stringify(toolParams, null, 2)}`;
   useEffect(() => {
     const messageCount = messages.length;
 
-    if (messageCount > 0 && messageCount % 15 === 0) {
+    if (messageCount > 0 && messageCount % 8 === 0) {
       console.log(`📝 对话已达到${messageCount}条消息`);
 
-      // 🚨 超过100条消息时自动清理
-      if (messageCount >= 100) {
-        console.warn("🔄 消息数量超过100条，执行自动清理");
+      // 🚨 环境自适应自动清理
+      if (messageCount >= envLimits.autoCleanThreshold) {
+        console.warn(
+          `🔄 消息数量超过${envLimits.autoCleanThreshold}条，执行自动清理 (${envInfo.environment}环境优化)`
+        );
         smartClearMessages(true);
         return;
       }
 
-      // 🟡 超过60条消息时给出强烈建议
-      if (messageCount >= 60) {
-        toast.warning("对话历史很长", {
-          description: `当前${messageCount}条消息，建议清理以提升性能`,
+      // 🟡 环境自适应强烈建议
+      if (messageCount >= envLimits.warningMessageCount + 10) {
+        toast.warning("对话历史较长", {
+          description: `当前${messageCount}条消息，建议清理以适配${envInfo.environment}环境`,
           richColors: true,
           position: "top-center",
           duration: 8000,
@@ -468,8 +499,8 @@ ${JSON.stringify(toolParams, null, 2)}`;
           },
         });
       }
-      // 🟢 超过30条消息时给出温和提示
-      else if (messageCount >= 30) {
+      // 🟢 环境自适应温和提示
+      else if (messageCount >= envLimits.warningMessageCount) {
         toast.info("对话历史较长", {
           description: `当前${messageCount}条消息，建议适时清理`,
           richColors: true,
@@ -481,7 +512,14 @@ ${JSON.stringify(toolParams, null, 2)}`;
         });
       }
     }
-  }, [messages.length, smartClearMessages, handleSmartClearClick]);
+  }, [
+    messages.length,
+    smartClearMessages,
+    handleSmartClearClick,
+    envLimits.autoCleanThreshold,
+    envLimits.warningMessageCount,
+    envInfo.environment,
+  ]);
 
   // 监听错误状态变化
   useEffect(() => {
@@ -882,6 +920,16 @@ ${JSON.stringify(toolParams, null, 2)}`;
                       <span className="font-medium">{currentBrand}</span>
                     </div>
                   )}
+                  {/* 环境信息显示 */}
+                  <div
+                    className="flex items-center gap-1.5"
+                    title={envInfo.description}
+                  >
+                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                    <span className="font-medium capitalize">
+                      {envInfo.environment}
+                    </span>
+                  </div>
                   {/* 模型配置显示 */}
                   <Popover>
                     <PopoverTrigger asChild>
@@ -1122,6 +1170,16 @@ ${JSON.stringify(toolParams, null, 2)}`;
                     <span className="font-medium">{currentBrand}</span>
                   </div>
                 )}
+                {/* 移动端环境信息 */}
+                <div
+                  className="flex items-center gap-1"
+                  title={envInfo.description}
+                >
+                  <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
+                  <span className="font-medium text-xs capitalize">
+                    {envInfo.environment}
+                  </span>
+                </div>
                 {/* 移动端模型配置显示 */}
                 <Popover>
                   <PopoverTrigger asChild>

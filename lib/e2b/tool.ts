@@ -653,11 +653,17 @@ export const computerTool = (
           console.log(
             `🖼️ 截图原始大小: ${(base64Data.length / 1024).toFixed(2)}KB`
           );
+          // 🌍 根据环境动态调整压缩参数
+          const { getEnvironmentLimits } = await import(
+            "@/lib/utils/environment"
+          );
+          const envLimits = getEnvironmentLimits();
+
           const compressedData = await compressImageServerV2(base64Data, {
-            targetSizeKB: 200,
-            maxSizeKB: 250,
-            maxQuality: 100,
-            minQuality: 60,
+            targetSizeKB: envLimits.compressionTargetKB, // 环境自适应目标大小
+            maxSizeKB: envLimits.compressionMaxKB, // 环境自适应最大大小
+            maxQuality: 90, // 通用最高质量
+            minQuality: 50, // 通用最低质量
             enableAdaptive: true,
             preserveText: true,
           });
