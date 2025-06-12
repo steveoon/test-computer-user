@@ -1,10 +1,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type { User } from "@supabase/supabase-js";
-import {
-  createSecureStorage,
-  migrateFromLocalStorage,
-} from "@/lib/utils/secure-storage";
+import { createSecureStorage } from "@/lib/utils/secure-storage";
 
 interface AuthState {
   readonly user: User | null;
@@ -79,18 +76,11 @@ export const useAuthStore = create<AuthStore>()(
         user: state.user,
         isAuthenticated: state.isAuthenticated,
       }),
-      // 🔄 数据迁移 - 将旧的localStorage数据迁移到IndexedDB
+      // 🔄 状态恢复处理
       onRehydrateStorage: () => {
         return async (_state, error) => {
           if (error) {
             console.error("[AUTH STORE] 恢复状态时出错:", error);
-          } else {
-            // 迁移旧数据
-            try {
-              await migrateFromLocalStorage("auth-storage", secureStorage);
-            } catch (migrationError) {
-              console.error("[AUTH STORE] 数据迁移失败:", migrationError);
-            }
           }
         };
       },

@@ -2,6 +2,9 @@
  * 🤖 AI模型配置和数据字典
  */
 
+// 模型类别定义
+export type ModelCategory = "chat" | "general";
+
 // 模型数据字典
 export const MODEL_DICTIONARY = {
   // Qwen 模型
@@ -9,13 +12,13 @@ export const MODEL_DICTIONARY = {
     provider: "qwen",
     name: "Qwen Max Latest",
     description: "阿里云通义千问最新旗舰模型",
-    category: "general",
+    categories: ["general"] as ModelCategory[],
   },
   "qwen/qwen-plus-latest": {
     provider: "qwen",
     name: "Qwen Plus Latest",
     description: "阿里云通义千问增强版模型",
-    category: "general",
+    categories: ["general"] as ModelCategory[],
   },
 
   // Google 模型
@@ -23,27 +26,27 @@ export const MODEL_DICTIONARY = {
     provider: "google",
     name: "Gemini 2.5 Flash Preview",
     description: "Google Gemini 2.5 Flash 预览版",
-    category: "general",
+    categories: ["general"] as ModelCategory[],
   },
   "google/gemini-2.5-pro-preview-05-06": {
     provider: "google",
     name: "Gemini 2.5 Pro Preview",
     description: "Google Gemini 2.5 Pro 预览版",
-    category: "general",
+    categories: ["general"] as ModelCategory[],
   },
 
-  // Anthropic 模型
+  // Anthropic 模型 - 既可以做Chat也可以做General任务
   "anthropic/claude-3-7-sonnet-20250219": {
     provider: "anthropic",
     name: "Claude 3.7 Sonnet",
     description: "Anthropic Claude 3.7 Sonnet",
-    category: "chat",
+    categories: ["chat", "general"] as ModelCategory[],
   },
   "anthropic/claude-sonnet-4-20250514": {
     provider: "anthropic",
     name: "Claude Sonnet 4",
     description: "Anthropic Claude Sonnet 4 (最新)",
-    category: "chat",
+    categories: ["chat", "general"] as ModelCategory[],
   },
 
   // OpenAI 模型
@@ -51,19 +54,19 @@ export const MODEL_DICTIONARY = {
     provider: "openai",
     name: "GPT-4.1",
     description: "OpenAI GPT-4.1",
-    category: "general",
+    categories: ["general"] as ModelCategory[],
   },
   "openai/gpt-4o": {
     provider: "openai",
     name: "GPT-4o",
     description: "OpenAI GPT-4o",
-    category: "general",
+    categories: ["general"] as ModelCategory[],
   },
   "openai/gpt-4o-mini": {
     provider: "openai",
     name: "GPT-4o Mini",
     description: "OpenAI GPT-4o Mini (轻量版)",
-    category: "general",
+    categories: ["general"] as ModelCategory[],
   },
 
   // OpenRouter 模型
@@ -71,49 +74,63 @@ export const MODEL_DICTIONARY = {
     provider: "openrouter",
     name: "Qwen3 235B",
     description: "通过OpenRouter访问的Qwen3 235B",
-    category: "general",
+    categories: ["general"] as ModelCategory[],
   },
   "openrouter/qwen/qwen-max": {
     provider: "openrouter",
     name: "Qwen Max (OpenRouter)",
     description: "通过OpenRouter访问的Qwen Max",
-    category: "general",
+    categories: ["general"] as ModelCategory[],
   },
   "openrouter/deepseek/deepseek-chat-v3-0324": {
     provider: "openrouter",
     name: "DeepSeek Chat v3",
     description: "通过OpenRouter访问的DeepSeek Chat v3",
-    category: "general",
+    categories: ["general"] as ModelCategory[],
   },
   "openrouter/deepseek/deepseek-r1-0528": {
     provider: "openrouter",
     name: "DeepSeek R1",
     description: "通过OpenRouter访问的DeepSeek R1",
-    category: "general",
+    categories: ["general"] as ModelCategory[],
   },
   "openrouter/anthropic/claude-3.7-sonnet": {
     provider: "openrouter",
     name: "Claude 3.7 Sonnet (OpenRouter)",
     description: "通过OpenRouter访问的Claude 3.7 Sonnet",
-    category: "chat",
+    categories: ["chat", "general"] as ModelCategory[],
   },
   "openrouter/anthropic/claude-sonnet-4": {
     provider: "openrouter",
     name: "Claude Sonnet 4 (OpenRouter)",
     description: "通过OpenRouter访问的Claude Sonnet 4",
-    category: "chat",
+    categories: ["chat", "general"] as ModelCategory[],
   },
   "openrouter/openai/gpt-4.1": {
     provider: "openrouter",
     name: "GPT-4.1 (OpenRouter)",
     description: "通过OpenRouter访问的GPT-4.1",
-    category: "general",
+    categories: ["general"] as ModelCategory[],
   },
   "openrouter/openai/gpt-4o": {
     provider: "openrouter",
     name: "GPT-4o (OpenRouter)",
     description: "通过OpenRouter访问的GPT-4o",
-    category: "general",
+    categories: ["general"] as ModelCategory[],
+  },
+
+  // OhMyGPT 模型
+  "ohmygpt/gemini-2.5-pro-preview-06-05": {
+    provider: "ohmygpt",
+    name: "Gemini 2.5 Pro Preview (OhMyGPT)",
+    description: "通过OhMyGPT访问的Gemini 2.5 Pro Preview",
+    categories: ["general"] as ModelCategory[],
+  },
+  "ohmygpt/gemini-2.5-flash-preview-05-20": {
+    provider: "ohmygpt",
+    name: "Gemini 2.5 Flash Preview (OhMyGPT)",
+    description: "通过OhMyGPT访问的Gemini 2.5 Flash Preview",
+    categories: ["general"] as ModelCategory[],
   },
 } as const;
 
@@ -151,6 +168,11 @@ export const DEFAULT_PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     baseURL: "https://openrouter.ai/api/v1",
     description: "OpenRouter 统一接口",
   },
+  ohmygpt: {
+    name: "OhMyGPT",
+    baseURL: "https://c-z0-api-01.hash070.com/v1",
+    description: "OhMyGPT 统一接口",
+  },
   qwen: {
     name: "Qwen",
     baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1",
@@ -158,22 +180,22 @@ export const DEFAULT_PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
   },
   google: {
     name: "Google",
-    baseURL: "", // Google 使用默认配置
+    baseURL: "https://generativelanguage.googleapis.com/v1beta", // Google 使用默认配置
     description: "Google Gemini 模型",
   },
 };
 
-// 获取聊天模型列表（仅Anthropic模型）
+// 获取聊天模型列表（支持chat类别的模型）
 export function getChatModels(): ModelId[] {
-  return Object.keys(MODEL_DICTIONARY).filter(
-    (modelId) => MODEL_DICTIONARY[modelId as ModelId].category === "chat"
+  return Object.keys(MODEL_DICTIONARY).filter((modelId) =>
+    MODEL_DICTIONARY[modelId as ModelId].categories.includes("chat")
   ) as ModelId[];
 }
 
-// 获取通用模型列表
+// 获取通用模型列表（支持general类别的模型）
 export function getGeneralModels(): ModelId[] {
-  return Object.keys(MODEL_DICTIONARY).filter(
-    (modelId) => MODEL_DICTIONARY[modelId as ModelId].category === "general"
+  return Object.keys(MODEL_DICTIONARY).filter((modelId) =>
+    MODEL_DICTIONARY[modelId as ModelId].categories.includes("general")
   ) as ModelId[];
 }
 
@@ -187,6 +209,26 @@ export function getModelsByProvider(provider: string): ModelId[] {
   return Object.keys(MODEL_DICTIONARY).filter(
     (modelId) => MODEL_DICTIONARY[modelId as ModelId].provider === provider
   ) as ModelId[];
+}
+
+// 根据类别获取模型（支持多类别查询）
+export function getModelsByCategory(category: ModelCategory): ModelId[] {
+  return Object.keys(MODEL_DICTIONARY).filter((modelId) =>
+    MODEL_DICTIONARY[modelId as ModelId].categories.includes(category)
+  ) as ModelId[];
+}
+
+// 检查模型是否支持特定类别
+export function modelSupportsCategory(
+  modelId: ModelId,
+  category: ModelCategory
+): boolean {
+  return MODEL_DICTIONARY[modelId].categories.includes(category);
+}
+
+// 获取模型支持的所有类别
+export function getModelCategories(modelId: ModelId): ModelCategory[] {
+  return [...MODEL_DICTIONARY[modelId].categories];
 }
 
 // 默认配置

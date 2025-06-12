@@ -40,10 +40,21 @@ export function createDynamicRegistry(
         apiKey: process.env.OPENROUTER_API_KEY,
       }),
 
+      // OhMyGPT provider
+      ohmygpt: createOpenAICompatible({
+        name: "ohmygpt",
+        baseURL:
+          providerConfigs.ohmygpt?.baseURL ||
+          "https://c-z0-api-01.hash070.com/v1",
+        apiKey: process.env.ANTHROPIC_API_KEY,
+      }),
+
       // Google provider
       google: createGoogleGenerativeAI({
         apiKey: process.env.GEMINI_API_KEY,
-        // Google不支持自定义baseURL
+        baseURL:
+          providerConfigs.google?.baseURL ||
+          "https://generativelanguage.googleapis.com/v1beta",
       }),
 
       // Qwen provider

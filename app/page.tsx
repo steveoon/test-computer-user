@@ -124,7 +124,13 @@ export default function Chat() {
         // 延迟执行，确保错误状态已更新
         setTimeout(() => {
           const wasHandled = handlePayloadTooLargeError();
-          if (!wasHandled) {
+          if (wasHandled) {
+            // 🎯 清理成功后自动重试
+            setTimeout(() => {
+              console.log("🔄 载荷过大错误处理完成，自动重试请求");
+              reload();
+            }, 1000);
+          } else {
             toast.error("请求过大", {
               description: "请考虑清空部分对话历史后重试",
               richColors: true,
@@ -233,7 +239,7 @@ ${JSON.stringify(toolParams, null, 2)}`;
     return FEISHU_NOTIFICATION_LABELS[type] || "通知";
   };
 
-  // 🧹 智能消息清理策略
+  // 🧹 智能消息清理策略 - 自动执行清理
   const handlePayloadTooLargeError = useCallback(() => {
     const messageCount = messages.length;
 
@@ -248,30 +254,26 @@ ${JSON.stringify(toolParams, null, 2)}`;
       return false; // 不自动清理
     }
 
-    // 计算需要保留的消息数量（保留最近的30%，至少3条）
-    const keepCount = Math.max(3, Math.floor(messageCount * 0.3));
+    // 计算需要保留的消息数量（保留最近的40%，至少5条）
+    const keepCount = Math.max(5, Math.floor(messageCount * 0.4));
     const removeCount = messageCount - keepCount;
 
-    if (
-      window.confirm(
-        `对话历史过长导致请求失败。是否自动清理前${removeCount}条消息？\n\n` +
-          `将保留最近的${keepCount}条消息以维持上下文连续性。`
-      )
-    ) {
-      // 智能保留策略：优先保留最近的消息
-      const recentMessages = messages.slice(-keepCount);
-      setMessages(recentMessages);
+    // 🎯 自动执行清理，不需要用户确认
+    console.log(
+      `🔄 自动清理${removeCount}条历史消息，保留最近的${keepCount}条`
+    );
 
-      toast.success(`已清理${removeCount}条历史消息`, {
-        description: `保留了最近的${keepCount}条消息`,
-        richColors: true,
-        position: "top-center",
-      });
+    const recentMessages = messages.slice(-keepCount);
+    setMessages(recentMessages);
 
-      return true; // 表示已清理
-    }
+    toast.success(`已自动清理${removeCount}条历史消息`, {
+      description: `保留了最近的${keepCount}条消息，请重新提交您的请求`,
+      richColors: true,
+      position: "top-center",
+      duration: 6000,
+    });
 
-    return false; // 用户拒绝清理
+    return true; // 表示已清理
   }, [messages, setMessages]);
 
   const stop = () => {
@@ -323,28 +325,50 @@ ${JSON.stringify(toolParams, null, 2)}`;
     }
   };
 
-  // 🎯 智能部分清理 - 清理一半的历史消息
-  const smartClearMessages = useCallback(() => {
-    if (messages.length <= 2) {
-      toast.info("消息太少，无需清理", {
-        richColors: true,
-        position: "top-center",
-      });
-      return;
-    }
+  // 🎯 智能部分清理 - 支持自动和手动清理
+  const smartClearMessages = useCallback(
+    (autoClean = false) => {
+      if (messages.length <= 2) {
+        if (!autoClean) {
+          toast.info("消息太少，无需清理", {
+            richColors: true,
+            position: "top-center",
+          });
+        }
+        return false;
+      }
 
-    const keepCount = Math.ceil(messages.length / 2);
-    const recentMessages = messages.slice(-keepCount);
+      const keepCount = Math.ceil(messages.length / 2);
+      const removeCount = messages.length - keepCount;
+      const recentMessages = messages.slice(-keepCount);
 
-    if (window.confirm(`保留最近的${keepCount}条消息，清理其余历史记录？`)) {
-      setMessages(recentMessages);
-      toast.success(`已清理${messages.length - keepCount}条历史消息`, {
-        description: `保持了最近的${keepCount}条消息`,
-        richColors: true,
-        position: "top-center",
-      });
-    }
-  }, [messages, setMessages]);
+      // 🎯 自动清理模式或用户确认手动清理
+      if (
+        autoClean ||
+        window.confirm(`保留最近的${keepCount}条消息，清理其余历史记录？`)
+      ) {
+        setMessages(recentMessages);
+
+        const actionText = autoClean ? "已自动清理" : "已清理";
+        toast.success(`${actionText}${removeCount}条历史消息`, {
+          description: `保持了最近的${keepCount}条消息`,
+          richColors: true,
+          position: "top-center",
+          duration: autoClean ? 6000 : 4000,
+        });
+
+        return true;
+      }
+
+      return false;
+    },
+    [messages, setMessages]
+  );
+
+  // 🎯 手动清理的点击处理器
+  const handleSmartClearClick = useCallback(() => {
+    smartClearMessages(false);
+  }, [smartClearMessages]);
 
   const isLoading = status !== "ready";
 
@@ -361,26 +385,42 @@ ${JSON.stringify(toolParams, null, 2)}`;
       return;
     }
 
-    // 🎯 预防性检查：估算消息大小
+    // 🎯 预防性检查：估算消息大小和数量
     const messageSize = JSON.stringify(messages).length;
     const estimatedSizeMB = messageSize / (1024 * 1024);
+    const messageCount = messages.length;
 
     console.log(
-      `📊 消息历史大小: ${estimatedSizeMB.toFixed(2)}MB (${
-        messages.length
-      }条消息)`
+      `📊 消息历史大小: ${estimatedSizeMB.toFixed(2)}MB (${messageCount}条消息)`
     );
 
-    // 如果消息历史过大，给出警告
-    if (estimatedSizeMB > 5) {
+    // 🚨 自动清理策略：严重超量时直接清理
+    if (estimatedSizeMB > 8 || messageCount > 80) {
+      console.warn("🔄 检测到消息历史严重超量，执行自动清理");
+      event.preventDefault(); // 先阻止提交
+
+      const cleanResult = smartClearMessages(true); // 自动清理
+      if (cleanResult) {
+        // 清理成功后延迟重新提交
+        setTimeout(() => {
+          handleSubmit(event);
+        }, 500);
+      }
+      return;
+    }
+
+    // 🟡 警告阈值：提示用户清理
+    else if (estimatedSizeMB > 5 || messageCount > 50) {
       console.warn("⚠️ 消息历史可能过大，建议清理");
       toast.warning("对话历史较长，可能影响响应速度", {
-        description: "建议适时清理历史消息以提升性能",
+        description: `当前${messageCount}条消息，${estimatedSizeMB.toFixed(
+          2
+        )}MB`,
         richColors: true,
         position: "top-center",
         action: {
           label: "智能清理",
-          onClick: smartClearMessages,
+          onClick: handleSmartClearClick,
         },
       });
     }
@@ -401,24 +441,47 @@ ${JSON.stringify(toolParams, null, 2)}`;
     handleSubmit(event);
   };
 
-  // 监听消息数量变化，给出提示
+  // 监听消息数量变化，智能清理管理
   useEffect(() => {
-    if (messages.length > 0 && messages.length % 20 === 0) {
-      console.log(`📝 对话已达到${messages.length}条消息`);
+    const messageCount = messages.length;
 
-      if (messages.length >= 50) {
+    if (messageCount > 0 && messageCount % 15 === 0) {
+      console.log(`📝 对话已达到${messageCount}条消息`);
+
+      // 🚨 超过100条消息时自动清理
+      if (messageCount >= 100) {
+        console.warn("🔄 消息数量超过100条，执行自动清理");
+        smartClearMessages(true);
+        return;
+      }
+
+      // 🟡 超过60条消息时给出强烈建议
+      if (messageCount >= 60) {
+        toast.warning("对话历史很长", {
+          description: `当前${messageCount}条消息，建议清理以提升性能`,
+          richColors: true,
+          position: "top-center",
+          duration: 8000,
+          action: {
+            label: "立即清理",
+            onClick: handleSmartClearClick,
+          },
+        });
+      }
+      // 🟢 超过30条消息时给出温和提示
+      else if (messageCount >= 30) {
         toast.info("对话历史较长", {
-          description: "建议适时清理以避免请求过大错误",
+          description: `当前${messageCount}条消息，建议适时清理`,
           richColors: true,
           position: "top-center",
           action: {
             label: "智能清理",
-            onClick: smartClearMessages,
+            onClick: handleSmartClearClick,
           },
         });
       }
     }
-  }, [messages.length, smartClearMessages]);
+  }, [messages.length, smartClearMessages, handleSmartClearClick]);
 
   // 监听错误状态变化
   useEffect(() => {
@@ -770,7 +833,7 @@ ${JSON.stringify(toolParams, null, 2)}`;
                 </div>
                 <div className="flex items-center gap-2">
                   <Button
-                    onClick={smartClearMessages}
+                    onClick={handleSmartClearClick}
                     variant="outline"
                     size="sm"
                     className="text-xs h-7 px-3 text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300 transition-colors font-medium"
@@ -928,7 +991,7 @@ ${JSON.stringify(toolParams, null, 2)}`;
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={smartClearMessages}
+                          onClick={handleSmartClearClick}
                           className="text-xs h-7 px-2 border-blue-200 text-blue-700 hover:bg-blue-50"
                         >
                           智能清理
@@ -1010,7 +1073,7 @@ ${JSON.stringify(toolParams, null, 2)}`;
               </div>
               <div className="flex items-center gap-1">
                 <Button
-                  onClick={smartClearMessages}
+                  onClick={handleSmartClearClick}
                   variant="outline"
                   size="sm"
                   className="text-xs h-6 px-2 text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300 transition-colors font-medium"

@@ -16,6 +16,32 @@
         "uriFormat": "%s",
         "action": "openExternally"
       }
+    },
+    {
+      "name": "Next.js: debug client-side",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:3000",
+      "webRoot": "${workspaceFolder}",
+      "sourceMapPathOverrides": {
+        "webpack:///./*": "${webRoot}/*",
+        "webpack:///./~/*": "${webRoot}/node_modules/*",
+        "webpack://*": "*",
+        "webpack:///src/*": "${webRoot}/*"
+      }
+    },
+    {
+      "name": "Next.js: debug full stack",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "pnpm dev",
+      "cwd": "${workspaceFolder}",
+      "skipFiles": ["<node_internals>/**", "**/node_modules/**"],
+      "serverReadyAction": {
+        "pattern": "Local:.*(http://localhost:d+)",
+        "uriFormat": "%s",
+        "action": "debugWithChrome"
+      }
     }
   ]
 }

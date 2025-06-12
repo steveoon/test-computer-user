@@ -37,6 +37,35 @@ interface ModelConfigActions {
 
 type ModelConfigStore = ModelConfigState & ModelConfigActions;
 
+/**
+ * 合并Provider配置：确保新增的Provider不会被localStorage中的旧数据覆盖
+ */
+function mergeProviderConfigs(
+  savedConfigs: Record<string, ProviderConfig> | undefined,
+  defaultConfigs: Record<string, ProviderConfig>
+): Record<string, ProviderConfig> {
+  if (!savedConfigs) {
+    return { ...defaultConfigs };
+  }
+
+  const merged = { ...defaultConfigs };
+
+  // 保留用户自定义的配置（如果存在）
+  Object.keys(savedConfigs).forEach((provider) => {
+    if (merged[provider]) {
+      merged[provider] = savedConfigs[provider];
+    }
+  });
+
+  console.log("[MODEL CONFIG] 合并Provider配置完成:", {
+    默认配置: Object.keys(defaultConfigs),
+    保存的配置: Object.keys(savedConfigs),
+    合并后配置: Object.keys(merged),
+  });
+
+  return merged;
+}
+
 export const useModelConfigStore = create<ModelConfigStore>()(
   persist(
     (set, _get) => ({
@@ -110,6 +139,20 @@ export const useModelConfigStore = create<ModelConfigStore>()(
         replyModel: state.replyModel,
         providerConfigs: state.providerConfigs,
       }),
+      // 自定义合并逻辑：解决新增Provider被覆盖的问题
+      merge: (persistedState, currentState) => {
+        const persisted = persistedState as Partial<ModelConfigState>;
+
+        return {
+          ...currentState,
+          ...persisted,
+          // 关键：智能合并Provider配置
+          providerConfigs: mergeProviderConfigs(
+            persisted.providerConfigs,
+            DEFAULT_PROVIDER_CONFIGS
+          ),
+        };
+      },
     }
   )
 );

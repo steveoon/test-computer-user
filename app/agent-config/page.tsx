@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -52,6 +52,11 @@ export default function AgentConfigPage() {
   const [tempProviderConfigs, setTempProviderConfigs] =
     useState<Record<string, ProviderConfig>>(providerConfigs);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  // 同步store中的配置到临时状态
+  useEffect(() => {
+    setTempProviderConfigs(providerConfigs);
+  }, [providerConfigs]);
 
   // 保存Provider配置
   const saveProviderConfigs = () => {
@@ -265,78 +270,72 @@ export default function AgentConfigPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {Object.entries(tempProviderConfigs)
-            .filter(([provider]) => provider !== "google") // 暂时不显示Google配置
-            .map(([provider, config]) => (
-              <Card key={provider}>
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="capitalize">{config.name}</CardTitle>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleResetProvider(provider)}
-                      className="gap-1"
-                    >
-                      <RefreshCw className="h-3 w-3" />
-                      重置
-                    </Button>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    {config.description}
-                  </p>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor={`${provider}-baseurl`}>Base URL</Label>
-                    <Input
-                      id={`${provider}-baseurl`}
-                      value={config.baseURL}
-                      onChange={(e) =>
-                        updateTempConfig(provider, "baseURL", e.target.value)
-                      }
-                      placeholder="https://api.example.com/v1"
-                    />
-                  </div>
+          {Object.entries(tempProviderConfigs).map(([provider, config]) => (
+            <Card key={provider}>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="capitalize">{config.name}</CardTitle>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleResetProvider(provider)}
+                    className="gap-1"
+                  >
+                    <RefreshCw className="h-3 w-3" />
+                    重置
+                  </Button>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {config.description}
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor={`${provider}-baseurl`}>Base URL</Label>
+                  <Input
+                    id={`${provider}-baseurl`}
+                    value={config.baseURL}
+                    onChange={(e) =>
+                      updateTempConfig(provider, "baseURL", e.target.value)
+                    }
+                    placeholder="https://api.example.com/v1"
+                  />
+                </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor={`${provider}-desc`}>描述</Label>
-                    <Input
-                      id={`${provider}-desc`}
-                      value={config.description}
-                      onChange={(e) =>
-                        updateTempConfig(
-                          provider,
-                          "description",
-                          e.target.value
-                        )
-                      }
-                      placeholder="服务描述"
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor={`${provider}-desc`}>描述</Label>
+                  <Input
+                    id={`${provider}-desc`}
+                    value={config.description}
+                    onChange={(e) =>
+                      updateTempConfig(provider, "description", e.target.value)
+                    }
+                    placeholder="服务描述"
+                  />
+                </div>
 
-                  {/* 显示当前使用此Provider的模型 */}
-                  <div className="pt-2">
-                    <Label className="text-xs text-muted-foreground">
-                      使用此Provider的模型:
-                    </Label>
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {Object.entries(MODEL_DICTIONARY)
-                        .filter(([, model]) => model.provider === provider)
-                        .map(([modelId, model]) => (
-                          <Badge
-                            key={modelId}
-                            variant="secondary"
-                            className="text-xs"
-                          >
-                            {model.name}
-                          </Badge>
-                        ))}
-                    </div>
+                {/* 显示当前使用此Provider的模型 */}
+                <div className="pt-2">
+                  <Label className="text-xs text-muted-foreground">
+                    使用此Provider的模型:
+                  </Label>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {Object.entries(MODEL_DICTIONARY)
+                      .filter(([, model]) => model.provider === provider)
+                      .map(([modelId, model]) => (
+                        <Badge
+                          key={modelId}
+                          variant="secondary"
+                          className="text-xs"
+                        >
+                          {model.name}
+                        </Badge>
+                      ))}
                   </div>
-                </CardContent>
-              </Card>
-            ))}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
       </div>
 

@@ -77,31 +77,3 @@ export const createSecureStorage = (storeName: string): StateStorage => {
     },
   };
 };
-
-/**
- * 🧹 清理旧的 localStorage 数据
- * 将现有的 localStorage 数据迁移到 IndexedDB 并清理
- */
-export const migrateFromLocalStorage = async (
-  localStorageKey: string,
-  secureStorage: StateStorage
-): Promise<void> => {
-  try {
-    // 检查 localStorage 中是否有旧数据
-    const oldData = localStorage.getItem(localStorageKey);
-
-    if (oldData) {
-      console.log("[SECURE STORAGE] 发现旧的localStorage数据，开始迁移...");
-
-      // 将数据迁移到安全存储
-      await secureStorage.setItem(localStorageKey, oldData);
-
-      // 清理 localStorage 中的敏感数据
-      localStorage.removeItem(localStorageKey);
-
-      console.log("[SECURE STORAGE] 数据迁移完成，localStorage已清理");
-    }
-  } catch (error) {
-    console.error("[SECURE STORAGE] 数据迁移失败:", error);
-  }
-};
