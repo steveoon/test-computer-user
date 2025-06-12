@@ -16,40 +16,32 @@ export interface EnvironmentLimits {
 /**
  * 检测当前运行环境
  */
-export const detectEnvironment = (): "vercel" | "local" | "unknown" => {
-  // 优先检查服务端环境变量
-  if (typeof process !== "undefined" && process.env) {
-    // Vercel 环境变量检测
-    if (process.env.VERCEL || process.env.VERCEL_ENV) {
-      return "vercel";
-    }
-    // 本地开发环境检测
-    if (process.env.NODE_ENV === "development") {
-      return "local";
-    }
-  }
-
-  // 浏览器环境检测（仅作为后备方案）
-  if (typeof window !== "undefined") {
-    const hostname = window.location.hostname;
-    // 只检测明确的本地地址
+export const detectEnvironment = () => {
+  /* 服务端检测 */
+  if (typeof process !== "undefined") {
     if (
-      hostname === "localhost" ||
-      hostname === "127.0.0.1" ||
-      hostname === "0.0.0.0"
+      process.env.VERCEL_ENV ||
+      process.env.VERCEL_TARGET_ENV ||
+      process.env.VERCEL
     ) {
-      return "local";
+      return "vercel";
     }
   }
 
-  // 如果有 VERCEL 相关的环境变量但不在已知列表中，推测为 Vercel
-  if (typeof process !== "undefined" && process.env) {
-    const vercelKeys = Object.keys(process.env).filter(
-      (key) => key.startsWith("VERCEL_") || key.includes("VERCEL")
-    );
-    if (vercelKeys.length > 0) {
+  /* 浏览器端检测（公开变量） */
+  if (typeof process !== "undefined") {
+    if (
+      process.env.NEXT_PUBLIC_VERCEL_ENV ||
+      process.env.NEXT_PUBLIC_VERCEL_TARGET_ENV
+    ) {
       return "vercel";
     }
+  }
+
+  /* 本地开发 */
+  if (typeof window !== "undefined") {
+    const host = window.location.hostname;
+    if (host === "localhost" || host.startsWith("127.")) return "local";
   }
 
   return "unknown";
