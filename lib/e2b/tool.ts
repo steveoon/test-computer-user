@@ -830,15 +830,11 @@ export const computerTool = (
             const [x, y] = coordinate;
             await desktop.moveMouse(x, y);
           }
-          // E2B 可能没有直接的 mouseDown 方法，使用替代方案
+          // 使用 mousePress 方法代替 mouseDown
           try {
-            if (typeof desktop.mouseDown === "function") {
-              await desktop.mouseDown();
-            } else {
-              console.warn("Mouse down not directly supported");
-            }
+            await desktop.mousePress("left");
           } catch (error) {
-            console.warn("Mouse down not supported:", error);
+            console.warn("Mouse press not supported:", error);
           }
           return {
             type: "text" as const,
@@ -852,15 +848,11 @@ export const computerTool = (
             const [x, y] = coordinate;
             await desktop.moveMouse(x, y);
           }
-          // E2B 可能没有直接的 mouseUp 方法，使用替代方案
+          // 使用 mouseRelease 方法代替 mouseUp
           try {
-            if (typeof desktop.mouseUp === "function") {
-              await desktop.mouseUp();
-            } else {
-              console.warn("Mouse up not directly supported");
-            }
+            await desktop.mouseRelease("left");
           } catch (error) {
-            console.warn("Mouse up not supported:", error);
+            console.warn("Mouse release not supported:", error);
           }
           return {
             type: "text" as const,
@@ -901,10 +893,7 @@ export const computerTool = (
 
           try {
             await withTimeout(
-              desktop.scroll(
-                scroll_direction as "up" | "down" | "left" | "right",
-                scroll_amount
-              ),
+              desktop.scroll(scroll_direction as "up" | "down", scroll_amount),
               5000,
               "Scroll"
             );

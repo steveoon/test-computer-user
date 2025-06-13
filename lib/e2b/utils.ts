@@ -1,59 +1,23 @@
 "use server";
 
-import { Sandbox } from "@e2b/desktop";
+import { Sandbox, SandboxOpts } from "@e2b/desktop";
 import { resolution } from "./tool";
 
-// 扩展E2B Sandbox类型定义
-interface SandboxWithExtensions extends E2BDesktop {
+// 直接使用Sandbox类型，避免类型不匹配问题
+export type E2BDesktop = Sandbox;
+
+// 扩展E2B Sandbox类型定义以支持暂停/恢复功能
+interface SandboxWithExtensions extends Sandbox {
   pause?: () => Promise<string>;
 }
 
 interface SandboxConstructor {
-  create: (options: {
-    resolution: [number, number];
-    timeoutMs: number;
-  }) => Promise<SandboxWithExtensions>;
+  create: (
+    template: string,
+    options: SandboxOpts
+  ) => Promise<SandboxWithExtensions>;
   connect: (id: string) => Promise<SandboxWithExtensions>;
   resume?: (id: string) => Promise<SandboxWithExtensions>;
-}
-
-// E2B Desktop 基本类型定义
-export interface E2BDesktop {
-  screenshot: () => Promise<Buffer>;
-  moveMouse: (x: number, y: number) => Promise<void>;
-  leftClick: () => Promise<void>;
-  rightClick: () => Promise<void>;
-  doubleClick: () => Promise<void>;
-  // 可选的鼠标方法（某些E2B版本可能不支持）
-  middleClick?: () => Promise<void>;
-  mouseDown?: () => Promise<void>;
-  mouseUp?: () => Promise<void>;
-  press: (key: string) => Promise<void>;
-  write: (text: string) => Promise<void>;
-  scroll: (
-    direction: "up" | "down" | "left" | "right",
-    amount: number
-  ) => Promise<void>;
-  drag: (start: [number, number], end: [number, number]) => Promise<void>;
-  commands: {
-    run: (
-      command: string,
-      options?: { timeoutMs?: number }
-    ) => Promise<{
-      stdout?: string;
-      stderr?: string;
-      exitCode: number;
-    }>;
-  };
-  launch: (appName: string) => Promise<void>;
-  sandboxId: string;
-  isRunning: () => Promise<boolean>;
-  kill: () => Promise<void>;
-  stream: {
-    url: string;
-    getUrl: () => string;
-    start: () => Promise<void>;
-  };
 }
 
 // 沙盒持久化相关函数 - 使用beta版本API
@@ -101,9 +65,7 @@ export const getDesktop = async (sandboxId?: string): Promise<E2BDesktop> => {
     if (sandboxId) {
       // 首先尝试连接到现有的沙盒
       try {
-        const connected = await (
-          Sandbox as unknown as SandboxConstructor
-        ).connect(sandboxId);
+        const connected = await Sandbox.connect(sandboxId);
         const isRunning = await connected.isRunning();
         if (isRunning) {
           console.log("Connected to existing running sandbox:", sandboxId);
@@ -132,7 +94,7 @@ export const getDesktop = async (sandboxId?: string): Promise<E2BDesktop> => {
     }
 
     // 创建新的沙盒
-    const desktop = await (Sandbox as unknown as SandboxConstructor).create({
+    const desktop = await Sandbox.create({
       resolution: [resolution.x, resolution.y],
       timeoutMs: 3600000, // 延长到1小时 (3600000毫秒)
     });
@@ -176,9 +138,7 @@ export const killDesktop = async (id: string = "desktop") => {
 // 检查沙盒状态的工具函数
 export const checkSandboxStatus = async (id: string) => {
   try {
-    const connected = await (Sandbox as unknown as SandboxConstructor).connect(
-      id
-    );
+    const connected = await Sandbox.connect(id);
     const isRunning = await connected.isRunning();
     return { isRunning, sandboxId: id };
   } catch (error) {
