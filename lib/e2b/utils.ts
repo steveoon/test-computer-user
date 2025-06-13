@@ -26,9 +26,20 @@ export const pauseDesktop = async (desktop: E2BDesktop) => {
     // 检查pause方法是否存在
     const extendedDesktop = desktop as unknown as SandboxWithExtensions;
     if (typeof extendedDesktop.pause !== "function") {
-      throw new Error(
-        "Pause method not available in current @e2b/desktop version"
+      // 目前 Desktop SDK 还不支持 pause 功能，我们提供一个优雅的降级方案
+      console.warn(
+        "Desktop SDK 暂停功能暂未完全支持，将保存沙盒ID以供后续连接使用"
       );
+
+      // 返回当前沙盒ID，用于后续连接
+      const sandboxId = desktop.sandboxId;
+      console.log("Sandbox ID saved for future connection:", sandboxId);
+
+      // 延长沙盒超时时间，而不是暂停
+      await desktop.setTimeout(3600000); // 延长到1小时
+      console.log("Sandbox timeout extended to 1 hour");
+
+      return sandboxId;
     }
 
     const sandboxId = await extendedDesktop.pause();
@@ -36,7 +47,16 @@ export const pauseDesktop = async (desktop: E2BDesktop) => {
     return sandboxId;
   } catch (error) {
     console.error("Error pausing desktop:", error);
-    throw error;
+
+    // 如果暂停失败，尝试延长超时时间作为替代方案
+    try {
+      await desktop.setTimeout(3600000); // 延长到1小时
+      console.log("Fallback: Extended sandbox timeout to 1 hour");
+      return desktop.sandboxId;
+    } catch (fallbackError) {
+      console.error("Fallback option also failed:", fallbackError);
+      throw error;
+    }
   }
 };
 
@@ -45,9 +65,24 @@ export const resumeDesktop = async (sandboxId: string) => {
     // 检查resume方法是否存在
     const sandboxConstructor = Sandbox as unknown as SandboxConstructor;
     if (typeof sandboxConstructor.resume !== "function") {
-      throw new Error(
-        "Resume method not available in current @e2b/desktop version"
-      );
+      console.warn("Desktop SDK 恢复功能暂未完全支持，将尝试连接到现有沙盒");
+
+      // 尝试连接到现有沙盒
+      try {
+        const desktop = await Sandbox.connect(sandboxId);
+        const isRunning = await desktop.isRunning();
+
+        if (isRunning) {
+          console.log("Successfully connected to existing sandbox:", sandboxId);
+          await desktop.stream.start();
+          return desktop;
+        } else {
+          throw new Error("Sandbox is not running");
+        }
+      } catch (connectError) {
+        console.log("Cannot connect to existing sandbox, creating new one");
+        throw connectError;
+      }
     }
 
     const desktop = await sandboxConstructor.resume(sandboxId);

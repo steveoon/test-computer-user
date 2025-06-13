@@ -87,20 +87,37 @@ export function useDesktopSandbox() {
 
       if (response.ok) {
         const result = await response.json();
-        console.log("Desktop paused:", result);
-        setSandboxStatus("paused");
-        toast.success("桌面已暂停", {
-          description: "你可以稍后恢复使用",
-          richColors: true,
-          position: "top-center",
-        });
+        console.log("Desktop pause response:", result);
+
+        if (result.isFullPauseSupported) {
+          // 真正的暂停功能可用
+          setSandboxStatus("paused");
+          toast.success("桌面已暂停", {
+            description: "你可以稍后恢复使用",
+            richColors: true,
+            position: "top-center",
+          });
+        } else {
+          // 使用了降级方案（延长超时）
+          toast.info("桌面超时已延长", {
+            description: "暂停功能暂未完全支持，已将会话延长到1小时",
+            richColors: true,
+            position: "top-center",
+            duration: 5000, // 显示更长时间
+          });
+          // 保持运行状态，因为实际上沙盒仍在运行
+          setSandboxStatus("running");
+        }
       } else {
-        throw new Error("Failed to pause desktop");
+        const errorResult = await response.json();
+        throw new Error(errorResult.message || "Failed to pause desktop");
       }
     } catch (err) {
       console.error("Failed to pause desktop:", err);
-      toast.error("暂停桌面失败", {
-        description: "请稍后重试",
+      const errorMessage = err instanceof Error ? err.message : "Unknown error";
+
+      toast.error("操作失败", {
+        description: errorMessage,
         richColors: true,
         position: "top-center",
       });
