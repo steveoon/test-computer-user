@@ -11,6 +11,7 @@ export const PROTECTED_ROUTES = [
   "/agent-config",
   "/api/chat",
   "/api/test-llm-reply",
+  "/admin",
 ] as const;
 
 /**

@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { Analytics } from "@vercel/analytics/react";
 import { BrandProvider } from "@/lib/contexts/brand-context";
 import { AuthProvider } from "@/components/auth-provider";
+import { ConfigInitializer } from "@/components/ConfigInitializer";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -35,6 +36,7 @@ export default function RootLayout({
       >
         <AuthProvider>
           <BrandProvider>
+            <ConfigInitializer />
             {children}
             <Toaster />
             <Analytics />

@@ -9,6 +9,7 @@ import { useFeishuNotification } from "./useFeishuNotification";
 import { useBrand } from "@/lib/contexts/brand-context";
 import { useAuthStore } from "@/lib/stores/auth-store";
 import { useModelConfig } from "@/lib/stores/model-config-store";
+import { useConfigDataForChat } from "./useConfigDataForChat";
 import {
   getEnvironmentLimits,
   detectEnvironment,
@@ -32,6 +33,15 @@ export function useCustomChat({
   // 🤖 模型配置
   const { chatModel, classifyModel, replyModel, providerConfigs } =
     useModelConfig();
+
+  // 🔧 配置数据 - 从 localforage 加载
+  const {
+    configData,
+    systemPrompts,
+    replyPrompts,
+    isLoading: configLoading,
+    error: configError,
+  } = useConfigDataForChat();
 
   // 🔄 防止飞书通知循环调用的标志
   const [isProcessingError, setIsProcessingError] = useState(false);
@@ -98,6 +108,10 @@ export function useCustomChat({
         replyModel,
         providerConfigs,
       },
+      // 🔧 传递配置数据到服务端
+      configData,
+      systemPrompts,
+      replyPrompts,
     },
     maxSteps: 30,
   });
@@ -280,7 +294,19 @@ export function useCustomChat({
     }
   }, [error]);
 
-  const isLoading = status !== "ready";
+  const isLoading = status !== "ready" || configLoading;
+
+  // 🔧 配置错误处理
+  useEffect(() => {
+    if (configError) {
+      console.error("配置数据加载错误:", configError);
+      toast.error("配置加载失败", {
+        description: "使用默认配置，部分功能可能受限",
+        richColors: true,
+        position: "top-center",
+      });
+    }
+  }, [configError]);
 
   return {
     // 状态
@@ -289,6 +315,10 @@ export function useCustomChat({
     status,
     error,
     isLoading,
+
+    // 🔧 配置状态
+    configLoading,
+    configError,
 
     // 方法
     handleInputChange,

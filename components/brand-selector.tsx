@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/select";
 import { useState, useEffect } from "react";
 import { getBrandHistory } from "@/lib/utils/brand-storage";
-import type { BrandName } from "@/lib/contexts/brand-context";
+// 移除 BrandName 类型导入，使用 string 代替
 
 /**
  * 🏪 品牌选择器组件
@@ -25,7 +25,7 @@ export function BrandSelector({
 }) {
   const { currentBrand, setCurrentBrand, availableBrands, isLoaded } =
     useBrand();
-  const [brandHistory, setBrandHistory] = useState<BrandName[]>([]);
+  const [brandHistory, setBrandHistory] = useState<string[]>([]);
 
   // 📊 加载品牌历史记录
   useEffect(() => {

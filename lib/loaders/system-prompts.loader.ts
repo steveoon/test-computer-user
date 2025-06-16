@@ -10,19 +10,24 @@ import { getSystemPrompts } from "../services/config.service";
  * 从配置服务中加载，支持动态修改
  */
 export async function getBossZhipinSystemPrompt(): Promise<string> {
+  // 🌐 服务端环境检测：直接使用默认提示词
+  if (typeof window === "undefined") {
+    console.log("🖥️ 服务端环境，使用默认 Boss直聘系统提示词");
+    return getDefaultBossZhipinSystemPrompt();
+  }
+
   try {
     const systemPrompts = await getSystemPrompts();
 
     if (!systemPrompts?.bossZhipinSystemPrompt) {
-      throw new Error(
-        "Boss直聘系统提示词未找到，请先执行数据迁移 (运行 scripts/migrate-to-localstorage.ts)"
-      );
+      console.warn("⚠️ Boss直聘系统提示词未找到，降级使用默认提示词");
+      return getDefaultBossZhipinSystemPrompt();
     }
 
     console.log("✅ 已从配置服务加载 Boss直聘系统提示词");
     return systemPrompts.bossZhipinSystemPrompt;
-  } catch (error) {
-    console.error("❌ Boss直聘系统提示词加载失败:", error);
+  } catch (_error) {
+    console.error("❌ Boss直聘系统提示词加载失败:", _error);
 
     // 降级到默认提示词（保持向后兼容）
     console.warn("⚠️ 降级使用默认 Boss直聘系统提示词");
@@ -46,8 +51,8 @@ export async function getGeneralComputerSystemPrompt(): Promise<string> {
 
     console.log("✅ 已从配置服务加载 通用计算机系统提示词");
     return systemPrompts.generalComputerSystemPrompt;
-  } catch (error) {
-    console.error("❌ 通用计算机系统提示词加载失败:", error);
+  } catch (_error) {
+    console.error("❌ 通用计算机系统提示词加载失败:", _error);
 
     // 降级到默认提示词（保持向后兼容）
     console.warn("⚠️ 降级使用默认 通用计算机系统提示词");
@@ -128,8 +133,8 @@ export async function getAllSystemPrompts() {
   try {
     const systemPrompts = await getSystemPrompts();
     return systemPrompts;
-  } catch (error) {
-    console.error("获取所有系统提示词失败:", error);
+  } catch (_error) {
+    console.error("获取所有系统提示词失败:", _error);
     return null;
   }
 }
@@ -144,7 +149,7 @@ export async function isSystemPromptsConfigured(): Promise<boolean> {
       systemPrompts?.bossZhipinSystemPrompt &&
       systemPrompts?.generalComputerSystemPrompt
     );
-  } catch (error) {
+  } catch (_error) {
     return false;
   }
 }

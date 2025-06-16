@@ -8,12 +8,12 @@ import { ZhipinData, MessageClassification } from "../../types/zhipin";
 import { generateText, generateObject } from "ai";
 import { z } from "zod";
 import {
-  configService,
   getBrandData,
   getReplyPrompts,
   migrateFromHardcodedData,
   needsMigration,
 } from "../services/config.service";
+import type { ReplyPromptsConfig } from "../../types/config";
 import {
   DEFAULT_PROVIDER_CONFIGS,
   DEFAULT_MODEL_CONFIG,
@@ -22,66 +22,92 @@ import type { ModelConfig } from "@/lib/config/models";
 
 /**
  * 🎯 加载Boss直聘相关数据 - 重构版
- * 从 localforage 配置服务中加载，支持品牌选择
+ * 优先使用传入的配置数据，仅在浏览器环境中作为备用加载器
  * @param preferredBrand 优先使用的品牌（可选）
+ * @param configData 预加载的配置数据（服务端调用时必须提供）
  * @returns Promise<ZhipinData> 返回加载的数据
  */
 export async function loadZhipinData(
-  preferredBrand?: string
+  preferredBrand?: string,
+  configData?: ZhipinData
 ): Promise<ZhipinData> {
   try {
-    // 检查是否需要迁移，如果需要则自动执行
-    if (await needsMigration()) {
-      console.log("🔄 检测到首次使用，正在自动执行数据迁移...");
-      try {
-        await migrateFromHardcodedData();
-        console.log("✅ 数据迁移完成");
-      } catch (migrationError) {
-        console.error("❌ 自动迁移失败:", migrationError);
-        throw new Error(
-          `数据迁移失败: ${
-            migrationError instanceof Error
-              ? migrationError.message
-              : "未知错误"
-          }`
-        );
+    // 🎯 如果提供了配置数据，优先使用
+    if (configData) {
+      console.log("✅ 使用传入的配置数据");
+
+      // 如果指定了品牌，动态更新默认品牌
+      const effectiveData =
+        preferredBrand && configData.brands[preferredBrand]
+          ? {
+              ...configData,
+              defaultBrand: preferredBrand,
+            }
+          : configData;
+
+      const totalPositions = effectiveData.stores.reduce(
+        (sum, store) => sum + store.positions.length,
+        0
+      );
+      console.log(
+        `📊 数据统计: ${
+          effectiveData.stores.length
+        } 家门店，${totalPositions} 个岗位${
+          preferredBrand ? ` - 当前品牌: ${preferredBrand}` : ""
+        }`
+      );
+      return effectiveData;
+    }
+
+    // 🌐 浏览器环境备用逻辑：从 localforage 加载
+    if (typeof window !== "undefined") {
+      console.log("🌐 浏览器环境，从 localforage 加载配置");
+
+      // 检查是否需要迁移
+      if (await needsMigration()) {
+        console.log("🔄 检测到首次使用，正在自动执行数据迁移...");
+        try {
+          await migrateFromHardcodedData();
+          console.log("✅ 数据迁移完成");
+        } catch (migrationError) {
+          console.error("❌ 自动迁移失败:", migrationError);
+          throw new Error("浏览器环境数据迁移失败");
+        }
       }
+
+      // 从配置服务加载品牌数据
+      const brandData = await getBrandData();
+      if (!brandData) {
+        throw new Error("浏览器环境配置数据未找到");
+      }
+
+      // 应用品牌选择
+      const effectiveData =
+        preferredBrand && brandData.brands[preferredBrand]
+          ? { ...brandData, defaultBrand: preferredBrand }
+          : brandData;
+
+      const totalPositions = effectiveData.stores.reduce(
+        (sum, store) => sum + store.positions.length,
+        0
+      );
+      console.log(
+        `✅ 已从配置服务加载 ${
+          effectiveData.stores.length
+        } 家门店数据 (${totalPositions} 个岗位)${
+          preferredBrand ? ` - 当前品牌: ${preferredBrand}` : ""
+        }`
+      );
+      return effectiveData;
     }
 
-    // 从配置服务加载品牌数据
-    const brandData = await getBrandData();
-
-    if (!brandData) {
-      // 如果迁移后仍然没有数据，说明有问题
-      throw new Error("品牌数据迁移后仍未找到，请检查迁移过程");
-    }
-
-    // 🎯 如果指定了品牌，动态更新默认品牌
-    const effectiveData =
-      preferredBrand && brandData.brands[preferredBrand]
-        ? {
-            ...brandData,
-            defaultBrand: preferredBrand,
-          }
-        : brandData;
-
-    const totalPositions = effectiveData.stores.reduce(
-      (sum, store) => sum + store.positions.length,
-      0
-    );
-    console.log(
-      `✅ 已从配置服务加载 ${
-        effectiveData.stores.length
-      } 家门店数据 (${totalPositions} 个岗位)${
-        preferredBrand ? ` - 当前品牌: ${preferredBrand}` : ""
-      }`
-    );
-    return effectiveData;
-  } catch (error) {
-    console.error("❌ 配置数据加载失败:", error);
+    // 🚨 服务端环境必须提供配置数据
     throw new Error(
-      `数据加载失败: ${error instanceof Error ? error.message : "未知错误"}`
+      "服务端环境必须提供 configData 参数，不再支持硬编码数据读取"
     );
+  } catch (error) {
+    console.error("❌ 数据加载失败:", error);
+    throw error; // 不再降级，明确报错
   }
 }
 
@@ -424,18 +450,22 @@ export async function classifyUserMessage(
 
 /**
  * 基于LLM的智能回复生成函数 - 重构版
- * 从配置服务读取回复指令
+ * 优先使用传入的配置数据，服务端调用时必须提供
  * @param message 候选人消息
  * @param conversationHistory 对话历史（可选）
  * @param preferredBrand 优先使用的品牌（可选）
  * @param modelConfig 模型配置（可选）
+ * @param configData 预加载的配置数据（服务端调用时必须提供）
+ * @param replyPrompts 预加载的回复指令（服务端调用时必须提供）
  * @returns Promise<string> 生成的智能回复
  */
 export async function generateSmartReplyWithLLM(
   message: string = "",
   conversationHistory: string[] = [],
   preferredBrand?: string,
-  modelConfig?: ModelConfig
+  modelConfig?: ModelConfig,
+  configData?: ZhipinData,
+  replyPrompts?: ReplyPromptsConfig
 ): Promise<string> {
   try {
     // 🎯 获取配置的模型和provider设置
@@ -449,8 +479,28 @@ export async function generateSmartReplyWithLLM(
 
     console.log(`[REPLY] 使用模型: ${replyModel}`);
 
-    // 加载Boss直聘数据（支持品牌选择）
-    const data = await loadZhipinData(preferredBrand);
+    // 🎯 优先使用传入的配置数据
+    let data: ZhipinData;
+    let effectiveReplyPrompts: ReplyPromptsConfig;
+
+    if (configData && replyPrompts) {
+      console.log("✅ 使用传入的配置数据和回复指令");
+      data = await loadZhipinData(preferredBrand, configData);
+      effectiveReplyPrompts = replyPrompts;
+    } else if (typeof window !== "undefined") {
+      // 🌐 浏览器环境备用：从 localforage 加载
+      console.log("🌐 浏览器环境，从配置服务加载数据");
+      data = await loadZhipinData(preferredBrand);
+
+      const loadedReplyPrompts = await getReplyPrompts();
+      if (!loadedReplyPrompts) {
+        throw new Error("浏览器环境回复指令配置未找到");
+      }
+      effectiveReplyPrompts = loadedReplyPrompts;
+    } else {
+      // 🚨 服务端环境必须提供配置数据
+      throw new Error("服务端环境必须提供 configData 和 replyPrompts 参数");
+    }
 
     // 第一步：使用独立的分类函数进行智能分类
     const classification = await classifyUserMessage(
@@ -460,25 +510,10 @@ export async function generateSmartReplyWithLLM(
       modelConfig // 传递模型配置
     );
 
-    // 第二步：从配置服务加载回复指令
-    let replyPrompts = await getReplyPrompts();
-    if (!replyPrompts) {
-      // 如果回复提示词不存在，尝试重新迁移
-      if (await needsMigration()) {
-        console.log("🔄 回复提示词未找到，正在重新执行迁移...");
-        await migrateFromHardcodedData();
-        replyPrompts = await getReplyPrompts();
-        if (!replyPrompts) {
-          throw new Error("回复指令配置迁移后仍未找到");
-        }
-      } else {
-        throw new Error("回复指令配置未找到，且无需迁移");
-      }
-    }
-
     const systemPromptInstruction =
-      replyPrompts[classification.replyType as keyof typeof replyPrompts] ||
-      replyPrompts.general_chat;
+      effectiveReplyPrompts[
+        classification.replyType as keyof typeof effectiveReplyPrompts
+      ] || effectiveReplyPrompts.general_chat;
 
     // 构建上下文信息
     const contextInfo = buildContextInfo(data, classification.extractedInfo);
@@ -525,29 +560,36 @@ export async function generateSmartReplyWithLLM(
     console.error("LLM智能回复生成失败:", error);
 
     try {
-      // 降级到原有逻辑，但先尝试进行分类
-      const data = await loadZhipinData(preferredBrand);
+      // 降级逻辑：仅在浏览器环境中尝试
+      if (typeof window !== "undefined") {
+        console.log("🔄 降级模式：尝试从浏览器配置加载");
+        const data = await loadZhipinData(preferredBrand);
 
-      // 尝试使用分类功能确定回复类型
-      let replyContext = "initial_inquiry"; // 默认值
+        // 尝试使用分类功能确定回复类型
+        let replyContext = "initial_inquiry"; // 默认值
 
-      try {
-        const classification = await classifyUserMessage(
-          message,
-          conversationHistory,
-          data,
-          modelConfig // 传递模型配置
-        );
-        replyContext = classification.replyType;
-        console.log(`✅ 降级模式使用分类结果: ${replyContext}`);
-      } catch (classificationError) {
-        console.error("分类功能也失败，使用默认分类:", classificationError);
-        // 保持默认值 "initial_inquiry"
+        try {
+          const classification = await classifyUserMessage(
+            message,
+            conversationHistory,
+            data,
+            modelConfig // 传递模型配置
+          );
+          replyContext = classification.replyType;
+          console.log(`✅ 降级模式使用分类结果: ${replyContext}`);
+        } catch (classificationError) {
+          console.error("分类功能也失败，使用默认分类:", classificationError);
+          // 保持默认值 "initial_inquiry"
+        }
+
+        return generateSmartReply(data, message, replyContext);
+      } else {
+        // 服务端环境降级：返回错误回复
+        console.error("服务端环境无法降级，缺少必要的配置数据");
+        return "抱歉，当前系统繁忙，请稍后再试或直接联系我们的客服。";
       }
-
-      return generateSmartReply(data, message, replyContext);
     } catch (dataError) {
-      console.error("数据加载失败，返回通用错误回复:", dataError);
+      console.error("降级模式数据加载失败，返回通用错误回复:", dataError);
       // 最终降级：返回通用错误回复
       return "抱歉，当前系统繁忙，请稍后再试或直接联系我们的客服。";
     }

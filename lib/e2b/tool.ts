@@ -12,6 +12,7 @@ import {
 import type { Store } from "../../types/zhipin";
 import { sendFeishuMessage } from "../send-feishu-message";
 import type { ModelConfig } from "../config/models";
+import type { ZhipinData, ReplyPromptsConfig } from "../../types/config";
 
 const wait = async (seconds: number) => {
   await new Promise((resolve) => setTimeout(resolve, seconds * 1000));
@@ -540,7 +541,9 @@ export const anthropicBashTool = (sandboxId?: string) =>
 export const computerTool = (
   sandboxId: string,
   preferredBrand: string,
-  modelConfig: ModelConfig
+  modelConfig: ModelConfig,
+  configData?: ZhipinData,
+  replyPrompts?: ReplyPromptsConfig
 ) =>
   tool({
     description:
@@ -1159,12 +1162,14 @@ export const computerTool = (
           try {
             console.log("🤖 开始生成Boss直聘回复...");
 
-            // 生成回复 (新函数内部会自动加载数据)
+            // 生成回复 - 优先使用传入的配置数据
             const generatedReply = await generateSmartReplyWithLLM(
               candidate_message || "",
               conversation_history || [],
               preferredBrand,
-              modelConfig
+              modelConfig,
+              configData, // 传递配置数据
+              replyPrompts // 传递回复指令
             );
 
             console.log(`📝 生成的回复内容: ${generatedReply}`);
@@ -1177,8 +1182,8 @@ export const computerTool = (
             );
             console.log(`⚙️ 自动输入: ${auto_input ? "是" : "否"}`);
 
-            // 为了显示统计信息，重新加载数据
-            const storeDatabase = await loadZhipinData();
+            // 为了显示统计信息，使用传入的配置数据或重新加载
+            const storeDatabase = configData || (await loadZhipinData());
 
             let resultText = `✅ Boss直聘回复已生成：\n\n"${generatedReply}"\n\n📊 生成详情:\n• 候选人消息: ${
               candidate_message || "无"

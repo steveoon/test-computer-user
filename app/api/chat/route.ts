@@ -9,6 +9,11 @@ import {
   DEFAULT_MODEL_CONFIG,
 } from "@/lib/config/models";
 import type { ModelConfig } from "@/lib/config/models";
+import type {
+  ZhipinData,
+  SystemPromptsConfig,
+  ReplyPromptsConfig,
+} from "@/types/config";
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 300;
@@ -38,11 +43,17 @@ export async function POST(req: Request) {
     sandboxId,
     preferredBrand,
     modelConfig,
+    configData,
+    systemPrompts,
+    replyPrompts,
   }: {
     messages: UIMessage[];
     sandboxId: string;
     preferredBrand: string;
     modelConfig?: ModelConfig;
+    configData?: ZhipinData; // Boss直聘配置数据
+    systemPrompts?: SystemPromptsConfig; // 系统提示词配置
+    replyPrompts?: ReplyPromptsConfig; // 回复指令配置
   } = await req.json();
 
   try {
@@ -56,8 +67,15 @@ export async function POST(req: Request) {
 
     console.log(`[CHAT API] 使用模型: ${chatModel}`);
 
-    // 🎯 获取系统提示词（现在是异步的）
-    const systemPrompt = await getBossZhipinSystemPrompt();
+    // 🎯 获取系统提示词 - 优先使用传入的配置
+    let systemPrompt: string;
+    if (systemPrompts?.bossZhipinSystemPrompt) {
+      console.log("✅ 使用客户端传入的系统提示词");
+      systemPrompt = systemPrompts.bossZhipinSystemPrompt;
+    } else {
+      console.log("⚠️ 使用默认系统提示词（降级模式）");
+      systemPrompt = await getBossZhipinSystemPrompt();
+    }
 
     // 🎯 对历史消息应用智能Token优化 (10K tokens阈值)
     const processedMessages = await prunedMessages(messages, {
@@ -87,7 +105,13 @@ export async function POST(req: Request) {
       system: systemPrompt,
       messages: processedMessages,
       tools: {
-        computer: computerTool(sandboxId, preferredBrand, modelConfig!),
+        computer: computerTool(
+          sandboxId,
+          preferredBrand,
+          modelConfig || DEFAULT_MODEL_CONFIG,
+          configData, // 传递配置数据
+          replyPrompts // 传递回复指令
+        ),
         bash: bashTool(sandboxId),
         feishu: feishuBotTool(),
       },

@@ -4,16 +4,23 @@ import { useState } from "react";
 import { BrandSelector } from "@/components/brand-selector";
 import { useBrand } from "@/lib/contexts/brand-context";
 import {
-  clearBrandPreferences,
-  getBrandStats,
+  clearBrandStorage,
+  getBrandStorageStatus,
 } from "@/lib/utils/brand-storage";
 import { useModelConfig } from "@/lib/stores/model-config-store";
+import { useConfigDataForChat } from "@/hooks/useConfigDataForChat";
 import { Settings } from "lucide-react";
 import Link from "next/link";
 
 export default function TestLLMReplyPage() {
   const { currentBrand } = useBrand();
   const { classifyModel, replyModel, providerConfigs } = useModelConfig();
+  const {
+    configData,
+    replyPrompts,
+    isLoading: configLoading,
+    error: configError,
+  } = useConfigDataForChat();
   const [message, setMessage] = useState("");
   const [reply, setReply] = useState("");
   const [loading, setLoading] = useState(false);
@@ -28,7 +35,7 @@ export default function TestLLMReplyPage() {
   // 🗑️ 清除品牌偏好
   const handleClearPreferences = async () => {
     try {
-      await clearBrandPreferences();
+      await clearBrandStorage();
       alert("品牌偏好已清除！页面将刷新以重置状态。");
       window.location.reload();
     } catch (error) {
@@ -39,7 +46,7 @@ export default function TestLLMReplyPage() {
   // 📊 加载品牌统计信息
   const loadBrandStats = async () => {
     try {
-      const stats = await getBrandStats();
+      const stats = await getBrandStorageStatus();
       setBrandStats(stats);
     } catch (error) {
       console.warn("加载品牌统计失败:", error);
@@ -66,6 +73,22 @@ export default function TestLLMReplyPage() {
       return;
     }
 
+    // 🔧 检查配置数据是否加载完成
+    if (configLoading) {
+      setError("配置数据加载中，请稍候...");
+      return;
+    }
+
+    if (configError) {
+      setError(`配置数据加载失败: ${configError}`);
+      return;
+    }
+
+    if (!configData || !replyPrompts) {
+      setError("配置数据未加载，请刷新页面重试");
+      return;
+    }
+
     setLoading(true);
     setError("");
     setReply("");
@@ -85,6 +108,8 @@ export default function TestLLMReplyPage() {
             replyModel,
             providerConfigs,
           },
+          configData, // 🔧 传递配置数据
+          replyPrompts, // 🔧 传递回复指令
         }),
       });
 
@@ -229,6 +254,16 @@ export default function TestLLMReplyPage() {
         </div>
       </div>
 
+      {/* 配置加载状态 */}
+      {configLoading && (
+        <div className="p-4 bg-blue-100 border border-blue-400 text-blue-700 rounded mb-4">
+          <div className="flex items-center">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500 mr-2"></div>
+            正在加载配置数据...
+          </div>
+        </div>
+      )}
+
       {/* 结果显示 */}
       {loading && (
         <div className="p-4 bg-gray-100 rounded">
@@ -301,6 +336,35 @@ export default function TestLLMReplyPage() {
           <div>
             📊 <strong>当前使用：</strong> 分类模型({classifyModel}) + 回复模型(
             {replyModel})
+          </div>
+        </div>
+      </div>
+
+      {/* 最新配置重构说明 */}
+      <div className="mt-4 p-4 bg-emerald-50 rounded">
+        <h3 className="font-semibold text-emerald-800 mb-2">
+          🆕 配置本地化重构 (2025.01.06)：
+        </h3>
+        <div className="text-emerald-700 text-sm space-y-2">
+          <div>
+            ✅ <strong>配置数据本地化：</strong>{" "}
+            所有配置数据（品牌数据、系统提示词、回复指令）现在存储在浏览器
+            localforage 中
+          </div>
+          <div>
+            ✅ <strong>动态配置传递：</strong> 客户端自动从 localforage
+            加载配置并传递给服务端API
+          </div>
+          <div>
+            ✅ <strong>品牌上下文重构：</strong>{" "}
+            品牌选择器现在从配置服务动态加载品牌列表，不再依赖硬编码
+          </div>
+          <div>
+            ✅ <strong>统一数据流：</strong> 浏览器(localforage) → 客户端Hook →
+            API调用携带配置 → 服务端使用配置
+          </div>
+          <div>
+            📊 <strong>实时生效：</strong> 配置修改后立即生效，无需重启应用
           </div>
         </div>
       </div>

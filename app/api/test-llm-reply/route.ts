@@ -3,7 +3,8 @@ import { generateSmartReplyWithLLM } from "../../../lib/loaders/zhipin-data.load
 
 export async function POST(request: NextRequest) {
   try {
-    const { message, brand, modelConfig } = await request.json();
+    const { message, brand, modelConfig, configData, replyPrompts } =
+      await request.json();
 
     if (!message || typeof message !== "string") {
       return NextResponse.json(
@@ -12,12 +13,35 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 调用LLM智能回复生成函数（支持品牌选择和模型配置）
+    // 🔧 验证客户端传递的配置数据
+    if (!configData) {
+      return NextResponse.json(
+        { error: "缺少配置数据，请确保客户端正确传递 configData" },
+        { status: 400 }
+      );
+    }
+
+    if (!replyPrompts) {
+      return NextResponse.json(
+        { error: "缺少回复指令，请确保客户端正确传递 replyPrompts" },
+        { status: 400 }
+      );
+    }
+
+    console.log("✅ test-llm-reply API: 使用客户端传递的配置数据", {
+      brands: Object.keys(configData.brands),
+      stores: configData.stores.length,
+      replyPromptsCount: Object.keys(replyPrompts).length,
+    });
+
+    // 调用LLM智能回复生成函数（使用客户端传递的配置数据）
     const reply = await generateSmartReplyWithLLM(
       message.trim(),
       [], // 对话历史
       brand, // 品牌参数
-      modelConfig // 模型配置参数
+      modelConfig, // 模型配置参数
+      configData, // 🔧 使用客户端传递的配置数据
+      replyPrompts // 🔧 使用客户端传递的回复指令
     );
 
     return NextResponse.json({
