@@ -11,6 +11,8 @@ import {
   configService,
   getBrandData,
   getReplyPrompts,
+  migrateFromHardcodedData,
+  needsMigration,
 } from "../services/config.service";
 import {
   DEFAULT_PROVIDER_CONFIGS,
@@ -28,14 +30,30 @@ export async function loadZhipinData(
   preferredBrand?: string
 ): Promise<ZhipinData> {
   try {
+    // 检查是否需要迁移，如果需要则自动执行
+    if (await needsMigration()) {
+      console.log("🔄 检测到首次使用，正在自动执行数据迁移...");
+      try {
+        await migrateFromHardcodedData();
+        console.log("✅ 数据迁移完成");
+      } catch (migrationError) {
+        console.error("❌ 自动迁移失败:", migrationError);
+        throw new Error(
+          `数据迁移失败: ${
+            migrationError instanceof Error
+              ? migrationError.message
+              : "未知错误"
+          }`
+        );
+      }
+    }
+
     // 从配置服务加载品牌数据
     const brandData = await getBrandData();
 
     if (!brandData) {
-      // 如果配置数据不存在，可能需要先执行迁移
-      throw new Error(
-        "品牌数据未找到，请先执行数据迁移 (运行 scripts/migrate-to-localstorage.ts)"
-      );
+      // 如果迁移后仍然没有数据，说明有问题
+      throw new Error("品牌数据迁移后仍未找到，请检查迁移过程");
     }
 
     // 🎯 如果指定了品牌，动态更新默认品牌
@@ -443,9 +461,19 @@ export async function generateSmartReplyWithLLM(
     );
 
     // 第二步：从配置服务加载回复指令
-    const replyPrompts = await getReplyPrompts();
+    let replyPrompts = await getReplyPrompts();
     if (!replyPrompts) {
-      throw new Error("回复指令配置未找到，请先执行数据迁移");
+      // 如果回复提示词不存在，尝试重新迁移
+      if (await needsMigration()) {
+        console.log("🔄 回复提示词未找到，正在重新执行迁移...");
+        await migrateFromHardcodedData();
+        replyPrompts = await getReplyPrompts();
+        if (!replyPrompts) {
+          throw new Error("回复指令配置迁移后仍未找到");
+        }
+      } else {
+        throw new Error("回复指令配置未找到，且无需迁移");
+      }
     }
 
     const systemPromptInstruction =

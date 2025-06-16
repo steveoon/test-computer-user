@@ -209,3 +209,75 @@ export async function getReplyPrompts(): Promise<ReplyPromptsConfig | null> {
   const config = await configService.getConfig();
   return config?.replyPrompts || null;
 }
+
+/**
+ * 浏览器环境迁移函数
+ * 从硬编码数据创建配置，仅在浏览器环境中使用
+ */
+export async function migrateFromHardcodedData(): Promise<void> {
+  // 检查是否在浏览器环境
+  if (typeof window === "undefined") {
+    throw new Error("迁移功能只能在浏览器环境中使用");
+  }
+
+  try {
+    // 动态导入硬编码数据（仅在浏览器中）
+    const [
+      { zhipinData },
+      { getBossZhipinSystemPrompt, getGeneralComputerSystemPrompt },
+    ] = await Promise.all([
+      import("../../lib/data/sample-data"),
+      import("../../lib/system-prompts"),
+    ]);
+
+    // 智能回复指令配置
+    const replyPromptsConfig: ReplyPromptsConfig = {
+      initial_inquiry: `作为招聘助手，参考这个模板回复: "你好，{city}各区有{brand}门店在招人，排班{hours}小时，时薪{salary}元，{level_salary}"。语气要自然，突出薪资。`,
+      location_inquiry: `候选人问位置，用这个模板回复: "你好，{city}各区都有门店，你在什么位置？我帮你查下附近"。必须问对方位置。`,
+      location_match: `找到匹配门店，用这个模板回复: "离你比较近在{location}，空缺{schedule}"。强调距离近和具体班次。`,
+      no_location_match: `附近无门店，按这个话术处理: "你附近暂时没岗位，{alternative_location}的门店考虑吗？"。同时，主动询问是否可以加微信，告知以后有其他机会可以推荐。`,
+      salary_inquiry: `薪资咨询，按这个模板提供信息: "基本薪资{salary}元/小时，{level_salary}"。需要包含阶梯薪资说明。`,
+      schedule_inquiry: `时间安排咨询，参考这个话术: "门店除了{time1}空缺，还有{time2}也空缺呢，可以和店长商量"。强调时间灵活性。`,
+      interview_request: `面试邀约，严格按照这个话术: "可以帮你和店长约面试，方便加下微信吗，需要几项简单的个人信息"。必须主动要微信。`,
+      age_concern: `年龄问题，严格按运营指南处理：
+      - 符合要求(18-45岁): "你的年龄没问题的"
+      - 超出要求: "你附近目前没有岗位空缺了"
+      绝不透露具体年龄限制。`,
+      insurance_inquiry: `保险咨询，使用固定话术:
+      - 标准回复: "有商业保险"
+      简洁明确，不展开说明。`,
+      followup_chat: `跟进聊天，参考这个话术模板保持联系: "门店除了{position1}还有{position2}也空缺的，可以和店长商量"。营造机会丰富的感觉。`,
+      general_chat: `通用回复，引导到具体咨询。重新询问位置或工作意向，保持专业。`,
+    };
+
+    // 聚合所有配置数据
+    const configData: AppConfigData = {
+      // 品牌和门店数据
+      brandData: zhipinData,
+
+      // 系统级提示词
+      systemPrompts: {
+        bossZhipinSystemPrompt: getBossZhipinSystemPrompt(),
+        generalComputerSystemPrompt: getGeneralComputerSystemPrompt(),
+      },
+
+      // 智能回复指令
+      replyPrompts: replyPromptsConfig,
+
+      // 配置元信息
+      metadata: {
+        version: "1.0.0",
+        lastUpdated: new Date().toISOString(),
+        migratedAt: new Date().toISOString(),
+      },
+    };
+
+    // 保存到 localforage
+    await configService.saveConfig(configData);
+
+    console.log("✅ 浏览器环境数据迁移成功！");
+  } catch (error) {
+    console.error("❌ 浏览器环境数据迁移失败:", error);
+    throw error;
+  }
+}
