@@ -1,6 +1,6 @@
 ---
 description: 
-globs: 
+globs: .cursor/rules/reminder-general-notes.mdc
 alwaysApply: false
 ---
 # 📝 AI-SDK Computer Use 项目通用笔记

@@ -3,7 +3,7 @@ import { killDesktop } from "@/lib/e2b/utils";
 import { bashTool, computerTool, feishuBotTool } from "@/lib/e2b/tool";
 import { prunedMessages, shouldCleanupSandbox } from "@/lib/utils";
 import { getDynamicRegistry } from "@/lib/model-registry/dynamic-registry";
-import { getBossZhipinSystemPrompt } from "@/lib/system-prompts";
+import { getBossZhipinSystemPrompt } from "@/lib/loaders/system-prompts.loader";
 import {
   DEFAULT_PROVIDER_CONFIGS,
   DEFAULT_MODEL_CONFIG,
@@ -56,6 +56,9 @@ export async function POST(req: Request) {
 
     console.log(`[CHAT API] 使用模型: ${chatModel}`);
 
+    // 🎯 获取系统提示词（现在是异步的）
+    const systemPrompt = await getBossZhipinSystemPrompt();
+
     // 🎯 对历史消息应用智能Token优化 (10K tokens阈值)
     const processedMessages = await prunedMessages(messages, {
       maxTokens: 15000, // 硬限制：15K tokens
@@ -81,7 +84,7 @@ export async function POST(req: Request) {
 
     const result = streamText({
       model: dynamicRegistry.languageModel(chatModel), // 使用配置的模型
-      system: getBossZhipinSystemPrompt(),
+      system: systemPrompt,
       messages: processedMessages,
       tools: {
         computer: computerTool(sandboxId, preferredBrand, modelConfig!),

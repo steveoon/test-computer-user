@@ -8,7 +8,7 @@ import { compressImageServerV2 } from "../image-optimized";
 import {
   loadZhipinData,
   generateSmartReplyWithLLM,
-} from "../utils/zhipin-data-loader";
+} from "../loaders/zhipin-data.loader";
 import type { Store } from "../../types/zhipin";
 import { sendFeishuMessage } from "../send-feishu-message";
 import type { ModelConfig } from "../config/models";

@@ -1,5 +1,5 @@
 ---
-description: 
+description: 当需要重构大型代码或者开发新的功能时阅读
 globs: 
 alwaysApply: false
 ---

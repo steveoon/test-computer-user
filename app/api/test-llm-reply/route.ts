@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { generateSmartReplyWithLLM } from "../../../lib/utils/zhipin-data-loader";
+import { generateSmartReplyWithLLM } from "../../../lib/loaders/zhipin-data.loader";
 
 export async function POST(request: NextRequest) {
   try {
