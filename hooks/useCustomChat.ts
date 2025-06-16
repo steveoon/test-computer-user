@@ -39,12 +39,16 @@ export function useCustomChat({
     configData,
     systemPrompts,
     replyPrompts,
+    activeSystemPrompt,
     isLoading: configLoading,
     error: configError,
   } = useConfigDataForChat();
 
   // 🔄 防止飞书通知循环调用的标志
   const [isProcessingError, setIsProcessingError] = useState(false);
+  
+  // 🛡️ 防止短时间内重复处理载荷错误的时间戳
+  const [lastPayloadErrorTime, setLastPayloadErrorTime] = useState<number>(0);
 
   // 🌍 环境信息状态 - 避免 hydration 不匹配
   const [envInfo, setEnvInfo] = useState(() => {
@@ -112,6 +116,7 @@ export function useCustomChat({
       configData,
       systemPrompts,
       replyPrompts,
+      activeSystemPrompt,
     },
     maxSteps: 30,
   });
@@ -152,40 +157,55 @@ export function useCustomChat({
 
     // 🎯 处理请求过大错误
     if (isPayloadTooLargeError(error)) {
+      const now = Date.now();
+      
+      // 🛡️ 防止短时间内重复处理同样的错误（30秒内）
+      if (now - lastPayloadErrorTime < 30000) {
+        console.warn("🚫 短时间内已处理过载荷错误，跳过重复处理");
+        return;
+      }
+      
       setIsProcessingError(true);
+      setLastPayloadErrorTime(now);
       console.warn("💾 检测到请求载荷过大错误，准备智能清理");
 
-      // 🚨 发送飞书载荷过大错误通知（仅一次）
-      sendFeishuNotification("payload_error", {
-        additional_info: `对话历史包含${messages.length}条消息，估算大小${(
-          JSON.stringify(messages).length /
-          (1024 * 1024)
-        ).toFixed(2)}MB，触发载荷过大限制。错误信息：${error.message}`,
-      });
-
-      // 延迟执行，确保错误状态已更新
-      setTimeout(() => {
-        const wasHandled = handlePayloadTooLargeError();
-        if (wasHandled) {
-          // 🎯 清理成功后自动重试
-          setTimeout(() => {
-            console.log("🔄 载荷过大错误处理完成，自动重试请求");
-            setIsProcessingError(false);
-            reload();
-          }, 1000);
-        } else {
+      // 🎯 立即尝试清理，不先发送通知避免循环
+      console.log("🔄 优先执行清理操作，避免通知循环");
+      
+      const wasHandled = handlePayloadTooLargeError();
+      
+      if (wasHandled) {
+        // 🎯 清理成功，准备重试
+        console.log("✅ 载荷清理成功，准备自动重试");
+        
+        setTimeout(() => {
+          console.log("🔄 载荷过大错误处理完成，自动重试请求");
           setIsProcessingError(false);
-          toast.error("请求过大", {
-            description: "请考虑清空部分对话历史后重试",
-            richColors: true,
-            position: "top-center",
-            action: {
-              label: "清空对话",
-              onClick: clearMessages,
-            },
-          });
-        }
-      }, 100);
+          reload();
+        }, 1000);
+      } else {
+        // 🚨 清理失败，现在发送通知并显示错误
+        console.warn("❌ 载荷清理失败，发送通知并显示错误提示");
+        
+        // 只有在清理失败时才发送飞书通知
+        sendFeishuNotification("payload_error", {
+          additional_info: `对话历史包含${messages.length}条消息，估算大小${(
+            JSON.stringify(messages).length /
+            (1024 * 1024)
+          ).toFixed(2)}MB，清理失败，仍然触发载荷过大限制。错误信息：${error.message}`,
+        });
+        
+        setIsProcessingError(false);
+        toast.error("请求过大", {
+          description: "智能清理失败，请考虑手动清空部分对话历史后重试",
+          richColors: true,
+          position: "top-center",
+          action: {
+            label: "清空对话",
+            onClick: clearMessages,
+          },
+        });
+      }
     } else {
       // 其他类型错误的通用处理
       toast.error("请求失败", {

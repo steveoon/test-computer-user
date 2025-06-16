@@ -55,12 +55,12 @@ export default function Chat() {
   return (
     <div className="flex h-dvh relative">
       {/* Mobile/tablet banner */}
-      <div className="flex items-center justify-center fixed left-1/2 -translate-x-1/2 top-5 shadow-md text-xs mx-auto rounded-lg h-8 w-fit bg-blue-600 text-white px-3 py-2 text-left z-50 xl:hidden">
+      <div className="flex items-center justify-center fixed left-1/2 -translate-x-1/2 top-5 shadow-md text-xs mx-auto rounded-lg h-8 w-fit bg-blue-600 text-white px-3 py-2 text-left z-50 lg:hidden">
         <span>Headless mode</span>
       </div>
 
       {/* Resizable Panels - Desktop View */}
-      <div className="w-full hidden xl:block">
+      <div className="w-full hidden lg:block">
         <ResizablePanelGroup direction="horizontal" className="h-full">
           {/* Desktop Stream Panel */}
           <ResizablePanel

@@ -3,6 +3,7 @@ import {
   getBrandData,
   getSystemPrompts,
   getReplyPrompts,
+  getActiveSystemPromptType,
 } from "@/lib/services/config.service";
 import type {
   ZhipinData,
@@ -14,6 +15,7 @@ interface ConfigDataForChat {
   configData: ZhipinData | null;
   systemPrompts: SystemPromptsConfig | null;
   replyPrompts: ReplyPromptsConfig | null;
+  activeSystemPrompt: keyof SystemPromptsConfig;
   isLoading: boolean;
   error: string | null;
 }
@@ -27,6 +29,7 @@ export function useConfigDataForChat(): ConfigDataForChat {
     configData: null,
     systemPrompts: null,
     replyPrompts: null,
+    activeSystemPrompt: "bossZhipinSystemPrompt",
     isLoading: true,
     error: null,
   });
@@ -37,23 +40,26 @@ export function useConfigDataForChat(): ConfigDataForChat {
         console.log("🔄 开始加载聊天所需的配置数据...");
 
         // 并行加载所有配置数据
-        const [brandData, systemPromptsData, replyPromptsData] =
+        const [brandData, systemPromptsData, replyPromptsData, activePrompt] =
           await Promise.all([
             getBrandData(),
             getSystemPrompts(),
             getReplyPrompts(),
+            getActiveSystemPromptType(),
           ]);
 
         console.log("✅ 配置数据加载完成", {
           hasBrandData: !!brandData,
           hasSystemPrompts: !!systemPromptsData,
           hasReplyPrompts: !!replyPromptsData,
+          activeSystemPrompt: activePrompt,
         });
 
         setState({
           configData: brandData,
           systemPrompts: systemPromptsData,
           replyPrompts: replyPromptsData,
+          activeSystemPrompt: activePrompt,
           isLoading: false,
           error: null,
         });

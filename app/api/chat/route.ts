@@ -46,6 +46,7 @@ export async function POST(req: Request) {
     configData,
     systemPrompts,
     replyPrompts,
+    activeSystemPrompt,
   }: {
     messages: UIMessage[];
     sandboxId: string;
@@ -54,6 +55,7 @@ export async function POST(req: Request) {
     configData?: ZhipinData; // Boss直聘配置数据
     systemPrompts?: SystemPromptsConfig; // 系统提示词配置
     replyPrompts?: ReplyPromptsConfig; // 回复指令配置
+    activeSystemPrompt?: keyof SystemPromptsConfig; // 活动系统提示词类型
   } = await req.json();
 
   try {
@@ -67,14 +69,23 @@ export async function POST(req: Request) {
 
     console.log(`[CHAT API] 使用模型: ${chatModel}`);
 
-    // 🎯 获取系统提示词 - 优先使用传入的配置
+    // 🎯 获取系统提示词 - 根据activeSystemPrompt选择
     let systemPrompt: string;
-    if (systemPrompts?.bossZhipinSystemPrompt) {
-      console.log("✅ 使用客户端传入的系统提示词");
-      systemPrompt = systemPrompts.bossZhipinSystemPrompt;
+    const promptType = activeSystemPrompt || "bossZhipinSystemPrompt";
+    
+    if (systemPrompts && systemPrompts[promptType]) {
+      console.log(`✅ 使用客户端传入的${promptType === 'bossZhipinSystemPrompt' ? 'Boss直聘' : '通用计算机'}系统提示词`);
+      systemPrompt = systemPrompts[promptType];
     } else {
-      console.log("⚠️ 使用默认系统提示词（降级模式）");
-      systemPrompt = await getBossZhipinSystemPrompt();
+      console.log(`⚠️ 使用默认${promptType === 'bossZhipinSystemPrompt' ? 'Boss直聘' : '通用计算机'}系统提示词（降级模式）`);
+      // 降级到默认提示词
+      if (promptType === "bossZhipinSystemPrompt") {
+        systemPrompt = await getBossZhipinSystemPrompt();
+      } else {
+        // 需要导入getGeneralComputerSystemPrompt
+        const { getGeneralComputerSystemPrompt } = await import("@/lib/loaders/system-prompts.loader");
+        systemPrompt = await getGeneralComputerSystemPrompt();
+      }
     }
 
     // 🎯 对历史消息应用智能Token优化 (10K tokens阈值)

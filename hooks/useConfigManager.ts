@@ -25,6 +25,7 @@ interface ConfigState {
   updateBrandData: (brandData: ZhipinData) => Promise<void>;
   updateReplyPrompts: (replyPrompts: ReplyPromptsConfig) => Promise<void>;
   updateSystemPrompts: (systemPrompts: SystemPromptsConfig) => Promise<void>;
+  updateActiveSystemPrompt: (promptType: keyof SystemPromptsConfig) => Promise<void>;
   exportConfig: () => void;
   importConfig: (file: File) => Promise<void>;
   resetConfig: () => Promise<void>;
@@ -159,6 +160,34 @@ const useConfigStore = create<ConfigState>()(
           });
         } catch (error) {
           console.error("❌ 系统提示词更新失败:", error);
+          set({ error: error instanceof Error ? error.message : "更新失败" });
+        }
+      },
+
+      updateActiveSystemPrompt: async (promptType: keyof SystemPromptsConfig) => {
+        const { config } = get();
+        if (!config) {
+          set({ error: "配置未加载，无法更新活动系统提示词" });
+          return;
+        }
+
+        try {
+          console.log(`🔄 切换活动系统提示词到: ${promptType}...`);
+          const updatedConfig: AppConfigData = {
+            ...config,
+            activeSystemPrompt: promptType,
+            metadata: {
+              ...config.metadata,
+              lastUpdated: new Date().toISOString(),
+            },
+          };
+
+          await configService.saveConfig(updatedConfig);
+          set({ config: updatedConfig, error: null });
+
+          console.log(`✅ 已切换到 ${promptType === 'bossZhipinSystemPrompt' ? 'Boss直聘' : '通用计算机'} 系统提示词`);
+        } catch (error) {
+          console.error("❌ 活动系统提示词更新失败:", error);
           set({ error: error instanceof Error ? error.message : "更新失败" });
         }
       },

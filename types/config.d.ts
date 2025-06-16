@@ -55,6 +55,9 @@ export interface AppConfigData {
   // 智能回复指令
   replyPrompts: ReplyPromptsConfig;
 
+  // 活动系统提示词选择
+  activeSystemPrompt?: keyof SystemPromptsConfig;
+
   // 配置元信息
   metadata: {
     version: string;
@@ -72,6 +75,7 @@ export interface ConfigService {
   updateBrandData(brandData: ZhipinData): Promise<void>;
   updateSystemPrompts(prompts: SystemPromptsConfig): Promise<void>;
   updateReplyPrompts(prompts: ReplyPromptsConfig): Promise<void>;
+  updateActiveSystemPrompt(promptType: keyof SystemPromptsConfig): Promise<void>;
   clearConfig(): Promise<void>;
   isConfigured(): Promise<boolean>;
 }

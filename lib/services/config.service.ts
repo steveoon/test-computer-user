@@ -118,6 +118,21 @@ class AppConfigService implements ConfigService {
   }
 
   /**
+   * 更新活动系统提示词
+   */
+  async updateActiveSystemPrompt(promptType: keyof SystemPromptsConfig): Promise<void> {
+    const currentConfig = await this.getConfig();
+    if (!currentConfig) {
+      throw new Error("配置数据不存在，请先进行初始化");
+    }
+
+    await this.saveConfig({
+      ...currentConfig,
+      activeSystemPrompt: promptType,
+    });
+  }
+
+  /**
    * 清除所有配置数据
    */
   async clearConfig(): Promise<void> {
@@ -211,6 +226,14 @@ export async function getReplyPrompts(): Promise<ReplyPromptsConfig | null> {
 }
 
 /**
+ * 便捷函数：获取活动系统提示词类型
+ */
+export async function getActiveSystemPromptType(): Promise<keyof SystemPromptsConfig> {
+  const config = await configService.getConfig();
+  return config?.activeSystemPrompt || "bossZhipinSystemPrompt";
+}
+
+/**
  * 浏览器环境迁移函数
  * 从硬编码数据创建配置，仅在浏览器环境中使用
  */
@@ -263,6 +286,9 @@ export async function migrateFromHardcodedData(): Promise<void> {
 
       // 智能回复指令
       replyPrompts: replyPromptsConfig,
+
+      // 活动系统提示词（默认使用Boss直聘）
+      activeSystemPrompt: "bossZhipinSystemPrompt",
 
       // 配置元信息
       metadata: {

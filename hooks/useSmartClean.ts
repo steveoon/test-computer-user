@@ -26,7 +26,50 @@ export function useSmartClean({
   envLimits,
   envInfo,
 }: UseSmartCleanProps) {
-  // 🧹 智能消息清理策略 - 自动执行清理
+  // 🖼️ 智能图片清理 - 移除历史图片，只保留最近的2个
+  const cleanHistoricalImages = useCallback(() => {
+    let imageCount = 0;
+    const imageIndices: number[] = [];
+    
+    // 统计图片数量和位置（从后往前遍历）
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const message = messages[i];
+      if (message.parts) {
+        for (const part of message.parts) {
+          if (part.type === 'tool-invocation' && 
+              part.toolInvocation?.state === 'result' &&
+              part.toolInvocation?.result?.type === 'image') {
+            imageCount++;
+            if (imageCount > 2) {
+              imageIndices.push(i);
+            }
+          }
+        }
+      }
+    }
+
+    if (imageIndices.length === 0) {
+      console.log("📷 没有找到需要清理的历史图片");
+      return false;
+    }
+
+    // 清理包含历史图片的消息
+    const cleanedMessages = messages.filter((_, index) => !imageIndices.includes(index));
+    
+    console.log(`🖼️ 清理了${imageIndices.length}条包含历史图片的消息，保留最近的2张图片`);
+    setMessages(cleanedMessages);
+    
+    toast.success(`已清理${imageIndices.length}张历史图片`, {
+      description: "保留了最近的2张图片，请重新提交您的请求",
+      richColors: true,
+      position: "top-center",
+      duration: 4000,
+    });
+
+    return true;
+  }, [messages, setMessages]);
+
+  // 🧹 智能消息清理策略 - 优先清理图片，然后清理消息
   const handlePayloadTooLargeError = useCallback(() => {
     const messageCount = messages.length;
 
@@ -41,6 +84,18 @@ export function useSmartClean({
       return false; // 不自动清理
     }
 
+    // 🎯 优先尝试清理历史图片
+    console.log("🖼️ 优先尝试清理历史图片以减少载荷大小");
+    const imageCleanSuccess = cleanHistoricalImages();
+    
+    if (imageCleanSuccess) {
+      console.log("✅ 图片清理成功，可能已解决载荷过大问题");
+      return true; // 图片清理成功，先尝试这个解决方案
+    }
+
+    // 🔄 如果没有图片可清理，则进行常规消息清理
+    console.log("📝 没有历史图片可清理，执行常规消息清理");
+    
     // 计算需要保留的消息数量（保留最近的40%，至少5条）
     const keepCount = Math.max(5, Math.floor(messageCount * 0.4));
     const removeCount = messageCount - keepCount;
@@ -61,7 +116,7 @@ export function useSmartClean({
     });
 
     return true; // 表示已清理
-  }, [messages, setMessages]);
+  }, [messages, setMessages, cleanHistoricalImages]);
 
   // 🎯 智能部分清理 - 支持自动和手动清理
   const smartClean = useCallback(
@@ -215,6 +270,7 @@ export function useSmartClean({
     smartClean,
     clearMessages,
     handlePayloadTooLargeError,
+    cleanHistoricalImages,
     checkCleanThreshold,
     checkMessageSize,
   };

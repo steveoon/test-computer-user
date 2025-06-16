@@ -9,17 +9,28 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Save, RefreshCw, Cpu } from "lucide-react";
+import { Save, RefreshCw, Cpu, ToggleLeft, ToggleRight } from "lucide-react";
 import type { SystemPromptsConfig } from "@/types/config";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface SystemPromptsEditorProps {
   data: SystemPromptsConfig | undefined;
   onSave: (data: SystemPromptsConfig) => Promise<void>;
+  activePrompt?: keyof SystemPromptsConfig;
+  onActivePromptChange?: (promptType: keyof SystemPromptsConfig) => Promise<void>;
 }
 
 export const SystemPromptsEditor: React.FC<SystemPromptsEditorProps> = ({
   data,
   onSave,
+  activePrompt = "bossZhipinSystemPrompt",
+  onActivePromptChange,
 }) => {
   const [prompts, setPrompts] = useState<SystemPromptsConfig>(
     () =>
@@ -30,6 +41,7 @@ export const SystemPromptsEditor: React.FC<SystemPromptsEditorProps> = ({
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [switchingPrompt, setSwitchingPrompt] = useState(false);
 
   // 同步数据到编辑器
   React.useEffect(() => {
@@ -79,6 +91,33 @@ export const SystemPromptsEditor: React.FC<SystemPromptsEditorProps> = ({
       }));
     },
     []
+  );
+
+  // 切换活动提示词
+  const handlePromptSwitch = useCallback(
+    async (promptType: string) => {
+      if (!onActivePromptChange) return;
+      
+      // 类型保护，确保是有效的提示词类型
+      if (promptType !== 'bossZhipinSystemPrompt' && promptType !== 'generalComputerSystemPrompt') {
+        setError('无效的提示词类型');
+        return;
+      }
+      
+      setSwitchingPrompt(true);
+      setError(null);
+      
+      try {
+        await onActivePromptChange(promptType as keyof SystemPromptsConfig);
+        console.log(`✅ 已切换到 ${promptType === 'bossZhipinSystemPrompt' ? 'Boss直聘' : '通用计算机'} 系统提示词`);
+      } catch (error) {
+        console.error("❌ 切换系统提示词失败:", error);
+        setError(error instanceof Error ? error.message : "切换失败");
+      } finally {
+        setSwitchingPrompt(false);
+      }
+    },
+    [onActivePromptChange]
   );
 
   if (!data) {
@@ -141,6 +180,57 @@ export const SystemPromptsEditor: React.FC<SystemPromptsEditorProps> = ({
             </div>
           </div>
         </CardHeader>
+      </Card>
+
+      {/* 活动提示词选择器 */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-medium mb-1">当前使用的系统提示词</h3>
+              <p className="text-xs text-muted-foreground">
+                切换后立即生效，新的对话将使用选中的系统提示词
+              </p>
+            </div>
+            <Select
+              value={activePrompt}
+              onValueChange={handlePromptSwitch}
+              disabled={switchingPrompt}
+            >
+              <SelectTrigger className="w-[260px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="bossZhipinSystemPrompt">
+                  <div className="flex items-center gap-2">
+                    {activePrompt === "bossZhipinSystemPrompt" ? (
+                      <ToggleRight className="h-4 w-4 text-primary" />
+                    ) : (
+                      <ToggleLeft className="h-4 w-4" />
+                    )}
+                    <span>Boss直聘招聘助手</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="generalComputerSystemPrompt">
+                  <div className="flex items-center gap-2">
+                    {activePrompt === "generalComputerSystemPrompt" ? (
+                      <ToggleRight className="h-4 w-4 text-primary" />
+                    ) : (
+                      <ToggleLeft className="h-4 w-4" />
+                    )}
+                    <span>通用计算机助手</span>
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {switchingPrompt && (
+            <div className="mt-3 text-xs text-muted-foreground flex items-center gap-2">
+              <RefreshCw className="h-3 w-3 animate-spin" />
+              正在切换系统提示词...
+            </div>
+          )}
+        </CardContent>
       </Card>
 
       {/* 错误提示 */}

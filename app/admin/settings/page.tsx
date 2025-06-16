@@ -24,6 +24,7 @@ export default function AdminSettingsPage() {
     updateBrandData,
     updateReplyPrompts,
     updateSystemPrompts,
+    updateActiveSystemPrompt,
     exportConfig,
     importConfig,
     resetConfig,
@@ -318,6 +319,8 @@ export default function AdminSettingsPage() {
           <SystemPromptsEditor
             data={config?.systemPrompts}
             onSave={updateSystemPrompts}
+            activePrompt={config?.activeSystemPrompt || "bossZhipinSystemPrompt"}
+            onActivePromptChange={updateActiveSystemPrompt}
           />
         </TabsContent>
 

@@ -35,7 +35,7 @@ interface MobileChatLayoutProps {
 
 export function MobileChatLayout(props: MobileChatLayoutProps) {
   return (
-    <div className="w-full xl:hidden flex flex-col h-full">
+    <div className="w-full lg:hidden flex flex-col h-full">
       <ChatPanel {...props} />
     </div>
   );
