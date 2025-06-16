@@ -25,21 +25,9 @@ export interface SystemPromptsConfig {
 
 /**
  * 智能回复指令配置
- * 对应 zhipin-data-loader.ts 中的 replySystemPrompts
+ * 使用映射类型确保与 ReplyContext 类型一致
  */
-export interface ReplyPromptsConfig {
-  initial_inquiry: string;
-  location_inquiry: string;
-  location_match: string;
-  no_location_match: string;
-  salary_inquiry: string;
-  schedule_inquiry: string;
-  interview_request: string;
-  age_concern: string;
-  insurance_inquiry: string;
-  followup_chat: string;
-  general_chat: string;
-}
+export type ReplyPromptsConfig = Record<ReplyContext, string>;
 
 /**
  * 统一应用配置数据结构

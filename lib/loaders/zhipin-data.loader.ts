@@ -4,7 +4,7 @@
  */
 
 import { getDynamicRegistry } from "@/lib/model-registry/dynamic-registry";
-import { ZhipinData, MessageClassification } from "../../types/zhipin";
+import { ZhipinData, MessageClassification, Templates } from "../../types/zhipin";
 import { generateText, generateObject } from "ai";
 import { z } from "zod";
 import {
@@ -719,8 +719,8 @@ function buildContextInfo(
     for (const key in templateMap) {
       if (
         Object.prototype.hasOwnProperty.call(brandConfig.templates, key) &&
-        brandConfig.templates[key as keyof typeof brandConfig.templates]
-          ?.length > 0
+        brandConfig.templates[key as keyof Templates] &&
+        (brandConfig.templates[key as keyof Templates] as string[]).length > 0
       ) {
         const templateName = templateMap[key];
         const templateContent =
