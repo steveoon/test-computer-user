@@ -1,106 +1,256 @@
+import { z } from "zod";
+
 // Boss直聘相关数据类型定义
 
-export interface Position {
-  id: string;
-  name: string;
-  timeSlots: string[];
-  baseSalary: number;
-  levelSalary: string;
-  workHours: string;
-  benefits: string;
-  requirements: string[];
-  urgent: boolean;
-}
+// 预定义常见出勤模式
+export const ATTENDANCE_PATTERNS = {
+  WEEKENDS: [6, 7],
+  WEEKDAYS: [1, 2, 3, 4, 5],
+  FRIDAY_TO_SUNDAY: [5, 6, 7],
+  EVERYDAY: [1, 2, 3, 4, 5, 6, 7],
+} as const;
 
-export interface Store {
-  id: string;
-  name: string;
-  location: string;
-  district: string;
-  subarea: string;
-  coordinates: {
-    lat: number;
-    lng: number;
-  };
-  transportation: string;
-  positions: Position[];
-  brand: string; // 新增：门店所属品牌
-}
+// 🔧 Zod Schema 定义
 
-// 使用映射类型使 Templates 更灵活
-export type Templates = Partial<Record<ReplyContext | 'proactive' | 'inquiry' | 'no_match' | 'interview' | 'followup', string[]>>;
+// 出勤要求Schema
+export const AttendanceRequirementSchema = z.object({
+  requiredDays: z.array(z.number().min(1).max(7)).optional(),
+  minimumDays: z.number().min(0).optional(),
+  description: z.string(),
+});
 
-export interface ScreeningRules {
-  age: {
-    min: number;
-    max: number;
-    preferred: number[];
-  };
-  blacklistKeywords: string[];
-  preferredKeywords: string[];
-}
+// 排班类型Schema
+export const ScheduleTypeSchema = z.enum([
+  "fixed",
+  "flexible",
+  "rotating",
+  "on_call",
+]);
 
-// 品牌特定配置
-export interface BrandConfig {
-  templates: Templates;
-  screening: ScreeningRules;
-}
+// 考勤政策Schema
+export const AttendancePolicySchema = z.object({
+  punctualityRequired: z.boolean(),
+  lateToleranceMinutes: z.number().min(0),
+  attendanceTracking: z.enum(["strict", "flexible", "none"]),
+  makeupShiftsAllowed: z.boolean(),
+});
 
-export interface ZhipinData {
-  city: string;
-  stores: Store[];
-  brands: Record<string, BrandConfig>; // 新增：品牌配置映射
-  // 保持向后兼容的默认配置
-  defaultBrand?: string;
-  templates?: Templates; // 可选：作为默认模板
-  screening?: ScreeningRules; // 可选：作为默认筛选规则
-}
+// 时间段可用性Schema
+export const TimeSlotAvailabilitySchema = z.object({
+  slot: z.string(),
+  maxCapacity: z.number().min(0),
+  currentBooked: z.number().min(0),
+  isAvailable: z.boolean(),
+  priority: z.enum(["high", "medium", "low"]),
+});
 
-export interface SampleData {
-  zhipin: ZhipinData;
-}
+// 排班灵活性Schema
+export const SchedulingFlexibilitySchema = z.object({
+  canSwapShifts: z.boolean(),
+  advanceNoticeHours: z.number().min(0),
+  partTimeAllowed: z.boolean(),
+  weekendRequired: z.boolean(),
+  holidayRequired: z.boolean(),
+});
 
-export type ReplyContext =
-  | "initial_inquiry"
-  | "location_inquiry"
-  | "location_match"
-  | "no_location_match"
-  | "schedule_inquiry"
-  | "interview_request"
-  | "general_chat"
-  | "salary_inquiry"
-  | "age_concern"
-  | "insurance_inquiry"
-  | "followup_chat";
+// 岗位Schema
+export const PositionSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  timeSlots: z.array(z.string()),
+  baseSalary: z.number().min(0),
+  levelSalary: z.string(),
+  workHours: z.string(),
+  benefits: z.string(),
+  requirements: z.array(z.string()),
+  urgent: z.boolean(),
+  scheduleType: ScheduleTypeSchema,
+  attendancePolicy: AttendancePolicySchema,
+  availableSlots: z.array(TimeSlotAvailabilitySchema),
+  schedulingFlexibility: SchedulingFlexibilitySchema,
+  minHoursPerWeek: z.number().min(0).optional(),
+  maxHoursPerWeek: z.number().min(0).optional(),
+  preferredDays: z.array(z.string()).optional(),
+  blackoutDates: z.array(z.string()).optional(),
+  attendanceRequirement: AttendanceRequirementSchema.optional(),
+});
 
-export interface CandidateInfo {
-  name?: string;
-  age?: number;
-  location?: string;
-  experience?: string;
-  availability?: string;
-}
+// 门店Schema
+export const StoreSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  location: z.string(),
+  district: z.string(),
+  subarea: z.string(),
+  coordinates: z.object({
+    lat: z.number(),
+    lng: z.number(),
+  }),
+  transportation: z.string(),
+  positions: z.array(PositionSchema),
+  brand: z.string(),
+});
 
-export interface ConversationMessage {
-  role: "candidate" | "recruiter";
-  message: string;
-  timestamp?: string;
-}
+// 回复上下文类型Schema
+export const ReplyContextSchema = z.enum([
+  "initial_inquiry",
+  "location_inquiry",
+  "location_match",
+  "no_location_match",
+  "schedule_inquiry",
+  "interview_request",
+  "general_chat",
+  "salary_inquiry",
+  "age_concern",
+  "insurance_inquiry",
+  "followup_chat",
+  "attendance_inquiry",
+  "flexibility_inquiry",
+  "attendance_policy_inquiry",
+  "work_hours_inquiry",
+  "availability_inquiry",
+  "part_time_support",
+]);
 
-// LLM 工具参数基础类型
-export interface BaseReplyArgs {
-  city?: string;
-  brand?: string;
-}
+// 模板Schema（支持所有回复类型）
+export const TemplatesSchema = z
+  .record(
+    z.enum([
+      // ReplyContext类型
+      "initial_inquiry",
+      "location_inquiry",
+      "location_match",
+      "no_location_match",
+      "schedule_inquiry",
+      "interview_request",
+      "general_chat",
+      "salary_inquiry",
+      "age_concern",
+      "insurance_inquiry",
+      "followup_chat",
+      "attendance_inquiry",
+      "flexibility_inquiry",
+      "attendance_policy_inquiry",
+      "work_hours_inquiry",
+      "availability_inquiry",
+      "part_time_support",
+      // 额外的模板类型
+      "proactive",
+      "inquiry",
+      "no_match",
+      "interview",
+      "followup",
+    ]),
+    z.array(z.string())
+  )
+  .optional();
 
-// 使用类型映射定义每个场景的参数类型
+// 筛选规则Schema
+export const ScreeningRulesSchema = z.object({
+  age: z.object({
+    min: z.number().min(0),
+    max: z.number().min(0),
+    preferred: z.array(z.number()),
+  }),
+  blacklistKeywords: z.array(z.string()),
+  preferredKeywords: z.array(z.string()),
+});
+
+// 品牌配置Schema
+export const BrandConfigSchema = z.object({
+  templates: TemplatesSchema.refine((val) => val !== undefined, {
+    message: "品牌配置必须包含templates字段",
+  }),
+  screening: ScreeningRulesSchema,
+});
+
+// Boss直聘数据Schema
+export const ZhipinDataSchema = z.object({
+  city: z.string(),
+  stores: z.array(StoreSchema),
+  brands: z.record(BrandConfigSchema),
+  defaultBrand: z.string().optional(),
+  templates: TemplatesSchema,
+  screening: ScreeningRulesSchema.optional(),
+});
+
+// 示例数据Schema
+export const SampleDataSchema = z.object({
+  zhipin: ZhipinDataSchema,
+});
+
+// 候选人信息Schema
+export const CandidateInfoSchema = z.object({
+  name: z.string().optional(),
+  age: z.number().optional(),
+  location: z.string().optional(),
+  experience: z.string().optional(),
+  availability: z.string().optional(),
+});
+
+// 对话消息Schema
+export const ConversationMessageSchema = z.object({
+  role: z.enum(["candidate", "recruiter"]),
+  message: z.string(),
+  timestamp: z.string().optional(),
+});
+
+// LLM工具参数基础Schema
+export const BaseReplyArgsSchema = z.object({
+  city: z.string().optional(),
+  brand: z.string().optional(),
+});
+
+// 消息分类结果Schema
+export const MessageClassificationSchema = z.object({
+  replyType: ReplyContextSchema,
+  extractedInfo: z.object({
+    mentionedBrand: z.string().nullable().optional(),
+    city: z.string().nullable().optional(),
+    mentionedLocations: z
+      .array(
+        z.object({
+          location: z.string(),
+          confidence: z.number(),
+        })
+      )
+      .nullable()
+      .optional(),
+    mentionedDistrict: z.string().nullable().optional(),
+    specificAge: z.number().nullable().optional(),
+    hasUrgency: z.boolean().nullable().optional(),
+    preferredSchedule: z.string().nullable().optional(),
+  }),
+  reasoning: z.string(),
+});
+
+// 🔧 通过 z.infer 生成 TypeScript 类型
+
+export type AttendanceRequirement = z.infer<typeof AttendanceRequirementSchema>;
+export type ScheduleType = z.infer<typeof ScheduleTypeSchema>;
+export type AttendancePolicy = z.infer<typeof AttendancePolicySchema>;
+export type TimeSlotAvailability = z.infer<typeof TimeSlotAvailabilitySchema>;
+export type SchedulingFlexibility = z.infer<typeof SchedulingFlexibilitySchema>;
+export type Position = z.infer<typeof PositionSchema>;
+export type Store = z.infer<typeof StoreSchema>;
+export type Templates = z.infer<typeof TemplatesSchema>;
+export type ScreeningRules = z.infer<typeof ScreeningRulesSchema>;
+export type BrandConfig = z.infer<typeof BrandConfigSchema>;
+export type ZhipinData = z.infer<typeof ZhipinDataSchema>;
+export type SampleData = z.infer<typeof SampleDataSchema>;
+export type ReplyContext = z.infer<typeof ReplyContextSchema>;
+export type CandidateInfo = z.infer<typeof CandidateInfoSchema>;
+export type ConversationMessage = z.infer<typeof ConversationMessageSchema>;
+export type MessageClassification = z.infer<typeof MessageClassificationSchema>;
+
+// 🔧 LLM工具参数类型映射（使用类型而非Schema，因为过于复杂）
 export type ReplyArgsMap = {
-  initial_inquiry: BaseReplyArgs & {
+  initial_inquiry: z.infer<typeof BaseReplyArgsSchema> & {
     workHours?: string;
     baseSalary?: number;
     levelSalary?: string;
   };
-  location_inquiry: BaseReplyArgs;
+  location_inquiry: z.infer<typeof BaseReplyArgsSchema>;
   location_match: {
     location: string;
     district: string;
@@ -117,7 +267,7 @@ export type ReplyArgsMap = {
     baseSalary: number;
     levelSalary?: string;
   };
-  schedule_inquiry: BaseReplyArgs; // 如果需要特定字段，可以添加
+  schedule_inquiry: z.infer<typeof BaseReplyArgsSchema>;
   interview_request: {
     storeName?: string;
   };
@@ -129,45 +279,20 @@ export type ReplyArgsMap = {
     hasInsurance: boolean;
     insuranceType?: string;
   };
-  followup_chat: BaseReplyArgs & {
+  followup_chat: z.infer<typeof BaseReplyArgsSchema> & {
     alternativeOption: string;
     encouragement: string;
   };
-  general_chat: BaseReplyArgs & {
+  general_chat: z.infer<typeof BaseReplyArgsSchema> & {
     defaultMessage: string;
   };
+  attendance_inquiry: z.infer<typeof BaseReplyArgsSchema>;
+  flexibility_inquiry: z.infer<typeof BaseReplyArgsSchema>;
+  attendance_policy_inquiry: z.infer<typeof BaseReplyArgsSchema>;
+  work_hours_inquiry: z.infer<typeof BaseReplyArgsSchema>;
+  availability_inquiry: z.infer<typeof BaseReplyArgsSchema>;
+  part_time_support: z.infer<typeof BaseReplyArgsSchema>;
 };
-
-// 保持向后兼容的类型别名
-export type InitialInquiryReplyArgs = ReplyArgsMap['initial_inquiry'];
-export type LocationInquiryReplyArgs = ReplyArgsMap['location_inquiry'];
-export type LocationMatchReplyArgs = ReplyArgsMap['location_match'];
-export type NoLocationMatchReplyArgs = ReplyArgsMap['no_location_match'];
-export type SalaryInquiryReplyArgs = ReplyArgsMap['salary_inquiry'];
-export type ScheduleInquiryReplyArgs = ReplyArgsMap['schedule_inquiry'];
-export type InterviewRequestReplyArgs = ReplyArgsMap['interview_request'];
-export type AgeConcernReplyArgs = ReplyArgsMap['age_concern'];
-export type InsuranceInquiryReplyArgs = ReplyArgsMap['insurance_inquiry'];
-export type FollowupChatReplyArgs = ReplyArgsMap['followup_chat'];
-export type GeneralChatReplyArgs = ReplyArgsMap['general_chat'];
 
 // 联合类型，用于 LLM 工具的参数
 export type LLMToolArgs = ReplyArgsMap[keyof ReplyArgsMap];
-
-// 新增：消息分类结果类型（统一到types中）
-export interface MessageClassification {
-  replyType: ReplyContext; // 复用ReplyContext类型
-  extractedInfo: {
-    mentionedBrand?: string | null;
-    city?: string | null;
-    mentionedLocations?: Array<{
-      location: string;
-      confidence: number;
-    }> | null;
-    mentionedDistrict?: string | null;
-    specificAge?: number | null;
-    hasUrgency?: boolean | null;
-    preferredSchedule?: string | null;
-  };
-  reasoning: string;
-}

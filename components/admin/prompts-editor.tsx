@@ -31,6 +31,13 @@ const PROMPT_NAMES: Record<string, string> = {
   insurance_inquiry: "保险咨询",
   followup_chat: "跟进聊天",
   general_chat: "通用聊天",
+  // 🆕 新增：出勤和排班相关分类中文名称
+  attendance_inquiry: "出勤要求咨询",
+  flexibility_inquiry: "排班灵活性咨询",
+  attendance_policy_inquiry: "考勤政策咨询",
+  work_hours_inquiry: "工时要求咨询",
+  availability_inquiry: "时间段可用性咨询",
+  part_time_support: "兼职支持咨询",
 };
 
 export const PromptsEditor: React.FC<PromptsEditorProps> = ({

@@ -32,6 +32,45 @@ export const sampleData: SampleData = {
             benefits: "无",
             requirements: ["18-45岁", "有服务经验优先"],
             urgent: true,
+            // 新增：考勤和排班信息
+            scheduleType: "flexible",
+            attendancePolicy: {
+              punctualityRequired: true,
+              lateToleranceMinutes: 10,
+              attendanceTracking: "flexible",
+              makeupShiftsAllowed: true,
+            },
+            availableSlots: [
+              {
+                slot: "11:30~14:00",
+                maxCapacity: 3,
+                currentBooked: 1,
+                isAvailable: true,
+                priority: "high",
+              },
+            ],
+            schedulingFlexibility: {
+              canSwapShifts: true,
+              advanceNoticeHours: 24,
+              partTimeAllowed: true,
+              weekendRequired: false,
+              holidayRequired: false,
+            },
+            minHoursPerWeek: 10,
+            maxHoursPerWeek: 20,
+            preferredDays: [
+              "Monday",
+              "Tuesday",
+              "Wednesday",
+              "Thursday",
+              "Friday",
+            ],
+            // 新增：出勤要求
+            attendanceRequirement: {
+              requiredDays: [1, 2, 3, 4, 5], // 周一到周五
+              minimumDays: 3,
+              description: "周一-周五都上岗，一周至少3天",
+            },
           },
           {
             id: "pos_002",
@@ -44,6 +83,47 @@ export const sampleData: SampleData = {
             benefits: "无",
             requirements: ["18-45岁", "有服务经验优先"],
             urgent: false,
+            // 新增：考勤和排班信息
+            scheduleType: "fixed",
+            attendancePolicy: {
+              punctualityRequired: true,
+              lateToleranceMinutes: 5,
+              attendanceTracking: "strict",
+              makeupShiftsAllowed: false,
+            },
+            availableSlots: [
+              {
+                slot: "11:00~14:00",
+                maxCapacity: 2,
+                currentBooked: 0,
+                isAvailable: true,
+                priority: "medium",
+              },
+            ],
+            schedulingFlexibility: {
+              canSwapShifts: false,
+              advanceNoticeHours: 48,
+              partTimeAllowed: true,
+              weekendRequired: true,
+              holidayRequired: true,
+            },
+            minHoursPerWeek: 15,
+            maxHoursPerWeek: 25,
+            preferredDays: [
+              "Monday",
+              "Tuesday",
+              "Wednesday",
+              "Thursday",
+              "Friday",
+              "Saturday",
+              "Sunday",
+            ],
+            // 新增：出勤要求
+            attendanceRequirement: {
+              requiredDays: [6, 7], // 周六、周日
+              minimumDays: 6,
+              description: "周六、日上岗，一周至少上岗6天",
+            },
           },
         ],
       },
@@ -68,6 +148,52 @@ export const sampleData: SampleData = {
             benefits: "无",
             requirements: ["18-45岁", "有服务经验优先"],
             urgent: true,
+            // 新增：考勤和排班信息
+            scheduleType: "rotating",
+            attendancePolicy: {
+              punctualityRequired: true,
+              lateToleranceMinutes: 15,
+              attendanceTracking: "flexible",
+              makeupShiftsAllowed: true,
+            },
+            availableSlots: [
+              {
+                slot: "11:30~14:00",
+                maxCapacity: 2,
+                currentBooked: 1,
+                isAvailable: true,
+                priority: "high",
+              },
+              {
+                slot: "17:30~20:30",
+                maxCapacity: 2,
+                currentBooked: 0,
+                isAvailable: true,
+                priority: "high",
+              },
+            ],
+            schedulingFlexibility: {
+              canSwapShifts: true,
+              advanceNoticeHours: 12,
+              partTimeAllowed: true,
+              weekendRequired: true,
+              holidayRequired: false,
+            },
+            minHoursPerWeek: 12,
+            maxHoursPerWeek: 30,
+            preferredDays: [
+              "Tuesday",
+              "Wednesday",
+              "Thursday",
+              "Friday",
+              "Saturday",
+            ],
+            // 新增：出勤要求
+            attendanceRequirement: {
+              requiredDays: [5, 6, 7], // 周五-周日
+              minimumDays: 2,
+              description: "周五-周日都上岗，至少2天",
+            },
           },
         ],
       },
@@ -92,6 +218,39 @@ export const sampleData: SampleData = {
             benefits: "无",
             requirements: ["18-45岁", "有服务经验优先"],
             urgent: false,
+            // 新增：考勤和排班信息
+            scheduleType: "flexible",
+            attendancePolicy: {
+              punctualityRequired: false,
+              lateToleranceMinutes: 20,
+              attendanceTracking: "none",
+              makeupShiftsAllowed: true,
+            },
+            availableSlots: [
+              {
+                slot: "11:00~14:00",
+                maxCapacity: 4,
+                currentBooked: 2,
+                isAvailable: true,
+                priority: "low",
+              },
+            ],
+            schedulingFlexibility: {
+              canSwapShifts: true,
+              advanceNoticeHours: 6,
+              partTimeAllowed: true,
+              weekendRequired: false,
+              holidayRequired: false,
+            },
+            minHoursPerWeek: 6,
+            maxHoursPerWeek: 15,
+            preferredDays: ["Monday", "Wednesday", "Friday"],
+            blackoutDates: ["2024-12-25", "2024-01-01"],
+            // 新增：出勤要求
+            attendanceRequirement: {
+              minimumDays: 2,
+              description: "一周至少上岗2天，时间灵活",
+            },
           },
         ],
       },
@@ -115,6 +274,47 @@ export const sampleData: SampleData = {
             benefits: "面议",
             requirements: ["18-45岁", "服从店长安排"],
             urgent: true,
+            // 新增：考勤和排班信息
+            scheduleType: "on_call",
+            attendancePolicy: {
+              punctualityRequired: true,
+              lateToleranceMinutes: 5,
+              attendanceTracking: "strict",
+              makeupShiftsAllowed: true,
+            },
+            availableSlots: [
+              {
+                slot: "10:00~14:00",
+                maxCapacity: 1,
+                currentBooked: 0,
+                isAvailable: true,
+                priority: "high",
+              },
+            ],
+            schedulingFlexibility: {
+              canSwapShifts: false,
+              advanceNoticeHours: 72,
+              partTimeAllowed: false,
+              weekendRequired: true,
+              holidayRequired: true,
+            },
+            minHoursPerWeek: 20,
+            maxHoursPerWeek: 40,
+            preferredDays: [
+              "Monday",
+              "Tuesday",
+              "Wednesday",
+              "Thursday",
+              "Friday",
+              "Saturday",
+              "Sunday",
+            ],
+            // 新增：出勤要求
+            attendanceRequirement: {
+              requiredDays: [1, 2, 3, 4, 5, 6, 7], // 每天都来
+              minimumDays: 5,
+              description: "每天都来，一周至少上岗5天",
+            },
           },
         ],
       },
@@ -138,6 +338,45 @@ export const sampleData: SampleData = {
             benefits: "面议",
             requirements: ["18-45岁", "服从店长安排"],
             urgent: true,
+            // 新增：考勤和排班信息
+            scheduleType: "fixed",
+            attendancePolicy: {
+              punctualityRequired: true,
+              lateToleranceMinutes: 10,
+              attendanceTracking: "flexible",
+              makeupShiftsAllowed: true,
+            },
+            availableSlots: [
+              {
+                slot: "17:30~20:30",
+                maxCapacity: 1,
+                currentBooked: 0,
+                isAvailable: true,
+                priority: "high",
+              },
+            ],
+            schedulingFlexibility: {
+              canSwapShifts: true,
+              advanceNoticeHours: 24,
+              partTimeAllowed: true,
+              weekendRequired: false,
+              holidayRequired: true,
+            },
+            minHoursPerWeek: 15,
+            maxHoursPerWeek: 25,
+            preferredDays: [
+              "Monday",
+              "Tuesday",
+              "Wednesday",
+              "Thursday",
+              "Friday",
+            ],
+            // 新增：出勤要求
+            attendanceRequirement: {
+              requiredDays: [1, 2, 3, 4, 5], // 周一-周五
+              minimumDays: 4,
+              description: "周一-周五都上岗，一周至少4天",
+            },
           },
         ],
       },
@@ -172,6 +411,42 @@ export const sampleData: SampleData = {
           schedule_inquiry: [
             "排班比较灵活，一般是2-4小时，具体可以和店长商量。",
             "门店除了{time1}空缺，还有{time2}也空缺呢，时间有要求可以和店长商量。",
+          ],
+          // 🆕 新增：出勤要求相关回复模板
+          attendance_inquiry: [
+            "出勤要求是{attendance_description}，{minimum_days}天起，比较灵活的。",
+            "这个岗位{attendance_description}，一周最少{minimum_days}天，时间安排可以和店长商量。",
+            "出勤安排：{attendance_description}，如果时间有冲突可以提前和店长协调。",
+          ],
+          // 🆕 新增：排班灵活性相关回复模板
+          flexibility_inquiry: [
+            "排班{schedule_type}，{can_swap_shifts}换班，{part_time_allowed}兼职，比较人性化的。",
+            "时间安排很灵活，{can_swap_shifts}调班，需要提前{advance_notice_hours}小时通知就行。",
+            "排班方式是{schedule_type}的，{weekend_required}周末班，具体可以和店长商量。",
+          ],
+          // 🆕 新增：考勤政策相关回复模板
+          attendance_policy_inquiry: [
+            "考勤要求：{punctuality_required}准时到岗，最多可以迟到{late_tolerance_minutes}分钟。",
+            "考勤比较{attendance_tracking}，{punctuality_required}严格要求准时，{makeup_shifts_allowed}补班。",
+            "迟到政策：最多{late_tolerance_minutes}分钟，超过需要提前请假或补班。",
+          ],
+          // 🆕 新增：工时要求相关回复模板
+          work_hours_inquiry: [
+            "每周工作{min_hours_per_week}-{max_hours_per_week}小时，可以根据你的时间来安排。",
+            "工时安排：最少每周{min_hours_per_week}小时，最多{max_hours_per_week}小时，比较灵活。",
+            "时间要求每周{min_hours_per_week}小时起，上限{max_hours_per_week}小时，不会太累。",
+          ],
+          // 🆕 新增：时间段可用性相关回复模板
+          availability_inquiry: [
+            "{time_slot}班次还有{available_spots}个位置，{priority}优先级，可以报名。",
+            "现在{time_slot}时段还缺{available_spots}个人，属于{priority}需求，比较好排班。",
+            "时间段{time_slot}：容纳{max_capacity}人，现在还有{available_spots}个空位。",
+          ],
+          // 🆕 新增：兼职支持相关回复模板
+          part_time_support: [
+            "完全支持兼职，{part_time_allowed}，时间可以和其他工作错开安排。",
+            "我们很欢迎兼职人员，{flexible_scheduling}，可以根据你的主业时间来排班。",
+            "兼职没问题的，{scheduling_flexibility}，学生和上班族都可以来做。",
           ],
           followup: [
             "门店除了{position1}岗位还有{position2}岗位也空缺的，如果{position1}觉得不合适，可以和店长商量。",
@@ -213,6 +488,42 @@ export const sampleData: SampleData = {
           ],
           schedule_inquiry: [
             "排班时间比较灵活，具体可以和店长沟通，一般是3-4小时的班。",
+          ],
+          // 🆕 新增：大米先生专属出勤要求回复模板
+          attendance_inquiry: [
+            "大米先生的出勤要求：{attendance_description}，最少{minimum_days}天，听店长安排。",
+            "我们{attendance_description}，一周{minimum_days}天起，比较严格但很稳定。",
+            "出勤安排：{attendance_description}，店长会根据情况灵活调整。",
+          ],
+          // 🆕 新增：大米先生专属排班灵活性回复模板
+          flexibility_inquiry: [
+            "大米先生排班{schedule_type}，{can_swap_shifts}换班，需要{advance_notice_hours}小时提前通知。",
+            "排班方式是{schedule_type}，{part_time_allowed}兼职，{weekend_required}周末班。",
+            "时间安排{schedule_type}，{can_swap_shifts}调班，听店长统一安排。",
+          ],
+          // 🆕 新增：大米先生专属考勤政策回复模板
+          attendance_policy_inquiry: [
+            "大米先生考勤要求{punctuality_required}准时，迟到最多{late_tolerance_minutes}分钟。",
+            "考勤管理{attendance_tracking}，{punctuality_required}守时，{makeup_shifts_allowed}补班。",
+            "迟到规定：超过{late_tolerance_minutes}分钟需要请假或调班。",
+          ],
+          // 🆕 新增：大米先生专属工时要求回复模板
+          work_hours_inquiry: [
+            "大米先生工时要求：每周{min_hours_per_week}-{max_hours_per_week}小时，听店长安排。",
+            "每周最少{min_hours_per_week}小时，最多{max_hours_per_week}小时，工时相对稳定。",
+            "时间要求每周{min_hours_per_week}小时起步，上限{max_hours_per_week}小时。",
+          ],
+          // 🆕 新增：大米先生专属时间段可用性回复模板
+          availability_inquiry: [
+            "大米先生{time_slot}班次还有{available_spots}个名额，{priority}级需求。",
+            "目前{time_slot}还缺{available_spots}人，属于{priority}优先级岗位。",
+            "{time_slot}时段：总共{max_capacity}人，现在还有{available_spots}个位置。",
+          ],
+          // 🆕 新增：大米先生专属兼职支持回复模板
+          part_time_support: [
+            "大米先生{part_time_allowed}兼职，不过需要服从店长整体安排。",
+            "我们{part_time_allowed}兼职员工，{scheduling_flexibility}，听店长安排时间。",
+            "兼职可以考虑，但要{part_time_allowed}，具体和店长商量。",
           ],
           followup: [
             "大米先生除了{position1}还有其他岗位，如果{position1}不合适，可以和店长商量。",

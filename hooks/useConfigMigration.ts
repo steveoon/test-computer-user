@@ -69,6 +69,24 @@ export function useConfigMigration() {
         }
       } catch (error) {
         console.error("❌ 配置迁移失败:", error);
+        console.error("错误详情:", {
+          name: error instanceof Error ? error.name : typeof error,
+          message: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined
+        });
+        
+        // 获取当前配置状态用于调试
+        try {
+          const currentConfig = await configService.getConfig();
+          console.log("📊 当前配置状态:", {
+            hasConfig: !!currentConfig,
+            version: currentConfig?.metadata?.version,
+            replyPromptsCount: currentConfig ? Object.keys(currentConfig.replyPrompts || {}).length : 0,
+            storesCount: currentConfig?.brandData?.stores?.length || 0
+          });
+        } catch (debugError) {
+          console.error("获取调试信息失败:", debugError);
+        }
 
         if (!isMounted) return;
 
@@ -109,6 +127,7 @@ export function useConfigMigration() {
         needsMigration: false,
       });
     } catch (error) {
+      console.error("❌ 手动重试迁移失败:", error);
       setState({
         isLoading: false,
         isSuccess: false,

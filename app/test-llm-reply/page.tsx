@@ -64,6 +64,18 @@ export default function TestLLMReplyPage() {
     "海底捞有工作机会吗？", // 新增：测试海底捞品牌识别
     "人民广场那边有海底捞招聘吗？", // 新增：测试品牌+位置匹配
     "大米先生有招聘吗？", // 演示：测试动态品牌识别（不存在的品牌）
+    
+    // 🆕 新增：测试出勤要求和排班信息的问题
+    "需要每天都上班吗？", // 测试出勤要求
+    "一周要上几天班？", // 测试最少天数要求
+    "可以换班吗？", // 测试排班灵活性
+    "支持兼职吗？", // 测试兼职支持
+    "需要周末上班吗？", // 测试周末要求
+    "时间灵活吗？", // 测试时间灵活性
+    "现在还有位置吗？", // 测试时间段可用性
+    "最多可以迟到几分钟？", // 测试考勤政策
+    "一周最少工作多少小时？", // 测试工时要求
+    "排班方式是什么？", // 测试排班类型
   ];
 
   const handleSubmit = async (testMessage?: string) => {
@@ -191,6 +203,75 @@ export default function TestLLMReplyPage() {
         </div>
       </div>
 
+      {/* 出勤和排班功能测试区域 */}
+      <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 rounded">
+        <h3 className="text-lg font-semibold text-emerald-800 mb-2">
+          🆕 出勤要求和排班信息测试
+        </h3>
+        <p className="text-sm text-emerald-700 mb-3">
+          测试新增的AttendanceRequirement、TimeSlotAvailability和SchedulingFlexibility功能：
+          现在智能回复会包含详细的出勤要求、排班类型、时间段可用性等信息
+        </p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          <button
+            onClick={() => handleSubmit("需要每天都上班吗？")}
+            disabled={loading}
+            className="px-3 py-1 bg-emerald-500 text-white rounded text-sm hover:bg-emerald-600 disabled:opacity-50"
+          >
+            出勤要求测试
+          </button>
+          <button
+            onClick={() => handleSubmit("可以换班吗？")}
+            disabled={loading}
+            className="px-3 py-1 bg-emerald-500 text-white rounded text-sm hover:bg-emerald-600 disabled:opacity-50"
+          >
+            排班灵活性测试
+          </button>
+          <button
+            onClick={() => handleSubmit("现在还有位置吗？")}
+            disabled={loading}
+            className="px-3 py-1 bg-emerald-500 text-white rounded text-sm hover:bg-emerald-600 disabled:opacity-50"
+          >
+            时间段可用性测试
+          </button>
+          <button
+            onClick={() => handleSubmit("支持兼职吗？")}
+            disabled={loading}
+            className="px-3 py-1 bg-emerald-500 text-white rounded text-sm hover:bg-emerald-600 disabled:opacity-50"
+          >
+            兼职支持测试
+          </button>
+          <button
+            onClick={() => handleSubmit("一周要上几天班？")}
+            disabled={loading}
+            className="px-3 py-1 bg-emerald-500 text-white rounded text-sm hover:bg-emerald-600 disabled:opacity-50"
+          >
+            最少天数测试
+          </button>
+          <button
+            onClick={() => handleSubmit("排班方式是什么？")}
+            disabled={loading}
+            className="px-3 py-1 bg-emerald-500 text-white rounded text-sm hover:bg-emerald-600 disabled:opacity-50"
+          >
+            排班类型测试
+          </button>
+          <button
+            onClick={() => handleSubmit("最多可以迟到几分钟？")}
+            disabled={loading}
+            className="px-3 py-1 bg-emerald-500 text-white rounded text-sm hover:bg-emerald-600 disabled:opacity-50"
+          >
+            考勤政策测试
+          </button>
+          <button
+            onClick={() => handleSubmit("一周最少工作多少小时？")}
+            disabled={loading}
+            className="px-3 py-1 bg-emerald-500 text-white rounded text-sm hover:bg-emerald-600 disabled:opacity-50"
+          >
+            工时要求测试
+          </button>
+        </div>
+      </div>
+
       {/* 分类功能测试区域 */}
       <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded">
         <h3 className="text-lg font-semibold text-yellow-800 mb-2">
@@ -304,11 +385,14 @@ export default function TestLLMReplyPage() {
         <ul className="text-blue-700 text-sm space-y-1">
           <li>• 此测试页面用于验证基于 AI SDK 的智能回复生成功能</li>
           <li>• 系统会根据候选人消息智能选择合适的回复模板</li>
-          <li>• 支持多品牌识别：成都你六姐、海底捞等</li>
+          <li>• 支持多品牌识别：成都你六姐、大米先生等</li>
           <li>• 回复内容会根据现有门店数据动态生成</li>
+          <li>• 🆕 新增：回复现在包含详细的出勤要求、排班信息、时间段可用性</li>
+          <li>• 🆕 新增：智能识别考勤政策、排班灵活性、工时要求等信息</li>
           <li>• 如果 LLM 调用失败，会自动降级到原有的规则引擎</li>
           <li>• 🎯 使用右上角品牌选择器切换不同品牌进行测试</li>
           <li>• ⚙️ 使用"模型配置"按钮可以自定义分类和回复模型</li>
+          <li>• 🧪 使用绿色按钮测试新的出勤和排班功能</li>
         </ul>
       </div>
 
@@ -340,12 +424,44 @@ export default function TestLLMReplyPage() {
         </div>
       </div>
 
-      {/* 最新配置重构说明 */}
+      {/* 出勤和排班功能说明 */}
       <div className="mt-4 p-4 bg-emerald-50 rounded">
         <h3 className="font-semibold text-emerald-800 mb-2">
-          🆕 配置本地化重构 (2025.01.06)：
+          🆕 出勤要求和排班信息功能 (2025.01.06)：
         </h3>
         <div className="text-emerald-700 text-sm space-y-2">
+          <div>
+            ✅ <strong>AttendanceRequirement：</strong>{" "}
+            每个岗位现在包含详细的出勤要求（必须上岗日期、最少天数、描述）
+          </div>
+          <div>
+            ✅ <strong>TimeSlotAvailability：</strong>{" "}
+            时间段可用性信息（最大容量、当前预约、优先级）
+          </div>
+          <div>
+            ✅ <strong>SchedulingFlexibility：</strong>{" "}
+            排班灵活性选项（可否换班、兼职支持、周末要求）
+          </div>
+          <div>
+            ✅ <strong>AttendancePolicy：</strong>{" "}
+            考勤政策（准时要求、迟到容忍、考勤追踪严格程度）
+          </div>
+          <div>
+            ✅ <strong>智能上下文：</strong>{" "}
+            智能回复现在会根据这些信息生成更详细、准确的回复
+          </div>
+          <div>
+            📊 <strong>测试验证：</strong> 使用上方绿色按钮测试各项功能是否正确展示在回复中
+          </div>
+        </div>
+      </div>
+
+      {/* 最新配置重构说明 */}
+      <div className="mt-4 p-4 bg-blue-50 rounded">
+        <h3 className="font-semibold text-blue-800 mb-2">
+          🆕 配置本地化重构 (2025.01.06)：
+        </h3>
+        <div className="text-blue-700 text-sm space-y-2">
           <div>
             ✅ <strong>配置数据本地化：</strong>{" "}
             所有配置数据（品牌数据、系统提示词、回复指令）现在存储在浏览器

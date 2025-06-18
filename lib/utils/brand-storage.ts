@@ -17,6 +17,49 @@ const brandStorage = localforage.createInstance({
   description: "用户品牌偏好和历史记录",
 });
 
+// 🧹 旧键名清理（历史遗留数据）
+const LEGACY_KEYS = ["brand-history", "selected-brand"];
+const CLEANUP_FLAG_KEY = "__legacy_cleanup_done";
+let hasCleanedLegacy = false;
+
+/**
+ * 🧹 清理旧的存储键名
+ * 避免IndexedDB中出现重复的键
+ */
+async function cleanLegacyStorage(): Promise<void> {
+  // 避免重复清理
+  if (hasCleanedLegacy) return;
+
+  try {
+    // 检查是否已经清理过
+    const cleanupDone = await brandStorage.getItem(CLEANUP_FLAG_KEY);
+    if (cleanupDone) {
+      hasCleanedLegacy = true;
+      return;
+    }
+
+    let cleaned = false;
+    for (const legacyKey of LEGACY_KEYS) {
+      const exists = await brandStorage.getItem(legacyKey);
+      if (exists !== null) {
+        console.log(`🧹 清理旧存储键: ${legacyKey}`);
+        await brandStorage.removeItem(legacyKey);
+        cleaned = true;
+      }
+    }
+
+    if (cleaned) {
+      console.log("✅ 旧存储键清理完成");
+    }
+
+    // 标记清理完成
+    await brandStorage.setItem(CLEANUP_FLAG_KEY, true);
+    hasCleanedLegacy = true;
+  } catch (error) {
+    console.warn("清理旧存储键失败:", error);
+  }
+}
+
 /**
  * 💾 保存品牌偏好
  * @param brand 品牌名称
@@ -83,6 +126,9 @@ async function saveBrandToHistory(brand: string): Promise<void> {
  */
 export async function getBrandHistory(): Promise<string[]> {
   try {
+    // 🧹 一次性清理旧存储键（仅在首次调用时）
+    await cleanLegacyStorage();
+
     const history = await brandStorage.getItem<string[]>(BRAND_HISTORY_KEY);
 
     if (Array.isArray(history)) {

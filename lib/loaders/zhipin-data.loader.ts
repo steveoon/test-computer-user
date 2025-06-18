@@ -162,8 +162,20 @@ export function generateSmartReply(
     const brandName = getBrandName(data);
     let reply = `你好，${data.city}各区有${brandName}门店岗位空缺，兼职排班 ${randomPosition.workHours} 小时。基本薪资：${randomPosition.baseSalary} 元/小时。`;
     if (randomPosition.levelSalary) {
-      reply += `阶梯薪资：${randomPosition.levelSalary}`;
+      reply += `阶梯薪资：${randomPosition.levelSalary}。`;
     }
+    
+    // 添加排班类型和灵活性信息
+    const scheduleTypeText = getScheduleTypeText(randomPosition.scheduleType);
+    reply += `排班方式：${scheduleTypeText}`;
+    
+    if (randomPosition.schedulingFlexibility.partTimeAllowed) {
+      reply += "，支持兼职";
+    }
+    if (randomPosition.schedulingFlexibility.canSwapShifts) {
+      reply += "，可换班";
+    }
+    
     return reply;
   }
 
@@ -214,9 +226,25 @@ export function generateSmartReply(
       availableStores[Math.floor(Math.random() * availableStores.length)];
     const position = randomStore.positions[0];
 
-    return `门店除了${position.timeSlots[0]}空缺，还有${
+    // 使用新的排班信息构建回复
+    let reply = `门店除了${position.timeSlots[0]}空缺，还有${
       position.timeSlots[1] || position.timeSlots[0]
-    }也空缺呢，如果对排班时间有要求，可以和店长商量呢`;
+    }也空缺呢`;
+    
+    // 添加排班类型信息
+    const scheduleTypeText = getScheduleTypeText(position.scheduleType);
+    reply += `，排班方式是${scheduleTypeText}`;
+    
+    // 添加灵活性信息
+    if (position.schedulingFlexibility.canSwapShifts) {
+      reply += "，可以换班";
+    }
+    if (position.schedulingFlexibility.partTimeAllowed) {
+      reply += "，支持兼职";
+    }
+    
+    reply += "，具体时间可以和店长商量呢";
+    return reply;
   }
 
   // 5. 面试邀约场景
@@ -333,6 +361,13 @@ export async function classifyUserMessage(
           "insurance_inquiry", // 保险咨询
           "followup_chat", // 跟进聊天
           "general_chat", // 一般聊天
+          // 🆕 新增：出勤和排班相关分类
+          "attendance_inquiry", // 出勤要求咨询
+          "flexibility_inquiry", // 排班灵活性咨询
+          "attendance_policy_inquiry", // 考勤政策咨询
+          "work_hours_inquiry", // 工时要求咨询
+          "availability_inquiry", // 时间段可用性咨询
+          "part_time_support", // 兼职支持咨询
         ])
         .describe("回复类型分类"),
       extractedInfo: z
@@ -436,6 +471,14 @@ export async function classifyUserMessage(
     - insurance_inquiry: 询问保险福利（敏感话题，固定回复"有商业保险"）
     - followup_chat: 需要跟进的聊天
     - general_chat: 一般性对话
+    
+    🆕 新增：出勤和排班相关分类：
+    - attendance_inquiry: 询问出勤要求（如"需要每天都上班吗？"、"一周要上几天班？"）
+    - flexibility_inquiry: 询问排班灵活性（如"可以换班吗？"、"时间灵活吗？"）
+    - attendance_policy_inquiry: 询问考勤政策（如"最多可以迟到几分钟？"、"考勤严格吗？"）
+    - work_hours_inquiry: 询问工时要求（如"一周最少工作多少小时？"、"每天工作几小时？"）
+    - availability_inquiry: 询问时间段可用性（如"现在还有位置吗？"、"什么时间段有空缺？"）
+    - part_time_support: 询问兼职支持（如"支持兼职吗？"、"可以做兼职吗？"）
     
     🚨 敏感话题识别关键词：
     年龄相关：年龄、岁、多大、老了、小了
@@ -694,6 +737,62 @@ function buildContextInfo(
         if (pos.benefits && pos.benefits !== "无") {
           context += `  福利：${pos.benefits}\n`;
         }
+        
+        // 新增：考勤和排班信息
+        context += `  排班类型：${getScheduleTypeText(pos.scheduleType)}\n`;
+        
+        // 可用时间段信息
+        const availableSlots = pos.availableSlots.filter(slot => slot.isAvailable);
+        if (availableSlots.length > 0) {
+          context += `  可预约时段：${availableSlots.map(slot => 
+            `${slot.slot}(${slot.currentBooked}/${slot.maxCapacity}人，${getPriorityText(slot.priority)}优先级)`
+          ).join("、")}\n`;
+        }
+        
+        // 考勤要求
+        const attendance = pos.attendancePolicy;
+        if (attendance.punctualityRequired) {
+          context += `  考勤要求：准时到岗，最多迟到${attendance.lateToleranceMinutes}分钟\n`;
+        }
+        
+        // 排班灵活性
+        const flexibility = pos.schedulingFlexibility;
+        const flexibilityFeatures = [];
+        if (flexibility.canSwapShifts) flexibilityFeatures.push("可换班");
+        if (flexibility.partTimeAllowed) flexibilityFeatures.push("兼职");
+        if (flexibility.weekendRequired) flexibilityFeatures.push("需周末");
+        if (flexibility.holidayRequired) flexibilityFeatures.push("需节假日");
+        
+        if (flexibilityFeatures.length > 0) {
+          context += `  排班特点：${flexibilityFeatures.join("、")}\n`;
+        }
+        
+        // 每周工时要求
+        if (pos.minHoursPerWeek || pos.maxHoursPerWeek) {
+          context += `  每周工时：${pos.minHoursPerWeek || 0}-${pos.maxHoursPerWeek || '不限'}小时\n`;
+        }
+        
+        // 偏好工作日
+        if (pos.preferredDays && pos.preferredDays.length > 0) {
+          context += `  工作日偏好：${pos.preferredDays.map(day => getDayText(day)).join("、")}\n`;
+        }
+        
+        // 新增：出勤要求
+        if (pos.attendanceRequirement) {
+          const req = pos.attendanceRequirement;
+          let reqText = `出勤要求：${req.description}`;
+          
+          if (req.requiredDays && req.requiredDays.length > 0) {
+            const dayNames = req.requiredDays.map(dayNum => getDayNumberText(dayNum));
+            reqText += `（需要：${dayNames.join("、")}）`;
+          }
+          
+          if (req.minimumDays) {
+            reqText += `，最少${req.minimumDays}天/周`;
+          }
+          
+          context += `  ${reqText}\n`;
+        }
       });
     });
   } else {
@@ -713,6 +812,13 @@ function buildContextInfo(
       salary_inquiry: "薪资咨询",
       schedule_inquiry: "排班咨询",
       followup: "跟进话术",
+      // 🆕 新增：出勤和排班相关模板映射
+      attendance_inquiry: "出勤要求咨询",
+      flexibility_inquiry: "排班灵活性咨询",
+      attendance_policy_inquiry: "考勤政策咨询",
+      work_hours_inquiry: "工时要求咨询",
+      availability_inquiry: "时间段可用性咨询",
+      part_time_support: "兼职支持咨询",
     };
 
     context += `\n📋 ${targetBrand}品牌专属话术模板：\n`;
@@ -739,4 +845,61 @@ function buildContextInfo(
   context += `残疾人咨询："不好意思"\n`;
 
   return context;
+}
+
+/**
+ * 获取排班类型的中文描述
+ */
+function getScheduleTypeText(scheduleType: "fixed" | "flexible" | "rotating" | "on_call"): string {
+  const typeMap = {
+    fixed: "固定排班",
+    flexible: "灵活排班", 
+    rotating: "轮班制",
+    on_call: "随叫随到"
+  };
+  return typeMap[scheduleType] || scheduleType;
+}
+
+/**
+ * 获取优先级的中文描述
+ */
+function getPriorityText(priority: "high" | "medium" | "low"): string {
+  const priorityMap = {
+    high: "高",
+    medium: "中", 
+    low: "低"
+  };
+  return priorityMap[priority] || priority;
+}
+
+/**
+ * 获取工作日的中文描述
+ */
+function getDayText(day: string): string {
+  const dayMap: { [key: string]: string } = {
+    Monday: "周一",
+    Tuesday: "周二",
+    Wednesday: "周三",
+    Thursday: "周四", 
+    Friday: "周五",
+    Saturday: "周六",
+    Sunday: "周日"
+  };
+  return dayMap[day] || day;
+}
+
+/**
+ * 获取数字工作日的中文描述 (1=周一, 7=周日)
+ */
+function getDayNumberText(dayNumber: number): string {
+  const dayMap: { [key: number]: string } = {
+    1: "周一",
+    2: "周二", 
+    3: "周三",
+    4: "周四",
+    5: "周五",
+    6: "周六",
+    7: "周日"
+  };
+  return dayMap[dayNumber] || `第${dayNumber}天`;
 }
