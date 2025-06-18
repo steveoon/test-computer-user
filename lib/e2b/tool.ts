@@ -608,6 +608,8 @@ export const computerTool = (
         .enum([
           "initial_inquiry",
           "location_inquiry",
+          "location_match",
+          "no_location_match",
           "schedule_inquiry",
           "interview_request",
           "general_chat",
@@ -615,6 +617,12 @@ export const computerTool = (
           "age_concern",
           "insurance_inquiry",
           "followup_chat",
+          "attendance_inquiry",
+          "flexibility_inquiry",
+          "attendance_policy_inquiry",
+          "work_hours_inquiry",
+          "availability_inquiry",
+          "part_time_support",
         ])
         .optional()
         .describe("The context/type of reply needed"),

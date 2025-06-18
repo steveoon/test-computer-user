@@ -739,7 +739,9 @@ function buildContextInfo(
         }
         
         // 新增：考勤和排班信息
-        context += `  排班类型：${getScheduleTypeText(pos.scheduleType)}\n`;
+        const scheduleTypeText = getScheduleTypeText(pos.scheduleType);
+        const canSwapText = pos.schedulingFlexibility.canSwapShifts ? "（可换班）" : "（不可换班）";
+        context += `  排班类型：${scheduleTypeText}${canSwapText}\n`;
         
         // 可用时间段信息
         const availableSlots = pos.availableSlots.filter(slot => slot.isAvailable);
