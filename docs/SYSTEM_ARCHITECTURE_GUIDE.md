@@ -72,13 +72,12 @@ export async function classifyUserMessage(
 
 ## 📊 分类系统
 
-### 17 种回复类型
+### 16 种回复类型
 
 | 分类类型                    | 描述                   | 关键词示例           |
 | --------------------------- | ---------------------- | -------------------- |
 | `initial_inquiry`           | 初次咨询工作机会       | "找兼职"、"有工作吗" |
-| `location_inquiry`          | 询问位置但无具体指向   | "哪里有工作"         |
-| `location_match`            | 同时提到品牌和具体位置 | "杨浦区海底捞"       |
+| `location_inquiry`          | 询问位置信息           | "哪里有工作"、"杨浦区" |
 | `no_location_match`         | 提到位置但无法匹配     | "浦西有工作吗"       |
 | `schedule_inquiry`          | 询问工作时间安排       | "什么时候上班"       |
 | `salary_inquiry`            | 询问薪资待遇           | "工资多少"           |
@@ -105,7 +104,11 @@ interface ExtractedInfo {
     location: string;
     confidence: number; // 0-1 置信度
   }> | null;
-  mentionedDistrict?: string | null; // 区域信息
+  mentionedDistricts?: Array<{
+    // 区域信息（支持多个）
+    district: string;
+    confidence: number; // 0-1 置信度
+  }> | null;
   specificAge?: number | null; // 具体年龄
   hasUrgency?: boolean | null; // 紧急需求
   preferredSchedule?: string | null; // 时间偏好
@@ -162,14 +165,14 @@ export const ATTENDANCE_PATTERNS = {
 
 ## 🎯 智能回复指令配置
 
-### 17 种回复指令
+### 16 种回复指令
 
-系统支持 17 种不同的回复指令类型，包括 **6 种考勤排班相关指令**：
+系统支持 16 种不同的回复指令类型，包括 **6 种考勤排班相关指令**：
 
 #### 标准招聘指令
 
 - `initial_inquiry` - 初次咨询回复
-- `location_inquiry` - 位置询问回复
+- `location_inquiry` - 位置询问回复（合并了原位置匹配功能）
 - `no_location_match` - 无位置匹配回复
 - `salary_inquiry` - 薪资咨询回复
 - `schedule_inquiry` - 排班咨询回复
@@ -225,7 +228,7 @@ export async function needsDataUpgrade(): Promise<boolean> {
   const config = await configService.getConfig();
 
   // 版本检查
-  if (config?.metadata?.version !== "1.1.0") {
+  if (config?.metadata?.version !== "1.1.2") {
     return true;
   }
 
@@ -383,6 +386,33 @@ mentionedBrand: z.string().nullable().optional().describe("提到的品牌名称
 - 请求去重和防抖
 - API 调用频率监控
 
+## 🔄 数据结构优化 (v1.1.2)
+
+### 简化分类系统
+
+为了降低复杂度并减少分类错误，进行了以下优化：
+
+- ❌ **移除 `location_match` 分类**：原来的位置匹配功能合并到 `location_inquiry` 中
+- ✅ **优化 `location_inquiry`**：现在支持自动检测消息中的区域关键词并匹配相应门店
+- 🗑️ **清理废弃字段**：移除 `brandData` 中顶层的 `templates` 和 `screening` 字段
+- 📊 **更新 `mentionedDistricts`**：从单个字符串改为数组包含对象（支持置信度）
+
+### 自动数据迁移
+
+```typescript
+// 自动迁移 location_match 到 location_inquiry
+if ("location_match" in replyPrompts) {
+  if (!replyPrompts.location_inquiry) {
+    replyPrompts.location_inquiry = replyPrompts.location_match;
+  }
+  delete replyPrompts.location_match;
+}
+
+// 清理废弃的顶层字段
+delete brandData.templates;
+delete brandData.screening;
+```
+
 ## 🔄 向后兼容性
 
 ### 完全向后兼容
@@ -391,6 +421,7 @@ mentionedBrand: z.string().nullable().optional().describe("提到的品牌名称
 - ✅ 新字段标记为可选，迁移时自动补全
 - ✅ 现有 API 调用无需修改
 - ✅ 渐进式升级，不影响现有功能
+- ✅ 自动迁移废弃字段的数据
 
 ### 数据迁移
 
