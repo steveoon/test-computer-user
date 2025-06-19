@@ -5,25 +5,10 @@
 
 import { z } from "zod";
 import {
-  // 重新导出zhipin相关类型，避免重复定义
-  Position,
-  Store,
-  Templates,
-  ScreeningRules,
-  BrandConfig,
-  ZhipinData,
-  ReplyContext,
-  MessageClassification,
-  // 新增：考勤和排班相关类型
-  ScheduleType,
-  AttendancePolicy,
-  TimeSlotAvailability,
-  SchedulingFlexibility,
-  AttendanceRequirement,
-  ATTENDANCE_PATTERNS,
-  // 导入Schema用于验证
+  // 从zhipin导入所需类型
   ZhipinDataSchema,
   ReplyContextSchema,
+  ZhipinData,
 } from "./zhipin";
 
 // 🔧 配置相关 Zod Schema 定义
@@ -139,24 +124,6 @@ export interface ConfigManagerState {
  * LocalForage 存储键名常量
  */
 export const CONFIG_STORAGE_KEY = "APP_CONFIG_DATA" as const;
-export const CONFIG_VERSION = "1.1.0" as const;
+export const CONFIG_VERSION = "1.1.2" as const;
 
-// 重新导出zhipin相关类型，避免重复定义
-export type {
-  Position,
-  Store,
-  Templates,
-  ScreeningRules,
-  BrandConfig,
-  ZhipinData,
-  ReplyContext,
-  MessageClassification,
-  // 新增：考勤和排班相关类型
-  ScheduleType,
-  AttendancePolicy,
-  TimeSlotAvailability,
-  SchedulingFlexibility,
-  AttendanceRequirement,
-};
-
-export { ATTENDANCE_PATTERNS };
+// 不再重新导出zhipin中的类型，使用时直接从 './zhipin' 导入

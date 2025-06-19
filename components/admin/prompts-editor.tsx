@@ -12,32 +12,48 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Save, RefreshCw, MessageSquare } from "lucide-react";
 import type { ReplyPromptsConfig } from "@/types/config";
+import type { ReplyContext } from "@/types/zhipin";
 
 interface PromptsEditorProps {
   data: ReplyPromptsConfig | undefined;
   onSave: (data: ReplyPromptsConfig) => Promise<void>;
 }
 
-// 回复指令中文名称映射
-const PROMPT_NAMES: Record<string, string> = {
+// 回复指令中文名称映射 - 使用 ReplyContext 类型确保类型安全
+const PROMPT_NAMES: Record<ReplyContext, string> = {
+  // 基础咨询类
   initial_inquiry: "初次咨询",
   location_inquiry: "位置咨询",
-  location_match: "位置匹配",
   no_location_match: "无位置匹配",
-  salary_inquiry: "薪资咨询",
   schedule_inquiry: "时间安排咨询",
   interview_request: "面试邀约",
+  general_chat: "通用聊天",
+
+  // 敏感信息类
+  salary_inquiry: "薪资咨询",
   age_concern: "年龄问题",
   insurance_inquiry: "保险咨询",
+
+  // 跟进沟通类
   followup_chat: "跟进聊天",
-  general_chat: "通用聊天",
-  // 🆕 新增：出勤和排班相关分类中文名称
+
+  // 考勤排班类
   attendance_inquiry: "出勤要求咨询",
   flexibility_inquiry: "排班灵活性咨询",
   attendance_policy_inquiry: "考勤政策咨询",
   work_hours_inquiry: "工时要求咨询",
   availability_inquiry: "时间段可用性咨询",
   part_time_support: "兼职支持咨询",
+} as const;
+
+// 类型守卫函数：检查 key 是否为有效的 ReplyContext
+const isValidReplyContext = (key: string): key is ReplyContext => {
+  return key in PROMPT_NAMES;
+};
+
+// 安全获取指令名称的辅助函数
+const getPromptName = (key: string): string => {
+  return isValidReplyContext(key) ? PROMPT_NAMES[key] : key;
 };
 
 export const PromptsEditor: React.FC<PromptsEditorProps> = ({
@@ -70,7 +86,7 @@ export const PromptsEditor: React.FC<PromptsEditorProps> = ({
       if (emptyPrompts.length > 0) {
         throw new Error(
           `以下回复指令不能为空: ${emptyPrompts
-            .map(([key]) => PROMPT_NAMES[key] || key)
+            .map(([key]) => getPromptName(key))
             .join(", ")}`
         );
       }
@@ -224,7 +240,7 @@ export const PromptsEditor: React.FC<PromptsEditorProps> = ({
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="text-lg">
-                    {PROMPT_NAMES[key] || key}
+                    {getPromptName(key)}
                   </CardTitle>
                   <CardDescription className="text-xs font-mono text-muted-foreground">
                     {key}
@@ -240,7 +256,7 @@ export const PromptsEditor: React.FC<PromptsEditorProps> = ({
                 value={value || ""}
                 onChange={(e) => updatePrompt(key, e.target.value)}
                 className="w-full h-32 p-3 text-sm border rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-ring"
-                placeholder={`输入 ${PROMPT_NAMES[key] || key} 的回复模板...`}
+                placeholder={`输入 ${getPromptName(key)} 的回复模板...`}
               />
               <div className="mt-2 text-xs text-muted-foreground">
                 支持变量：{"{brand}"}, {"{city}"}, {"{location}"}, {"{salary}"},{" "}

@@ -4,7 +4,13 @@
  */
 
 import { getDynamicRegistry } from "@/lib/model-registry/dynamic-registry";
-import { ZhipinData, MessageClassification, Templates } from "../../types/zhipin";
+import {
+  ZhipinData,
+  MessageClassification,
+  Templates,
+  Extract,
+  ReplyContextSchema,
+} from "../../types/zhipin";
 import { generateText, generateObject } from "ai";
 import { z } from "zod";
 import {
@@ -164,51 +170,55 @@ export function generateSmartReply(
     if (randomPosition.levelSalary) {
       reply += `阶梯薪资：${randomPosition.levelSalary}。`;
     }
-    
+
     // 添加排班类型和灵活性信息
     const scheduleTypeText = getScheduleTypeText(randomPosition.scheduleType);
     reply += `排班方式：${scheduleTypeText}`;
-    
+
     if (randomPosition.schedulingFlexibility.partTimeAllowed) {
       reply += "，支持兼职";
     }
     if (randomPosition.schedulingFlexibility.canSwapShifts) {
       reply += "，可换班";
     }
-    
+
     return reply;
   }
 
-  // 2. 位置咨询场景
+  // 2. 位置咨询场景（合并了原来的 location_inquiry 和 location_match）
   if (
     context === "location_inquiry" ||
     msg.includes("位置") ||
     msg.includes("在哪") ||
-    msg.includes("地址")
+    msg.includes("地址") ||
+    msg.includes("哪里")
   ) {
+    // 简单的区域匹配逻辑
+    const districts = ["徐汇", "静安", "浦东", "黄浦", "长宁", "普陀", "杨浦", "虹口", "闵行", "宝山"];
+    let matchedStore = null;
+    
+    // 检查消息中是否包含任何区域名称
+    for (const district of districts) {
+      if (msg.includes(district)) {
+        matchedStore = data.stores.find((store) =>
+          store.district.includes(district) || store.subarea.includes(district)
+        );
+        if (matchedStore) break;
+      }
+    }
+
+    // 如果找到匹配的门店，返回具体位置
+    if (matchedStore && matchedStore.positions.length > 0) {
+      const position = matchedStore.positions[0];
+      const timeSlot = position.timeSlots[0];
+      return `目前离你比较近在 ${matchedStore.location}，空缺 ${timeSlot}`;
+    }
+    
+    // 否则询问用户位置
     return `你好，${data.city}目前各区有门店岗位空缺，你在什么位置？我可以查下你附近`;
   }
 
-  // 3. 具体位置匹配场景
-  if (
-    msg.includes("徐汇") ||
-    msg.includes("静安") ||
-    msg.includes("浦东") ||
-    msg.includes("黄浦") ||
-    msg.includes("长宁")
-  ) {
-    const targetStore =
-      data.stores.find((store) =>
-        msg.includes(store.district.substring(0, 2))
-      ) || data.stores[0];
-
-    const position = targetStore.positions[0];
-    const timeSlot = position.timeSlots[0];
-
-    return `目前离你比较近在 ${targetStore.location}，空缺 ${timeSlot}`;
-  }
-
-  // 4. 时间安排咨询
+  // 3. 时间安排咨询
   if (
     context === "schedule_inquiry" ||
     msg.includes("时间") ||
@@ -230,11 +240,11 @@ export function generateSmartReply(
     let reply = `门店除了${position.timeSlots[0]}空缺，还有${
       position.timeSlots[1] || position.timeSlots[0]
     }也空缺呢`;
-    
+
     // 添加排班类型信息
     const scheduleTypeText = getScheduleTypeText(position.scheduleType);
     reply += `，排班方式是${scheduleTypeText}`;
-    
+
     // 添加灵活性信息
     if (position.schedulingFlexibility.canSwapShifts) {
       reply += "，可以换班";
@@ -242,12 +252,12 @@ export function generateSmartReply(
     if (position.schedulingFlexibility.partTimeAllowed) {
       reply += "，支持兼职";
     }
-    
+
     reply += "，具体时间可以和店长商量呢";
     return reply;
   }
 
-  // 5. 面试邀约场景
+  // 4. 面试邀约场景
   if (
     context === "interview_request" ||
     msg.includes("面试") ||
@@ -257,7 +267,7 @@ export function generateSmartReply(
     return "可以帮您和店长约面试呢，麻烦加一下我微信吧，需要几项简单的个人信息";
   }
 
-  // 6. 年龄相关问题处理
+  // 5. 年龄相关问题处理
   if (msg.includes("年龄") || msg.includes("岁")) {
     if (
       msg.includes("50") ||
@@ -270,12 +280,12 @@ export function generateSmartReply(
     return "您的年龄没问题的";
   }
 
-  // 7. 社保相关问题
+  // 6. 社保相关问题
   if (msg.includes("社保") || msg.includes("保险")) {
     return "有商业保险";
   }
 
-  // 8. 薪资咨询
+  // 7. 薪资咨询
   if (msg.includes("工资") || msg.includes("薪资") || msg.includes("多少钱")) {
     // 🎯 使用数据对象中的默认品牌（已在 loadZhipinData 中设置为用户选择的品牌）
     const targetBrand = getBrandName(data);
@@ -295,7 +305,7 @@ export function generateSmartReply(
     return reply;
   }
 
-  // 9. 通用私聊话术（保持联系）
+  // 8. 通用私聊话术（保持联系）
   if (context === "general_chat") {
     // 🎯 使用数据对象中的默认品牌（已在 loadZhipinData 中设置为用户选择的品牌）
     const brandName = getBrandName(data);
@@ -309,7 +319,7 @@ export function generateSmartReply(
     return alternatives[Math.floor(Math.random() * alternatives.length)];
   }
 
-  // 10. 默认回复
+  // 9. 默认回复
   return `你好，${data.city}目前各区有门店岗位空缺，你在什么位置？我可以查下你附近`;
 }
 
@@ -348,28 +358,7 @@ export async function classifyUserMessage(
   const { object: classification } = await generateObject({
     model: dynamicRegistry.languageModel(classifyModel),
     schema: z.object({
-      replyType: z
-        .enum([
-          "initial_inquiry", // 初次咨询
-          "location_inquiry", // 位置咨询
-          "location_match", // 位置匹配
-          "no_location_match", // 无位置匹配
-          "schedule_inquiry", // 时间安排咨询
-          "interview_request", // 面试邀约
-          "salary_inquiry", // 薪资咨询
-          "age_concern", // 年龄相关
-          "insurance_inquiry", // 保险咨询
-          "followup_chat", // 跟进聊天
-          "general_chat", // 一般聊天
-          // 🆕 新增：出勤和排班相关分类
-          "attendance_inquiry", // 出勤要求咨询
-          "flexibility_inquiry", // 排班灵活性咨询
-          "attendance_policy_inquiry", // 考勤政策咨询
-          "work_hours_inquiry", // 工时要求咨询
-          "availability_inquiry", // 时间段可用性咨询
-          "part_time_support", // 兼职支持咨询
-        ])
-        .describe("回复类型分类"),
+      replyType: ReplyContextSchema.describe("回复类型分类"),
       extractedInfo: z
         .object({
           mentionedBrand: z
@@ -393,11 +382,23 @@ export async function classifyUserMessage(
             .nullable()
             .optional()
             .describe("提到的具体位置（按置信度排序，最多3个）"),
-          mentionedDistrict: z
-            .string()
+          mentionedDistricts: z
+            .array(
+              z.object({
+                district: z.string().describe("区域名称"),
+                confidence: z
+                  .number()
+                  .min(0)
+                  .max(1)
+                  .describe("区域识别置信度 0-1"),
+              })
+            )
+            .max(3)
             .nullable()
             .optional()
-            .describe("提到的区域"),
+            .describe(
+              "提到的区域 (按置信度排序,最多3个), 如果没有提到区域, 依据Location给出多个距离最近的区域"
+            ),
           specificAge: z
             .number()
             .nullable()
@@ -461,8 +462,7 @@ export async function classifyUserMessage(
 
     分类规则：
     - initial_inquiry: 初次咨询工作机会，没有具体指向
-    - location_inquiry: 询问位置信息，但没提到具体位置
-    - location_match: 同时提到品牌和具体位置，可以精确匹配
+    - location_inquiry: 询问位置信息，也可包含具体位置匹配
     - no_location_match: 提到位置但无法匹配到门店
     - salary_inquiry: 询问薪资待遇
     - schedule_inquiry: 询问工作时间安排
@@ -587,7 +587,7 @@ export async function generateSmartReplyWithLLM(
       - 严格遵循回复规则的优先级。
       - 回复必须简洁、自然，像一个正在打字的真人。
       - 根据候选人消息和上下文，将模板中的 {placeholder} 替换为具体信息。
-      - 控制字数在10-20字以内。
+      - 控制字数在10-50字以内。
       - 如果候选人询问的品牌不是当前品牌的，则告知对方，我们目前只招聘{brand}品牌的岗位。
 
       请生成最终回复。`,
@@ -642,22 +642,8 @@ export async function generateSmartReplyWithLLM(
 /**
  * 构建上下文信息，根据提取的信息筛选相关数据
  */
-function buildContextInfo(
-  data: ZhipinData,
-  extractedInfo: {
-    mentionedBrand?: string | null;
-    city?: string | null;
-    mentionedLocations?: Array<{
-      location: string;
-      confidence: number;
-    }> | null;
-    mentionedDistrict?: string | null;
-    specificAge?: number | null;
-    hasUrgency?: boolean | null;
-    preferredSchedule?: string | null;
-  }
-): string {
-  const { mentionedBrand, city, mentionedLocations, mentionedDistrict } =
+function buildContextInfo(data: ZhipinData, extractedInfo: Extract): string {
+  const { mentionedBrand, city, mentionedLocations, mentionedDistricts } =
     extractedInfo;
 
   // 根据提到的品牌过滤门店
@@ -709,14 +695,33 @@ function buildContextInfo(
   }
 
   // 如果还有mentionedDistrict，作为补充过滤条件
-  if (mentionedDistrict && relevantStores.length === data.stores.length) {
-    const districtFiltered = relevantStores.filter(
-      (store) =>
-        store.district.includes(mentionedDistrict) ||
-        store.subarea.includes(mentionedDistrict)
-    );
-    if (districtFiltered.length > 0) {
-      relevantStores = districtFiltered;
+  if (mentionedDistricts && relevantStores.length === data.stores.length) {
+    // 🎯 按置信度排序区域，优先匹配高置信度的区域
+    const sortedDistricts = mentionedDistricts
+      .filter((d) => d.confidence > 0.6) // 过滤掉置信度过低的区域
+      .sort((a, b) => b.confidence - a.confidence); // 降序排序
+
+    if (sortedDistricts.length > 0) {
+      const districtFiltered = relevantStores.filter((store) =>
+        sortedDistricts.some(
+          (district) =>
+            store.district.includes(district.district) ||
+            store.subarea.includes(district.district)
+        )
+      );
+
+      if (districtFiltered.length > 0) {
+        relevantStores = districtFiltered;
+        console.log(
+          `✅ 区域匹配成功: ${sortedDistricts
+            .map((d) => `${d.district}(置信度:${d.confidence})`)
+            .join(", ")}`
+        );
+      } else {
+        console.log(`❌ 区域匹配失败: 没有找到匹配的区域`);
+      }
+    } else {
+      console.log(`⚠️ 所有区域置信度过低 (≤0.6)，跳过区域过滤`);
     }
   }
 
@@ -737,26 +742,35 @@ function buildContextInfo(
         if (pos.benefits && pos.benefits !== "无") {
           context += `  福利：${pos.benefits}\n`;
         }
-        
+
         // 新增：考勤和排班信息
         const scheduleTypeText = getScheduleTypeText(pos.scheduleType);
-        const canSwapText = pos.schedulingFlexibility.canSwapShifts ? "（可换班）" : "（不可换班）";
+        const canSwapText = pos.schedulingFlexibility.canSwapShifts
+          ? "（可换班）"
+          : "（不可换班）";
         context += `  排班类型：${scheduleTypeText}${canSwapText}\n`;
-        
+
         // 可用时间段信息
-        const availableSlots = pos.availableSlots.filter(slot => slot.isAvailable);
+        const availableSlots = pos.availableSlots.filter(
+          (slot) => slot.isAvailable
+        );
         if (availableSlots.length > 0) {
-          context += `  可预约时段：${availableSlots.map(slot => 
-            `${slot.slot}(${slot.currentBooked}/${slot.maxCapacity}人，${getPriorityText(slot.priority)}优先级)`
-          ).join("、")}\n`;
+          context += `  可预约时段：${availableSlots
+            .map(
+              (slot) =>
+                `${slot.slot}(${slot.currentBooked}/${
+                  slot.maxCapacity
+                }人，${getPriorityText(slot.priority)}优先级)`
+            )
+            .join("、")}\n`;
         }
-        
+
         // 考勤要求
         const attendance = pos.attendancePolicy;
         if (attendance.punctualityRequired) {
           context += `  考勤要求：准时到岗，最多迟到${attendance.lateToleranceMinutes}分钟\n`;
         }
-        
+
         // 排班灵活性
         const flexibility = pos.schedulingFlexibility;
         const flexibilityFeatures = [];
@@ -764,35 +778,41 @@ function buildContextInfo(
         if (flexibility.partTimeAllowed) flexibilityFeatures.push("兼职");
         if (flexibility.weekendRequired) flexibilityFeatures.push("需周末");
         if (flexibility.holidayRequired) flexibilityFeatures.push("需节假日");
-        
+
         if (flexibilityFeatures.length > 0) {
           context += `  排班特点：${flexibilityFeatures.join("、")}\n`;
         }
-        
+
         // 每周工时要求
         if (pos.minHoursPerWeek || pos.maxHoursPerWeek) {
-          context += `  每周工时：${pos.minHoursPerWeek || 0}-${pos.maxHoursPerWeek || '不限'}小时\n`;
+          context += `  每周工时：${pos.minHoursPerWeek || 0}-${
+            pos.maxHoursPerWeek || "不限"
+          }小时\n`;
         }
-        
+
         // 偏好工作日
         if (pos.preferredDays && pos.preferredDays.length > 0) {
-          context += `  工作日偏好：${pos.preferredDays.map(day => getDayText(day)).join("、")}\n`;
+          context += `  工作日偏好：${pos.preferredDays
+            .map((day) => getDayText(day))
+            .join("、")}\n`;
         }
-        
+
         // 新增：出勤要求
         if (pos.attendanceRequirement) {
           const req = pos.attendanceRequirement;
           let reqText = `出勤要求：${req.description}`;
-          
+
           if (req.requiredDays && req.requiredDays.length > 0) {
-            const dayNames = req.requiredDays.map(dayNum => getDayNumberText(dayNum));
+            const dayNames = req.requiredDays.map((dayNum) =>
+              getDayNumberText(dayNum)
+            );
             reqText += `（需要：${dayNames.join("、")}）`;
           }
-          
+
           if (req.minimumDays) {
             reqText += `，最少${req.minimumDays}天/周`;
           }
-          
+
           context += `  ${reqText}\n`;
         }
       });
@@ -806,14 +826,16 @@ function buildContextInfo(
   const brandConfig = data.brands[targetBrand];
   if (brandConfig && brandConfig.templates) {
     const templateMap: { [key: string]: string } = {
-      proactive: "主动沟通",
-      inquiry: "位置咨询",
-      location_match: "位置匹配",
-      no_match: "无匹配",
-      interview: "面试邀约",
-      salary_inquiry: "薪资咨询",
+      initial_inquiry: "初次咨询",
+      location_inquiry: "位置咨询",
+      no_location_match: "无位置匹配",
       schedule_inquiry: "排班咨询",
-      followup: "跟进话术",
+      interview_request: "面试邀约",
+      general_chat: "一般对话",
+      salary_inquiry: "薪资咨询",
+      age_concern: "年龄问题",
+      insurance_inquiry: "保险咨询",
+      followup_chat: "跟进话术",
       // 🆕 新增：出勤和排班相关模板映射
       attendance_inquiry: "出勤要求咨询",
       flexibility_inquiry: "排班灵活性咨询",
@@ -852,12 +874,14 @@ function buildContextInfo(
 /**
  * 获取排班类型的中文描述
  */
-function getScheduleTypeText(scheduleType: "fixed" | "flexible" | "rotating" | "on_call"): string {
+function getScheduleTypeText(
+  scheduleType: "fixed" | "flexible" | "rotating" | "on_call"
+): string {
   const typeMap = {
     fixed: "固定排班",
-    flexible: "灵活排班", 
+    flexible: "灵活排班",
     rotating: "轮班制",
-    on_call: "随叫随到"
+    on_call: "随叫随到",
   };
   return typeMap[scheduleType] || scheduleType;
 }
@@ -868,8 +892,8 @@ function getScheduleTypeText(scheduleType: "fixed" | "flexible" | "rotating" | "
 function getPriorityText(priority: "high" | "medium" | "low"): string {
   const priorityMap = {
     high: "高",
-    medium: "中", 
-    low: "低"
+    medium: "中",
+    low: "低",
   };
   return priorityMap[priority] || priority;
 }
@@ -882,10 +906,10 @@ function getDayText(day: string): string {
     Monday: "周一",
     Tuesday: "周二",
     Wednesday: "周三",
-    Thursday: "周四", 
+    Thursday: "周四",
     Friday: "周五",
     Saturday: "周六",
-    Sunday: "周日"
+    Sunday: "周日",
   };
   return dayMap[day] || day;
 }
@@ -896,12 +920,12 @@ function getDayText(day: string): string {
 function getDayNumberText(dayNumber: number): string {
   const dayMap: { [key: number]: string } = {
     1: "周一",
-    2: "周二", 
+    2: "周二",
     3: "周三",
     4: "周四",
     5: "周五",
     6: "周六",
-    7: "周日"
+    7: "周日",
   };
   return dayMap[dayNumber] || `第${dayNumber}天`;
 }

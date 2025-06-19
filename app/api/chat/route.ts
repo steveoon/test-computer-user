@@ -13,7 +13,7 @@ import type {
   ZhipinData,
   SystemPromptsConfig,
   ReplyPromptsConfig,
-} from "@/types/config";
+} from "@/types";
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 300;
@@ -72,18 +72,28 @@ export async function POST(req: Request) {
     // 🎯 获取系统提示词 - 根据activeSystemPrompt选择
     let systemPrompt: string;
     const promptType = activeSystemPrompt || "bossZhipinSystemPrompt";
-    
+
     if (systemPrompts && systemPrompts[promptType]) {
-      console.log(`✅ 使用客户端传入的${promptType === 'bossZhipinSystemPrompt' ? 'Boss直聘' : '通用计算机'}系统提示词`);
+      console.log(
+        `✅ 使用客户端传入的${
+          promptType === "bossZhipinSystemPrompt" ? "Boss直聘" : "通用计算机"
+        }系统提示词`
+      );
       systemPrompt = systemPrompts[promptType];
     } else {
-      console.log(`⚠️ 使用默认${promptType === 'bossZhipinSystemPrompt' ? 'Boss直聘' : '通用计算机'}系统提示词（降级模式）`);
+      console.log(
+        `⚠️ 使用默认${
+          promptType === "bossZhipinSystemPrompt" ? "Boss直聘" : "通用计算机"
+        }系统提示词（降级模式）`
+      );
       // 降级到默认提示词
       if (promptType === "bossZhipinSystemPrompt") {
         systemPrompt = await getBossZhipinSystemPrompt();
       } else {
         // 需要导入getGeneralComputerSystemPrompt
-        const { getGeneralComputerSystemPrompt } = await import("@/lib/loaders/system-prompts.loader");
+        const { getGeneralComputerSystemPrompt } = await import(
+          "@/lib/loaders/system-prompts.loader"
+        );
         systemPrompt = await getGeneralComputerSystemPrompt();
       }
     }

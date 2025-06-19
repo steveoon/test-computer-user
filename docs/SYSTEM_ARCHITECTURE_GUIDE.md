@@ -170,7 +170,6 @@ export const ATTENDANCE_PATTERNS = {
 
 - `initial_inquiry` - 初次咨询回复
 - `location_inquiry` - 位置询问回复
-- `location_match` - 位置匹配回复
 - `no_location_match` - 无位置匹配回复
 - `salary_inquiry` - 薪资咨询回复
 - `schedule_inquiry` - 排班咨询回复
@@ -266,8 +265,8 @@ interface BrandConfig {
 const brandConfig = data.brands[targetBrand];
 if (brandConfig && brandConfig.templates) {
   context += `\n📋 ${targetBrand}品牌专属话术模板：\n`;
-  context += `主动沟通：${brandConfig.templates.proactive[0]}\n`;
-  context += `位置咨询：${brandConfig.templates.inquiry[0]}\n`;
+  context += `初次咨询：${brandConfig.templates.initial_inquiry[0]}\n`;
+  context += `位置咨询：${brandConfig.templates.location_inquiry[0]}\n`;
 }
 ```
 

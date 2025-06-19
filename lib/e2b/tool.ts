@@ -9,10 +9,10 @@ import {
   loadZhipinData,
   generateSmartReplyWithLLM,
 } from "../loaders/zhipin-data.loader";
-import type { Store } from "../../types/zhipin";
+import type { Store, ReplyContext } from "../../types/zhipin";
 import { sendFeishuMessage } from "../send-feishu-message";
 import type { ModelConfig } from "../config/models";
-import type { ZhipinData, ReplyPromptsConfig } from "../../types/config";
+import type { ZhipinData, ReplyPromptsConfig } from "@/types";
 
 const wait = async (seconds: number) => {
   await new Promise((resolve) => setTimeout(resolve, seconds * 1000));
@@ -605,27 +605,11 @@ export const computerTool = (
           "Based on the screenshot, the candidate's message content for generating reply, usually is the latest message at the left side of the chat bubble"
         ),
       reply_context: z
-        .enum([
-          "initial_inquiry",
-          "location_inquiry",
-          "location_match",
-          "no_location_match",
-          "schedule_inquiry",
-          "interview_request",
-          "general_chat",
-          "salary_inquiry",
-          "age_concern",
-          "insurance_inquiry",
-          "followup_chat",
-          "attendance_inquiry",
-          "flexibility_inquiry",
-          "attendance_policy_inquiry",
-          "work_hours_inquiry",
-          "availability_inquiry",
-          "part_time_support",
-        ])
+        .custom<ReplyContext>()
         .optional()
-        .describe("The context/type of reply needed"),
+        .describe(
+          "The context/type of reply needed (imported from @/types/zhipin ReplyContext)"
+        ),
       auto_input: z
         .boolean()
         .optional()

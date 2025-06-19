@@ -9,7 +9,7 @@ import type {
   ZhipinData,
   SystemPromptsConfig,
   ReplyPromptsConfig,
-} from "@/types/config";
+} from "@/types";
 
 interface ConfigDataForChat {
   configData: ZhipinData | null;

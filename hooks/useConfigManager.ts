@@ -12,7 +12,7 @@ import type {
   ZhipinData,
   ReplyPromptsConfig,
   SystemPromptsConfig,
-} from "@/types/config";
+} from "@/types";
 // 🔧 导入预定义的 Zod Schema，避免重复定义
 import { AppConfigDataSchema } from "@/types/config";
 
@@ -312,7 +312,6 @@ const useConfigStore = create<ConfigState>()(
           const requiredReplyPrompts: (keyof ReplyPromptsConfig)[] = [
             "initial_inquiry",
             "location_inquiry",
-            "location_match",
             "no_location_match",
             "salary_inquiry",
             "schedule_inquiry",

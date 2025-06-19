@@ -287,6 +287,14 @@ export default function AdminSettingsPage() {
                 </div>
                 <div>
                   <span className="font-medium text-muted-foreground">
+                    配置版本：
+                  </span>
+                  <Badge variant="outline" className="ml-2">
+                    v{config?.metadata?.version || "未知"}
+                  </Badge>
+                </div>
+                <div>
+                  <span className="font-medium text-muted-foreground">
                     同步状态：
                   </span>
                   <Badge variant="secondary" className="ml-2">
@@ -319,7 +327,9 @@ export default function AdminSettingsPage() {
           <SystemPromptsEditor
             data={config?.systemPrompts}
             onSave={updateSystemPrompts}
-            activePrompt={config?.activeSystemPrompt || "bossZhipinSystemPrompt"}
+            activePrompt={
+              config?.activeSystemPrompt || "bossZhipinSystemPrompt"
+            }
             onActivePromptChange={updateActiveSystemPrompt}
           />
         </TabsContent>

@@ -91,58 +91,36 @@ export const StoreSchema = z.object({
   brand: z.string(),
 });
 
-// 回复上下文类型Schema
+// 用于智能回复系统的消息分类和模板匹配
 export const ReplyContextSchema = z.enum([
-  "initial_inquiry",
-  "location_inquiry",
-  "location_match",
-  "no_location_match",
-  "schedule_inquiry",
-  "interview_request",
-  "general_chat",
-  "salary_inquiry",
-  "age_concern",
-  "insurance_inquiry",
-  "followup_chat",
-  "attendance_inquiry",
-  "flexibility_inquiry",
-  "attendance_policy_inquiry",
-  "work_hours_inquiry",
-  "availability_inquiry",
-  "part_time_support",
+  // 基础咨询类
+  "initial_inquiry", // 初次咨询工作机会
+  "location_inquiry", // 询问位置但无具体指向
+  "no_location_match", // 提到位置但无法匹配
+  "schedule_inquiry", // 询问工作时间安排
+  "interview_request", // 表达面试意向
+  "general_chat", // 一般性对话
+
+  // 敏感信息类
+  "salary_inquiry", // 询问薪资待遇
+  "age_concern", // 年龄相关问题（敏感）
+  "insurance_inquiry", // 保险福利问题（敏感）
+
+  // 跟进沟通类
+  "followup_chat", // 需要跟进的聊天
+
+  // 考勤排班类（🆕 新增）
+  "attendance_inquiry", // 出勤要求咨询
+  "flexibility_inquiry", // 排班灵活性咨询
+  "attendance_policy_inquiry", // 考勤政策咨询
+  "work_hours_inquiry", // 工时要求咨询
+  "availability_inquiry", // 时间段可用性咨询
+  "part_time_support", // 兼职支持咨询
 ]);
 
-// 模板Schema（支持所有回复类型）
+// 模板Schema（仅支持标准回复类型）
 export const TemplatesSchema = z
-  .record(
-    z.enum([
-      // ReplyContext类型
-      "initial_inquiry",
-      "location_inquiry",
-      "location_match",
-      "no_location_match",
-      "schedule_inquiry",
-      "interview_request",
-      "general_chat",
-      "salary_inquiry",
-      "age_concern",
-      "insurance_inquiry",
-      "followup_chat",
-      "attendance_inquiry",
-      "flexibility_inquiry",
-      "attendance_policy_inquiry",
-      "work_hours_inquiry",
-      "availability_inquiry",
-      "part_time_support",
-      // 额外的模板类型
-      "proactive",
-      "inquiry",
-      "no_match",
-      "interview",
-      "followup",
-    ]),
-    z.array(z.string())
-  )
+  .record(ReplyContextSchema, z.array(z.string()))
   .optional();
 
 // 筛选规则Schema
@@ -170,8 +148,6 @@ export const ZhipinDataSchema = z.object({
   stores: z.array(StoreSchema),
   brands: z.record(BrandConfigSchema),
   defaultBrand: z.string().optional(),
-  templates: TemplatesSchema,
-  screening: ScreeningRulesSchema.optional(),
 });
 
 // 示例数据Schema
@@ -216,7 +192,16 @@ export const MessageClassificationSchema = z.object({
       )
       .nullable()
       .optional(),
-    mentionedDistrict: z.string().nullable().optional(),
+    mentionedDistricts: z
+      .array(
+        z.object({
+          district: z.string().describe("区域名称"),
+          confidence: z.number().min(0).max(1).describe("区域识别置信度 0-1"),
+        })
+      )
+      .max(3)
+      .nullable()
+      .optional(),
     specificAge: z.number().nullable().optional(),
     hasUrgency: z.boolean().nullable().optional(),
     preferredSchedule: z.string().nullable().optional(),
@@ -242,6 +227,9 @@ export type ReplyContext = z.infer<typeof ReplyContextSchema>;
 export type CandidateInfo = z.infer<typeof CandidateInfoSchema>;
 export type ConversationMessage = z.infer<typeof ConversationMessageSchema>;
 export type MessageClassification = z.infer<typeof MessageClassificationSchema>;
+export type Extract = z.infer<
+  typeof MessageClassificationSchema
+>["extractedInfo"];
 
 // 🔧 LLM工具参数类型映射（使用类型而非Schema，因为过于复杂）
 export type ReplyArgsMap = {
@@ -251,13 +239,6 @@ export type ReplyArgsMap = {
     levelSalary?: string;
   };
   location_inquiry: z.infer<typeof BaseReplyArgsSchema>;
-  location_match: {
-    location: string;
-    district: string;
-    storeName: string;
-    position: string;
-    schedule: string;
-  };
   no_location_match: {
     alternativeLocation: string;
     alternativeArea: string;

@@ -384,23 +384,19 @@ export const sampleData: SampleData = {
     brands: {
       成都你六姐: {
         templates: {
-          proactive: [
+          initial_inquiry: [
             "你好，{brand}在上海各区有兼职，排班{hours}小时，时薪{salary}元，{level_salary}。",
             "在{location}的{position}岗位有空缺，班次{schedule}，时薪{salary}元，有兴趣吗？",
           ],
-          inquiry: [
-            "你好，{city}各区都有门店，你在什么位置？我帮你查下附近。",
-            "你好，我们{brand}在{city}多个区都有门店，你想在哪个区工作？",
+          location_inquiry: [
+            "离你比较近在{location}的{brand}门店有空缺，排班{schedule}，时薪{salary}元，有兴趣吗？",
+            "离你比较近在{district}的多个门店有空缺，你在{location}附近吗？",
           ],
-          location_match: [
-            "离你比较近在 {location}，空缺 {schedule} 班次。",
-            "好的，{district}这边有{store_name}，{position}岗位空缺，时间是{schedule}，离你应该比较方便。",
-          ],
-          no_match: [
+          no_location_match: [
             "你附近暂时没岗位，{alternative_location}的门店考虑吗？{transport_info}",
             "你附近暂时没有空缺，不过{alternative_area}有合适的，{distance_info}，可以考虑吗？",
           ],
-          interview: [
+          interview_request: [
             "可以帮你和店长约面试，加我微信吧，需要几个简单的个人信息。",
             "好的，我可以安排你和{store_name}店长面谈，方便加微信沟通具体时间和准备材料吗？",
           ],
@@ -448,12 +444,14 @@ export const sampleData: SampleData = {
             "我们很欢迎兼职人员，{flexible_scheduling}，可以根据你的主业时间来排班。",
             "兼职没问题的，{scheduling_flexibility}，学生和上班族都可以来做。",
           ],
-          followup: [
+          followup_chat: [
             "门店除了{position1}岗位还有{position2}岗位也空缺的，如果{position1}觉得不合适，可以和店长商量。",
             "门店除了{shift1}空缺，还有{shift2}也空缺呢，如果对排班时间有要求，可以和店长商量。",
             "这家门店不合适也没关系，以后还有其他店空缺的，到时候可以再报名。",
             "{brand}你愿意做吗？我同时还负责其他品牌的招募，你有兴趣的话，可以看看。",
           ],
+          // 新增缺失的模板
+          general_chat: ["好的，有什么其他问题可以问我，方便的话可以加个微信"],
         },
         screening: {
           age: { min: 18, max: 50, preferred: [20, 30, 40] },
@@ -463,23 +461,19 @@ export const sampleData: SampleData = {
       },
       大米先生: {
         templates: {
-          proactive: [
+          initial_inquiry: [
             "你好，大米先生{location}店在招{position}，{schedule}班次，时薪{salary}元起。",
             "Hi，大米先生{district}店{position}岗位在招人，薪资{salary}-28元/时，有兴趣吗？",
           ],
-          inquiry: [
-            "你好，大米先生在上海多个区都有招聘，你期望在哪个区工作？我帮你查下附近门店。",
-            "你好，我是大米先生招聘的，目前{city}各区都有岗位，方便说下你的位置吗？",
+          location_inquiry: [
+            "离你比较近在{location}的{brand}门店有空缺，排班{schedule}，时薪{salary}元，有兴趣吗？",
+            "离你比较近在{district}的多个门店有空缺，你在{location}附近吗？",
           ],
-          location_match: [
-            "嗯，{district}{store_name}正在招{position}，{schedule}班次，离你很近。",
-            "找到了，{location}这边的大米先生，{position}岗位{schedule}班次，薪资{salary}元/时起。",
-          ],
-          no_match: [
+          no_location_match: [
             "你附近暂无空缺，但{alternative_location}大米先生在招聘，{transport_info}，可以考虑吗？",
             "目前你周边没有合适岗位，{alternative_area}店有空缺，愿意了解下吗？",
           ],
-          interview: [
+          interview_request: [
             "可以，我可以安排你和{store_name}店长面试，方便加微信详细沟通吗？",
             "好的，我帮你约店长面谈，需要你的基本信息，可以加下微信吗？",
           ],
@@ -525,12 +519,23 @@ export const sampleData: SampleData = {
             "我们{part_time_allowed}兼职员工，{scheduling_flexibility}，听店长安排时间。",
             "兼职可以考虑，但要{part_time_allowed}，具体和店长商量。",
           ],
-          followup: [
+          followup_chat: [
             "大米先生除了{position1}还有其他岗位，如果{position1}不合适，可以和店长商量。",
             "这个时间段不合适的话，还有{alternative_time}班次，排班比较灵活的。",
             "这家店不合适也没关系，以后还有其他店空缺的，到时候可以再报名。",
             "大米先生你考虑吗？我同时还负责其他品牌的招募，你有兴趣的话，可以看看。",
           ],
+          // 新增缺失的模板
+          general_chat: [
+            "好的，有什么其他问题可以问我。",
+            "了解，听店长安排就行。",
+            "没问题，有需要随时联系我。",
+          ],
+          age_concern: [
+            "您的年龄没问题的，听店长安排。",
+            "年龄要求大米先生比较严格，但您的情况可以考虑。",
+          ],
+          insurance_inquiry: ["有商业保险的。", "大米先生有商业保险保障。"],
         },
         screening: {
           age: { min: 18, max: 45, preferred: [20, 25, 30, 35] },
@@ -538,29 +543,6 @@ export const sampleData: SampleData = {
           preferredKeywords: ["经验", "稳定", "长期", "听话"],
         },
       },
-    },
-    templates: {
-      proactive: [
-        "你好，上海各区有门店岗位空缺，兼职排班 {hours} 小时。基本薪资：{salary}元/小时。{level_salary}",
-      ],
-      inquiry: [
-        "你好，上海目前各区有门店岗位空缺，你在什么位置？我帮你查下附近",
-      ],
-      salary_inquiry: [
-        "基本时薪是{salary}元，最高可以到28元，具体看店长安排。",
-      ],
-      schedule_inquiry: ["排班比较灵活，一般是2-4小时，具体可以和店长商量。"],
-      location_match: ["离你比较近在 {location}，空缺 {schedule}"],
-      no_match: ["你附近暂时没岗位，{alternative_location}的门店考虑吗？"],
-      interview: ["可以帮你和店长约面试，加我微信吧，需要几项简单的个人信息"],
-      followup: [
-        "门店除了{position1}岗位还有{position2}岗位也空缺的，如果{position1}觉得不合适，可以和店长商量",
-      ],
-    },
-    screening: {
-      age: { min: 18, max: 50, preferred: [20, 30, 40] },
-      blacklistKeywords: ["骗子", "不靠谱", "假的"],
-      preferredKeywords: ["经验", "稳定", "长期"],
     },
   },
 };

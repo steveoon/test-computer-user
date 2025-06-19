@@ -11,7 +11,7 @@ import {
   getBossZhipinSystemPrompt,
   getGeneralComputerSystemPrompt,
 } from "../lib/system-prompts";
-import type { AppConfigData, ReplyPromptsConfig } from "../types/config";
+import type { AppConfigData, ReplyPromptsConfig } from "@/types";
 
 /**
  * 智能回复指令配置
@@ -20,9 +20,7 @@ import type { AppConfigData, ReplyPromptsConfig } from "../types/config";
 const replyPromptsConfig: ReplyPromptsConfig = {
   initial_inquiry: `作为招聘助手，参考这个模板回复: "你好，{city}各区有{brand}门店在招人，排班{hours}小时，时薪{salary}元，{level_salary}"。语气要自然，突出薪资。`,
 
-  location_inquiry: `候选人问位置，用这个模板回复: "你好，{city}各区都有门店，你在什么位置？我帮你查下附近"。必须问对方位置。`,
-
-  location_match: `找到匹配门店，用这个模板回复: "离你比较近在{location}，空缺{schedule}"。强调距离近和具体班次。`,
+  location_inquiry: `候选人咨询某个位置是否有门店，用这个模板回复: "离你比较近在{location}，空缺{schedule}"。强调距离近和具体班次。`,
 
   no_location_match: `附近无门店，按这个话术处理: "你附近暂时没岗位，{alternative_location}的门店考虑吗？"。同时，主动询问是否可以加微信，告知以后有其他机会可以推荐。`,
 

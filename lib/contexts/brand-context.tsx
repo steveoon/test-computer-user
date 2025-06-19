@@ -12,7 +12,7 @@ import {
   saveBrandPreference,
   loadBrandPreference,
 } from "../utils/brand-storage";
-import type { ZhipinData } from "../../types/config";
+import type { ZhipinData } from "@/types";
 
 // 🔧 品牌上下文类型定义
 interface BrandContextType {
