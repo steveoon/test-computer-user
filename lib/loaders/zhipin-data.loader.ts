@@ -882,12 +882,6 @@ function buildContextInfo(
     }
   }
 
-  // 添加敏感话题固定回复提醒
-  context += `\n🚨 敏感话题固定回复：\n`;
-  context += `年龄合适："你的年龄没问题的" | 年龄不合适："你附近目前没有岗位空缺了"\n`;
-  context += `保险咨询："有商业保险"\n`;
-  context += `残疾人咨询："不好意思"\n`;
-
   return context;
 }
 
