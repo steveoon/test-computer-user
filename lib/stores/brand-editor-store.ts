@@ -5,7 +5,7 @@
 
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
-import type { ZhipinData } from "@/types";
+import type { ZhipinData, ScheduleType, SchedulingFlexibility } from "@/types";
 
 interface BrandEditorState {
   // 核心数据
@@ -16,6 +16,7 @@ interface BrandEditorState {
   // UI 状态
   editMode: "overview" | "json";
   editingBrand: string | null;
+  editingType: "templates" | "schedule" | null;
   isLoading: boolean;
   isSaving: boolean;
   error: string | null;
@@ -27,7 +28,16 @@ interface BrandEditorState {
   initializeData: (data: ZhipinData) => void;
   setEditMode: (mode: "overview" | "json") => void;
   setEditingBrand: (brand: string | null) => void;
-  updateTemplates: (brandName: string, templates: Record<string, string[]>) => void;
+  setEditingType: (type: "templates" | "schedule" | null) => void;
+  updateTemplates: (brandName: string, templates: Record<string, string[]>) => ZhipinData | null;
+  updateSchedulingInfo: (
+    brandName: string,
+    scheduleType: ScheduleType,
+    schedulingFlexibility: SchedulingFlexibility,
+    targetType: "all" | "store",
+    storeIndex?: number,
+    positionIndex?: number
+  ) => ZhipinData | null;
   updateJsonData: (json: string) => void;
   syncJsonToLocal: () => void;
   saveData: (onSave: (data: ZhipinData) => Promise<void>) => Promise<void>;
@@ -44,6 +54,7 @@ export const useBrandEditorStore = create<BrandEditorState>()(
       jsonData: "",
       editMode: "overview",
       editingBrand: null,
+      editingType: null,
       isLoading: false,
       isSaving: false,
       error: null,
@@ -70,10 +81,15 @@ export const useBrandEditorStore = create<BrandEditorState>()(
         set({ editingBrand: brand });
       },
 
+      // 设置编辑类型
+      setEditingType: (type) => {
+        set({ editingType: type });
+      },
+
       // 更新品牌话术模板
       updateTemplates: (brandName, templates) => {
         const { localData } = get();
-        if (!localData) return;
+        if (!localData) return null;
 
         const updatedData = {
           ...localData,
@@ -91,6 +107,69 @@ export const useBrandEditorStore = create<BrandEditorState>()(
           jsonData: JSON.stringify(updatedData, null, 2),
           hasUnsavedChanges: true,
         });
+        
+        // 返回更新后的数据
+        return updatedData;
+      },
+
+      // 更新排班信息
+      updateSchedulingInfo: (
+        brandName,
+        scheduleType,
+        schedulingFlexibility,
+        targetType,
+        storeIndex,
+        positionIndex
+      ) => {
+        const { localData } = get();
+        if (!localData) return null;
+
+        const updatedStores = [...localData.stores];
+
+        if (targetType === "all") {
+          // 批量更新该品牌下所有门店的所有岗位
+          updatedStores.forEach((store) => {
+            if (store.brand === brandName) {
+              store.positions.forEach((position) => {
+                position.scheduleType = scheduleType;
+                position.schedulingFlexibility = { ...schedulingFlexibility };
+              });
+            }
+          });
+        } else if (targetType === "store" && storeIndex !== undefined) {
+          // 更新指定门店的所有岗位
+          if (positionIndex !== undefined) {
+            // 更新指定岗位
+            if (updatedStores[storeIndex]?.positions[positionIndex]) {
+              updatedStores[storeIndex].positions[positionIndex].scheduleType = scheduleType;
+              updatedStores[storeIndex].positions[positionIndex].schedulingFlexibility = {
+                ...schedulingFlexibility,
+              };
+            }
+          } else {
+            // 更新门店下所有岗位
+            if (updatedStores[storeIndex]) {
+              updatedStores[storeIndex].positions.forEach((position) => {
+                position.scheduleType = scheduleType;
+                position.schedulingFlexibility = { ...schedulingFlexibility };
+              });
+            }
+          }
+        }
+
+        const updatedData = {
+          ...localData,
+          stores: updatedStores,
+        };
+
+        set({
+          localData: updatedData,
+          jsonData: JSON.stringify(updatedData, null, 2),
+          hasUnsavedChanges: true,
+        });
+        
+        // 返回更新后的数据
+        return updatedData;
       },
 
       // 更新 JSON 数据
@@ -175,6 +254,7 @@ export const useBrandEditorStore = create<BrandEditorState>()(
           localData: structuredClone(originalData),
           jsonData: JSON.stringify(originalData, null, 2),
           editingBrand: null,
+          editingType: null,
           error: null,
           hasUnsavedChanges: false,
         });

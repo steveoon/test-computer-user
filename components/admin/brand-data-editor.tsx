@@ -11,8 +11,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Save, RefreshCw, Eye, Code2, Database, MessageSquare } from "lucide-react";
+import { Save, RefreshCw, Eye, Code2, Database, MessageSquare, Calendar } from "lucide-react";
 import { TemplateEditor } from "./template-editor";
+import { ScheduleEditor } from "./schedule-editor";
 import { useBrandEditorStore } from "@/lib/stores/brand-editor-store";
 import type { ZhipinData } from "@/types";
 
@@ -30,21 +31,29 @@ export const BrandDataEditor: React.FC<BrandDataEditorProps> = ({
     jsonData,
     editMode,
     editingBrand,
+    editingType,
     isSaving,
     error,
     hasUnsavedChanges,
     initializeData,
     setEditMode,
     setEditingBrand,
+    setEditingType,
     updateJsonData,
     saveData,
     resetData,
   } = useBrandEditorStore();
 
-  // 初始化数据
+  // 初始化数据 - 当data变化时重新初始化
   useEffect(() => {
     if (data) {
+      // 强制重新初始化，确保与最新的IndexedDB数据同步
       initializeData(data);
+      console.log("🔄 BrandDataEditor重新初始化数据", {
+        brands: Object.keys(data.brands).length,
+        stores: data.stores.length,
+        timestamp: new Date().toISOString()
+      });
     }
   }, [data, initializeData]);
 
@@ -104,16 +113,32 @@ export const BrandDataEditor: React.FC<BrandDataEditorProps> = ({
             {editingBrand ? (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-medium">编辑 {editingBrand} 品牌话术</h3>
+                  <h3 className="text-lg font-medium">
+                    编辑 {editingBrand} 品牌{editingType === "templates" ? "话术" : "排班"}
+                  </h3>
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setEditingBrand(null)}
+                    onClick={() => {
+                      setEditingBrand(null);
+                      setEditingType(null);
+                    }}
                   >
                     返回列表
                   </Button>
                 </div>
-                <TemplateEditor brandName={editingBrand} />
+                {editingType === "templates" && (
+                  <TemplateEditor 
+                    brandName={editingBrand} 
+                    onDataUpdate={onSave}
+                  />
+                )}
+                {editingType === "schedule" && (
+                  <ScheduleEditor 
+                    brandName={editingBrand} 
+                    onDataUpdate={onSave}
+                  />
+                )}
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -138,15 +163,32 @@ export const BrandDataEditor: React.FC<BrandDataEditorProps> = ({
                         {brandConfig.screening.age.max}
                       </div>
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full mt-3"
-                      onClick={() => setEditingBrand(brandName)}
-                    >
-                      <MessageSquare className="h-4 w-4 mr-2" />
-                      编辑话术
-                    </Button>
+                    <div className="flex gap-2 mt-3">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => {
+                          setEditingBrand(brandName);
+                          setEditingType("templates");
+                        }}
+                      >
+                        <MessageSquare className="h-4 w-4 mr-2" />
+                        编辑话术
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => {
+                          setEditingBrand(brandName);
+                          setEditingType("schedule");
+                        }}
+                      >
+                        <Calendar className="h-4 w-4 mr-2" />
+                        编辑排班
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>

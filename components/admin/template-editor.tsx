@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import type { ZhipinData } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,9 +18,13 @@ import { ReplyContext } from "@/types/zhipin";
 
 interface TemplateEditorProps {
   brandName: string;
+  onDataUpdate?: (data: ZhipinData) => Promise<void>;
 }
 
-const REPLY_TYPE_LABELS: Record<ReplyContext, { label: string; category: "recruitment" | "attendance" }> = {
+const REPLY_TYPE_LABELS: Record<
+  ReplyContext,
+  { label: string; category: "recruitment" | "attendance" }
+> = {
   initial_inquiry: { label: "初次咨询工作机会", category: "recruitment" },
   location_inquiry: { label: "询问位置但无具体指向", category: "recruitment" },
   no_location_match: { label: "提到位置但无法匹配", category: "recruitment" },
@@ -40,14 +45,29 @@ const REPLY_TYPE_LABELS: Record<ReplyContext, { label: string; category: "recrui
 
 const ALL_REPLY_TYPES = Object.keys(REPLY_TYPE_LABELS) as ReplyContext[];
 
-export function TemplateEditor({ brandName }: TemplateEditorProps) {
+export function TemplateEditor({
+  brandName,
+  onDataUpdate,
+}: TemplateEditorProps) {
   const { localData, updateTemplates } = useBrandEditorStore();
-  
+
   const [editingTemplate, setEditingTemplate] = useState<{
     type: ReplyContext;
     index: number;
     value: string;
   } | null>(null);
+
+  // 自动保存函数
+  const autoSave = async (updatedData: ZhipinData | null) => {
+    if (updatedData && onDataUpdate) {
+      try {
+        await onDataUpdate(updatedData);
+        console.log("✅ 话术模板已自动保存并同步状态");
+      } catch (error) {
+        console.error("❌ 话术模板自动保存失败:", error);
+      }
+    }
+  };
   const [newTemplate, setNewTemplate] = useState<{
     type: ReplyContext;
     value: string;
@@ -71,7 +91,7 @@ export function TemplateEditor({ brandName }: TemplateEditorProps) {
     setNewTemplate({ type, value: "" });
   };
 
-  const handleSaveNewTemplate = () => {
+  const handleSaveNewTemplate = async () => {
     if (!newTemplate || !newTemplate.value.trim()) return;
 
     const updatedTemplates = {
@@ -82,7 +102,8 @@ export function TemplateEditor({ brandName }: TemplateEditorProps) {
       ],
     };
 
-    updateTemplates(brandName, updatedTemplates);
+    const updatedData = updateTemplates(brandName, updatedTemplates);
+    await autoSave(updatedData);
     setNewTemplate(null);
   };
 
@@ -91,44 +112,51 @@ export function TemplateEditor({ brandName }: TemplateEditorProps) {
     setEditingTemplate({ type, index, value: currentValue });
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (!editingTemplate || !editingTemplate.value.trim()) return;
 
     const updatedTemplates = { ...templates };
     if (!updatedTemplates[editingTemplate.type]) {
       updatedTemplates[editingTemplate.type] = [];
     }
-    
+
     // 确保数组存在且索引有效
     const templateArray = updatedTemplates[editingTemplate.type];
     if (templateArray && editingTemplate.index >= 0) {
       templateArray[editingTemplate.index] = editingTemplate.value.trim();
     }
 
-    updateTemplates(brandName, updatedTemplates);
+    const updatedData = updateTemplates(brandName, updatedTemplates);
+    await autoSave(updatedData);
     setEditingTemplate(null);
   };
 
-  const handleDeleteTemplate = (type: ReplyContext, index: number) => {
+  const handleDeleteTemplate = async (type: ReplyContext, index: number) => {
     const updatedTemplates = { ...templates };
     if (updatedTemplates[type]) {
-      updatedTemplates[type] = updatedTemplates[type].filter((_, i) => i !== index);
+      updatedTemplates[type] = updatedTemplates[type].filter(
+        (_, i) => i !== index
+      );
       if (updatedTemplates[type].length === 0) {
         delete updatedTemplates[type];
       }
     }
 
-    updateTemplates(brandName, updatedTemplates);
+    const updatedData = updateTemplates(brandName, updatedTemplates);
+    await autoSave(updatedData);
   };
 
   const recruitmentTypes = ALL_REPLY_TYPES.filter(
-    type => REPLY_TYPE_LABELS[type].category === "recruitment"
+    (type) => REPLY_TYPE_LABELS[type].category === "recruitment"
   );
   const attendanceTypes = ALL_REPLY_TYPES.filter(
-    type => REPLY_TYPE_LABELS[type].category === "attendance"
+    (type) => REPLY_TYPE_LABELS[type].category === "attendance"
   );
 
-  const renderTemplateSection = (types: ReplyContext[], categoryLabel: string) => (
+  const renderTemplateSection = (
+    types: ReplyContext[],
+    categoryLabel: string
+  ) => (
     <div className="space-y-4">
       <h3 className="text-lg font-semibold">{categoryLabel}</h3>
       <Accordion type="single" collapsible className="w-full">
@@ -155,7 +183,8 @@ export function TemplateEditor({ brandName }: TemplateEditorProps) {
                 <div className="space-y-3 pt-2">
                   {typeTemplates.map((template, index) => (
                     <div key={index} className="relative group">
-                      {editingTemplate?.type === type && editingTemplate?.index === index ? (
+                      {editingTemplate?.type === type &&
+                      editingTemplate?.index === index ? (
                         <div className="space-y-2">
                           <Textarea
                             value={editingTemplate.value}
@@ -171,7 +200,7 @@ export function TemplateEditor({ brandName }: TemplateEditorProps) {
                           <div className="flex gap-2">
                             <Button size="sm" onClick={handleSaveEdit}>
                               <Save className="h-4 w-4 mr-1" />
-                              确定
+                              保存并应用
                             </Button>
                             <Button
                               size="sm"
@@ -186,7 +215,9 @@ export function TemplateEditor({ brandName }: TemplateEditorProps) {
                       ) : (
                         <div className="flex items-start gap-2">
                           <div className="flex-1 p-3 bg-muted rounded-md">
-                            <p className="text-sm whitespace-pre-wrap">{template}</p>
+                            <p className="text-sm whitespace-pre-wrap">
+                              {template}
+                            </p>
                           </div>
                           <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                             <Button
@@ -226,7 +257,7 @@ export function TemplateEditor({ brandName }: TemplateEditorProps) {
                       <div className="flex gap-2">
                         <Button size="sm" onClick={handleSaveNewTemplate}>
                           <Save className="h-4 w-4 mr-1" />
-                          确定
+                          保存并添加
                         </Button>
                         <Button
                           size="sm"
@@ -265,8 +296,8 @@ export function TemplateEditor({ brandName }: TemplateEditorProps) {
         <p className="text-sm text-muted-foreground">
           配置品牌专属的回复话术，支持16种不同的对话场景
         </p>
-        <p className="text-xs text-amber-600 mt-1">
-          提示：编辑后请记得点击页面顶部的"保存"按钮，才能将更改保存到数据库
+        <p className="text-xs text-green-600 mt-1">
+          💡 提示：话术修改后会自动保存
         </p>
       </CardHeader>
       <CardContent className="space-y-6">
