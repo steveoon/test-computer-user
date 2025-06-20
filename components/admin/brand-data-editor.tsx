@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -11,7 +11,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Save, RefreshCw, Eye, Code2, Database } from "lucide-react";
+import { Save, RefreshCw, Eye, Code2, Database, MessageSquare } from "lucide-react";
+import { TemplateEditor } from "./template-editor";
+import { useBrandEditorStore } from "@/lib/stores/brand-editor-store";
 import type { ZhipinData } from "@/types";
 
 interface BrandDataEditorProps {
@@ -23,65 +25,36 @@ export const BrandDataEditor: React.FC<BrandDataEditorProps> = ({
   data,
   onSave,
 }) => {
-  const [editMode, setEditMode] = useState<"overview" | "json">("overview");
-  const [jsonData, setJsonData] = useState<string>(() =>
-    data ? JSON.stringify(data, null, 2) : ""
-  );
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    localData,
+    jsonData,
+    editMode,
+    editingBrand,
+    isSaving,
+    error,
+    hasUnsavedChanges,
+    initializeData,
+    setEditMode,
+    setEditingBrand,
+    updateJsonData,
+    saveData,
+    resetData,
+  } = useBrandEditorStore();
 
-  // 同步数据到编辑器
-  React.useEffect(() => {
+  // 初始化数据
+  useEffect(() => {
     if (data) {
-      setJsonData(JSON.stringify(data, null, 2));
+      initializeData(data);
     }
-  }, [data]);
-
-  // 保存配置
-  const handleSave = useCallback(async () => {
-    setSaving(true);
-    setError(null);
-
-    try {
-      let dataToSave: ZhipinData;
-
-      // 解析JSON数据
-      try {
-        dataToSave = JSON.parse(jsonData);
-      } catch (_parseError) {
-        throw new Error("JSON格式错误，请检查语法");
-      }
-
-      // 基本验证
-      if (!dataToSave.brands || !dataToSave.stores) {
-        throw new Error("数据格式不正确，必须包含brands和stores字段");
-      }
-
-      await onSave(dataToSave);
-      console.log("✅ 品牌数据保存成功");
-    } catch (error) {
-      console.error("❌ 品牌数据保存失败:", error);
-      setError(error instanceof Error ? error.message : "保存失败");
-    } finally {
-      setSaving(false);
-    }
-  }, [jsonData, onSave]);
-
-  // 重置到原始数据
-  const handleReset = useCallback(() => {
-    if (data) {
-      setJsonData(JSON.stringify(data, null, 2));
-      setError(null);
-    }
-  }, [data]);
+  }, [data, initializeData]);
 
   // 渲染概览信息
   const renderOverview = () => {
-    if (!data) return null;
+    if (!localData) return null;
 
-    const brandCount = Object.keys(data.brands).length;
-    const storeCount = data.stores.length;
-    const cityInfo = data.city;
+    const brandCount = Object.keys(localData.brands).length;
+    const storeCount = localData.stores.length;
+    const cityInfo = localData.city;
 
     return (
       <div className="space-y-6">
@@ -128,31 +101,56 @@ export const BrandDataEditor: React.FC<BrandDataEditorProps> = ({
             <CardDescription>当前配置的品牌及其基本信息</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {Object.entries(data.brands).map(([brandName, brandConfig]) => (
-                <div key={brandName} className="p-4 border rounded-lg">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-medium">{brandName}</h3>
-                    <Badge variant="outline">
-                      {
-                        data.stores.filter((store) => store.brand === brandName)
-                          .length
-                      }{" "}
-                      门店
-                    </Badge>
-                  </div>
-                  <div className="text-sm text-muted-foreground space-y-1">
-                    <div>
-                      模板：{Object.keys(brandConfig.templates).length} 类
-                    </div>
-                    <div>
-                      筛选：年龄 {brandConfig.screening.age.min}-
-                      {brandConfig.screening.age.max}
-                    </div>
-                  </div>
+            {editingBrand ? (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-medium">编辑 {editingBrand} 品牌话术</h3>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setEditingBrand(null)}
+                  >
+                    返回列表
+                  </Button>
                 </div>
-              ))}
-            </div>
+                <TemplateEditor brandName={editingBrand} />
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {Object.entries(localData.brands).map(([brandName, brandConfig]) => (
+                  <div key={brandName} className="p-4 border rounded-lg">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="font-medium">{brandName}</h3>
+                      <Badge variant="outline">
+                        {
+                          localData.stores.filter((store) => store.brand === brandName)
+                            .length
+                        }{" "}
+                        门店
+                      </Badge>
+                    </div>
+                    <div className="text-sm text-muted-foreground space-y-1">
+                      <div>
+                        模板：{Object.keys(brandConfig.templates).length} 类
+                      </div>
+                      <div>
+                        筛选：年龄 {brandConfig.screening.age.min}-
+                        {brandConfig.screening.age.max}
+                      </div>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full mt-3"
+                      onClick={() => setEditingBrand(brandName)}
+                    >
+                      <MessageSquare className="h-4 w-4 mr-2" />
+                      编辑话术
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -164,7 +162,7 @@ export const BrandDataEditor: React.FC<BrandDataEditorProps> = ({
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {data.stores.map((store, index) => (
+              {localData.stores.map((store, index) => (
                 <div key={index} className="p-4 border rounded-lg">
                   <div className="flex items-center justify-between mb-2">
                     <div>
@@ -241,27 +239,32 @@ export const BrandDataEditor: React.FC<BrandDataEditorProps> = ({
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
+              {hasUnsavedChanges && (
+                <Badge variant="outline" className="text-amber-600">
+                  未保存的更改
+                </Badge>
+              )}
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handleReset}
-                disabled={saving}
+                onClick={resetData}
+                disabled={isSaving}
               >
                 <RefreshCw className="h-4 w-4 mr-2" />
                 重置
               </Button>
               <Button
-                onClick={handleSave}
+                onClick={() => saveData(onSave)}
                 size="sm"
-                disabled={saving}
+                disabled={isSaving}
                 className="min-w-20"
               >
-                {saving ? (
+                {isSaving ? (
                   <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
                 ) : (
                   <Save className="h-4 w-4 mr-2" />
                 )}
-                {saving ? "保存中..." : "保存"}
+                {isSaving ? "保存中..." : "保存"}
               </Button>
             </div>
           </div>
@@ -308,7 +311,7 @@ export const BrandDataEditor: React.FC<BrandDataEditorProps> = ({
             <CardContent>
               <textarea
                 value={jsonData}
-                onChange={(e) => setJsonData(e.target.value)}
+                onChange={(e) => updateJsonData(e.target.value)}
                 className="w-full h-96 p-4 font-mono text-sm border rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-ring"
                 placeholder="输入品牌数据的JSON格式..."
               />

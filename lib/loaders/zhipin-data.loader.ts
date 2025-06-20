@@ -7,9 +7,8 @@ import { getDynamicRegistry } from "@/lib/model-registry/dynamic-registry";
 import {
   ZhipinData,
   MessageClassification,
-  Templates,
-  Extract,
   ReplyContextSchema,
+  ReplyContext,
 } from "../../types/zhipin";
 import { generateText, generateObject } from "ai";
 import { z } from "zod";
@@ -194,14 +193,27 @@ export function generateSmartReply(
     msg.includes("哪里")
   ) {
     // 简单的区域匹配逻辑
-    const districts = ["徐汇", "静安", "浦东", "黄浦", "长宁", "普陀", "杨浦", "虹口", "闵行", "宝山"];
+    const districts = [
+      "徐汇",
+      "静安",
+      "浦东",
+      "黄浦",
+      "长宁",
+      "普陀",
+      "杨浦",
+      "虹口",
+      "闵行",
+      "宝山",
+    ];
     let matchedStore = null;
-    
+
     // 检查消息中是否包含任何区域名称
     for (const district of districts) {
       if (msg.includes(district)) {
-        matchedStore = data.stores.find((store) =>
-          store.district.includes(district) || store.subarea.includes(district)
+        matchedStore = data.stores.find(
+          (store) =>
+            store.district.includes(district) ||
+            store.subarea.includes(district)
         );
         if (matchedStore) break;
       }
@@ -213,7 +225,7 @@ export function generateSmartReply(
       const timeSlot = position.timeSlots[0];
       return `目前离你比较近在 ${matchedStore.location}，空缺 ${timeSlot}`;
     }
-    
+
     // 否则询问用户位置
     return `你好，${data.city}目前各区有门店岗位空缺，你在什么位置？我可以查下你附近`;
   }
@@ -559,7 +571,7 @@ export async function generateSmartReplyWithLLM(
       ] || effectiveReplyPrompts.general_chat;
 
     // 构建上下文信息
-    const contextInfo = buildContextInfo(data, classification.extractedInfo);
+    const contextInfo = buildContextInfo(data, classification);
 
     // 生成最终回复
     const finalReply = await generateText({
@@ -642,7 +654,11 @@ export async function generateSmartReplyWithLLM(
 /**
  * 构建上下文信息，根据提取的信息筛选相关数据
  */
-function buildContextInfo(data: ZhipinData, extractedInfo: Extract): string {
+function buildContextInfo(
+  data: ZhipinData,
+  classification: MessageClassification
+): string {
+  const extractedInfo = classification.extractedInfo;
   const { mentionedBrand, city, mentionedLocations, mentionedDistricts } =
     extractedInfo;
 
@@ -822,10 +838,10 @@ function buildContextInfo(data: ZhipinData, extractedInfo: Extract): string {
     context += `⚠️ 无匹配时必须：主动要微信联系方式，告知"以后有其他门店空了可以再推给你"\n`;
   }
 
-  // 添加品牌专属模板话术参考
+  // 添加品牌专属模板话术参考 - 仅添加当前分类对应的话术
   const brandConfig = data.brands[targetBrand];
-  if (brandConfig && brandConfig.templates) {
-    const templateMap: { [key: string]: string } = {
+  if (brandConfig && brandConfig.templates && classification.replyType) {
+    const templateMap: Record<ReplyContext, string> = {
       initial_inquiry: "初次咨询",
       location_inquiry: "位置咨询",
       no_location_match: "无位置匹配",
@@ -845,20 +861,24 @@ function buildContextInfo(data: ZhipinData, extractedInfo: Extract): string {
       part_time_support: "兼职支持咨询",
     };
 
-    context += `\n📋 ${targetBrand}品牌专属话术模板：\n`;
-    for (const key in templateMap) {
-      if (
-        Object.prototype.hasOwnProperty.call(brandConfig.templates, key) &&
-        brandConfig.templates[key as keyof Templates] &&
-        (brandConfig.templates[key as keyof Templates] as string[]).length > 0
-      ) {
-        const templateName = templateMap[key];
-        const templateContent =
-          brandConfig.templates[key as keyof typeof brandConfig.templates]?.[0];
-        if (templateContent) {
-          context += `${templateName}：${templateContent}\n`;
+    // 只获取当前分类对应的话术模板
+    const currentReplyType = classification.replyType as ReplyContext;
+    const templates = brandConfig.templates[currentReplyType];
+
+    if (templates && templates.length > 0) {
+      const templateName = templateMap[currentReplyType];
+      context += `\n📋 ${targetBrand}品牌专属话术模板（${templateName}）：\n`;
+
+      // 如果有多个模板，全部列出供LLM参考
+      templates.forEach((template, index) => {
+        if (templates.length > 1) {
+          context += `模板${index + 1}：${template}\n`;
+        } else {
+          context += `${template}\n`;
         }
-      }
+      });
+    } else {
+      context += `\n⚠️ 注意：${targetBrand}品牌暂无此场景的专属话术模板，请参考通用回复指令\n`;
     }
   }
 

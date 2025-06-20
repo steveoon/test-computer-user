@@ -32,7 +32,7 @@ This is a Next.js 15 AI recruitment assistant platform with the following key co
 
 **Smart Reply System:**
 - **Two-phase AI architecture**: Classification (generateObject) → Reply generation (generateText)
-- **11 reply scenarios** with intelligent intent recognition
+- **16 reply scenarios** with intelligent intent recognition (10 recruitment + 6 attendance)
 - **Multi-brand support** with dynamic brand detection
 - **Fallback mechanism** to rule-based engine when LLM fails
 
@@ -55,6 +55,16 @@ This is a Next.js 15 AI recruitment assistant platform with the following key co
 
 ## Important Development Notes
 
+### Zod Schema-First Architecture
+All data types and interfaces are derived from Zod schemas:
+```typescript
+// Define schema first
+const schema = z.object({...})
+// Derive types
+type SchemaType = z.infer<typeof schema>
+```
+This ensures runtime validation and compile-time type safety throughout the application.
+
 ### Configuration System
 - All configuration data flows through `configService` singleton
 - Components use `ConfigInitializer` for automatic migration on first use
@@ -66,6 +76,11 @@ This is a Next.js 15 AI recruitment assistant platform with the following key co
 - Uses structured classification with Zod schemas for type safety
 - Supports conversation history for context-aware responses
 - Always handles Chinese text with proper encoding
+
+### Reply Classification Types
+The system supports 16 distinct reply scenarios:
+1. **Recruitment Types (1-10)**: Position inquiry, scheduling, rejection handling, etc.
+2. **Attendance Types (11-16)**: Schedule queries, shift changes, time corrections
 
 ### E2B Computer Use
 - Screen resolution fixed at 1024x768
