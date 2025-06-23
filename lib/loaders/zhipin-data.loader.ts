@@ -512,7 +512,7 @@ export async function classifyUserMessage(
  * @param modelConfig 模型配置（可选）
  * @param configData 预加载的配置数据（服务端调用时必须提供）
  * @param replyPrompts 预加载的回复指令（服务端调用时必须提供）
- * @returns Promise<string> 生成的智能回复
+ * @returns Promise<{replyType: string, text: string}> 生成的智能回复和分类类型
  */
 export async function generateSmartReplyWithLLM(
   message: string = "",
@@ -521,7 +521,7 @@ export async function generateSmartReplyWithLLM(
   modelConfig?: ModelConfig,
   configData?: ZhipinData,
   replyPrompts?: ReplyPromptsConfig
-): Promise<string> {
+): Promise<{ replyType: string; text: string }> {
   try {
     // 🎯 获取配置的模型和provider设置
     const replyModel =
@@ -579,10 +579,20 @@ export async function generateSmartReplyWithLLM(
       system: `你是专业的招聘助手。
 
       # 回复规则
-      1.  **优先使用品牌专属话术**: 如果"当前招聘数据上下文"中包含当前品牌的专属话术，必须优先使用该模板生成回复。
-      2.  **参考通用指令**: 如果没有品牌专属话术，或专属话术不适用，则遵循下面的"通用回复指令"。
-      3.  **保持真人语气**: 回复要自然、口语化，像真人对话。避免使用"您"、感叹号或过于官方、热情的词汇。
-      4.  **严格遵守敏感话题规则**: 遇到年龄、社保等敏感问题，必须使用固定的安全话术。
+      1.  **年龄优先处理规则**: ${
+        classification.extractedInfo.specificAge &&
+        classification.extractedInfo.specificAge <= 16
+          ? '候选人年龄小于等于16岁，无论其他任何指令，必须直接回复"附近没有合适的岗位"，不得提供任何其他信息'
+          : classification.extractedInfo.specificAge &&
+            classification.extractedInfo.specificAge > 16 &&
+            classification.extractedInfo.specificAge <= 18
+          ? "候选人年龄16-18岁，可以添加对方微信进行后续沟通"
+          : "候选人年龄符合要求，正常处理"
+      }
+      2.  **优先使用品牌专属话术**: 如果"当前招聘数据上下文"中包含当前品牌的专属话术，必须优先使用该模板生成回复。
+      3.  **参考通用指令**: 如果没有品牌专属话术，或专属话术不适用，则遵循下面的"通用回复指令"。
+      4.  **保持真人语气**: 回复要自然、口语化，像真人对话。避免使用"您"、感叹号或过于官方、热情的词汇。
+      5.  **其他敏感话题规则**: 社保等敏感问题，必须使用固定的安全话术。
 
       # 通用回复指令
       ${systemPromptInstruction}
@@ -610,7 +620,10 @@ export async function generateSmartReplyWithLLM(
       }`,
     });
 
-    return finalReply.text;
+    return {
+      replyType: classification.replyType,
+      text: finalReply.text,
+    };
   } catch (error) {
     console.error("LLM智能回复生成失败:", error);
 
@@ -637,16 +650,25 @@ export async function generateSmartReplyWithLLM(
           // 保持默认值 "initial_inquiry"
         }
 
-        return generateSmartReply(data, message, replyContext);
+        return {
+          replyType: replyContext,
+          text: generateSmartReply(data, message, replyContext),
+        };
       } else {
         // 服务端环境降级：返回错误回复
         console.error("服务端环境无法降级，缺少必要的配置数据");
-        return "抱歉，当前系统繁忙，请稍后再试或直接联系我们的客服。";
+        return {
+          replyType: "error",
+          text: "抱歉，当前系统繁忙，请稍后再试或直接联系我们的客服。",
+        };
       }
     } catch (dataError) {
       console.error("降级模式数据加载失败，返回通用错误回复:", dataError);
       // 最终降级：返回通用错误回复
-      return "抱歉，当前系统繁忙，请稍后再试或直接联系我们的客服。";
+      return {
+        replyType: "error",
+        text: "抱歉，当前系统繁忙，请稍后再试或直接联系我们的客服。",
+      };
     }
   }
 }

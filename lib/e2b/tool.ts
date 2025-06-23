@@ -9,7 +9,7 @@ import {
   loadZhipinData,
   generateSmartReplyWithLLM,
 } from "../loaders/zhipin-data.loader";
-import type { Store, ReplyContext } from "../../types/zhipin";
+import type { Store } from "../../types/zhipin";
 import { sendFeishuMessage } from "../send-feishu-message";
 import type { ModelConfig } from "../config/models";
 import type { ZhipinData, ReplyPromptsConfig } from "@/types";
@@ -602,14 +602,9 @@ export const computerTool = (
         .string()
         .optional()
         .describe(
-          "Based on the screenshot, the candidate's message content for generating reply, usually is the latest message at the left side of the chat bubble"
+          "Extract the candidate's latest message from the right chat area. Look for the most recent message bubble on the left side (candidate's side) of the conversation"
         ),
-      reply_context: z
-        .custom<ReplyContext>()
-        .optional()
-        .describe(
-          "The context/type of reply needed (imported from @/types/zhipin ReplyContext)"
-        ),
+
       auto_input: z
         .boolean()
         .optional()
@@ -620,7 +615,7 @@ export const computerTool = (
         .array(z.string())
         .optional()
         .describe(
-          "Previous conversation messages to provide context for better reply generation, usually the last 3-5 messages"
+          "Comprehensive context from the interface including: 1) Candidate profile info from top-right (name, age, experience, education) - AGE IS CRITICAL for role matching, 2) Recent conversation messages from right chat area (last 3-5 exchanges), 3) Job position details from the interface. Format as context strings like 'Candidate: 陈洁, 30岁, 1年经验, 高中学历, 应聘店员职位' followed by message history"
         ),
     }),
     execute: async ({
@@ -633,7 +628,6 @@ export const computerTool = (
       scroll_amount,
       app_name,
       candidate_message,
-      reply_context,
       auto_input,
       conversation_history,
     }) => {
@@ -1155,7 +1149,7 @@ export const computerTool = (
             console.log("🤖 开始生成Boss直聘回复...");
 
             // 生成回复 - 优先使用传入的配置数据
-            const generatedReply = await generateSmartReplyWithLLM(
+            const replyResult = await generateSmartReplyWithLLM(
               candidate_message || "",
               conversation_history || [],
               preferredBrand,
@@ -1164,10 +1158,8 @@ export const computerTool = (
               replyPrompts // 传递回复指令
             );
 
-            console.log(`📝 生成的回复内容: ${generatedReply}`);
-            console.log(
-              `🎯 传入的回复上下文: ${reply_context || "未指定(LLM自动识别)"}`
-            );
+            console.log(`📝 生成的回复内容: ${replyResult.text}`);
+            console.log(`🎯 回复类型: ${replyResult.replyType}`);
             console.log(`💬 候选人消息: ${candidate_message}`);
             console.log(
               `📝 对话历史: ${conversation_history?.length || 0}条消息`
@@ -1177,9 +1169,11 @@ export const computerTool = (
             // 为了显示统计信息，使用传入的配置数据或重新加载
             const storeDatabase = configData || (await loadZhipinData());
 
-            let resultText = `✅ Boss直聘回复已生成：\n\n"${generatedReply}"\n\n📊 生成详情:\n• 候选人消息: ${
+            let resultText = `✅ Boss直聘回复已生成：\n\n"${
+              replyResult.text
+            }"\n\n📊 生成详情:\n• 候选人消息: ${
               candidate_message || "无"
-            }\n• 回复类型: ${reply_context || "auto_detected"}\n• 对话历史: ${
+            }\n• 回复类型: ${replyResult.replyType}\n• 对话历史: ${
               conversation_history?.length || 0
             }条消息\n• 使用数据: ${
               storeDatabase.stores.length
@@ -1196,7 +1190,7 @@ export const computerTool = (
                 // 自动输入生成的回复
                 const inputResult = await handleChineseInput(
                   desktop,
-                  generatedReply
+                  replyResult.text
                 );
                 resultText += `\n✅ 自动输入完成: ${inputResult}`;
                 resultText +=
@@ -1206,10 +1200,10 @@ export const computerTool = (
                 resultText += `\n❌ 自动输入失败: ${
                   inputError instanceof Error ? inputError.message : "未知错误"
                 }`;
-                resultText += `\n🔄 请手动使用 type 操作输入以下内容: "${generatedReply}"`;
+                resultText += `\n🔄 请手动使用 type 操作输入以下内容: "${replyResult.text}"`;
               }
             } else {
-              resultText += `\n\n🚀 下一步操作: 请使用 type 动作输入以下回复内容：\n"${generatedReply}"\n\n💡 建议流程: 1. 执行 type 操作输入回复 → 2. 按回车发送`;
+              resultText += `\n\n🚀 下一步操作: 请使用 type 动作输入以下回复内容：\n"${replyResult.text}"\n\n💡 建议流程: 1. 执行 type 操作输入回复 → 2. 按回车发送`;
             }
 
             return {
