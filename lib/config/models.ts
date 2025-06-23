@@ -48,6 +48,12 @@ export const MODEL_DICTIONARY = {
     description: "Anthropic Claude Sonnet 4 (最新)",
     categories: ["chat", "general"] as ModelCategory[],
   },
+  "anthropic/claude-3-5-haiku-latest": {
+    provider: "anthropic",
+    name: "Claude 3.5 Haiku (最新)",
+    description: "Anthropic Claude 3.5 Haiku (最新)",
+    categories: ["chat", "general"] as ModelCategory[],
+  },
 
   // OpenAI 模型
   "openai/gpt-4.1": {

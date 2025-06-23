@@ -657,8 +657,8 @@ export const computerTool = (
           const compressedData = await compressImageServerV2(base64Data, {
             targetSizeKB: envLimits.compressionTargetKB, // 环境自适应目标大小
             maxSizeKB: envLimits.compressionMaxKB, // 环境自适应最大大小
-            maxQuality: 90, // 通用最高质量
-            minQuality: 50, // 通用最低质量
+            maxQuality: 95, // 通用最高质量 (JPEG范围: 1-100)
+            minQuality: 60, // 通用最低质量 (确保可接受的图像质量)
             enableAdaptive: true,
             preserveText: true,
           });

@@ -250,7 +250,7 @@ async function compressWithParams(
       kernel: "lanczos3", // 高质量缩放算法
     })
     .jpeg({
-      quality: params.quality,
+      quality: Math.max(1, Math.min(100, params.quality)), // 确保质量参数在1-100范围内
       progressive: true,
       mozjpeg: true, // 启用更好的压缩算法
       optimiseCoding: true,
@@ -273,8 +273,8 @@ async function lightOptimization(
 ): Promise<CompressionResult> {
   console.log(`📦 文件已小于目标大小，执行轻量级优化`);
 
-  // 使用配置的质量参数进行轻量级优化
-  const quality = Math.min(config.maxQuality, 90);
+  // 使用配置的质量参数进行轻量级优化，确保在有效范围内
+  const quality = Math.max(1, Math.min(100, Math.min(config.maxQuality, 90)));
 
   const optimizedBuffer = await sharp(buffer)
     .jpeg({
@@ -310,10 +310,19 @@ async function standardCompression(
   const metadata = await sharp(buffer).metadata();
   const scaleFactor = originalSizeKB > 250 ? 0.8 : 0.9;
 
-  // 使用配置参数计算质量
+  // 使用配置参数计算质量，确保在JPEG有效范围内 (1-100)
   const quality = Math.max(
-    config.minQuality,
-    Math.min(config.maxQuality, originalSizeKB > 300 ? 60 : 65)
+    1, // 最小值1
+    Math.min(
+      100, // 最大值100
+      Math.max(
+        Math.min(100, config.minQuality), // 确保minQuality不超过100
+        Math.min(
+          Math.min(100, config.maxQuality),
+          originalSizeKB > 300 ? 60 : 65
+        )
+      )
+    )
   );
 
   const compressedBuffer = await sharp(buffer)
