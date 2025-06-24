@@ -1148,10 +1148,28 @@ export const computerTool = (
           try {
             console.log("🤖 开始生成Boss直聘回复...");
 
+            // 处理 conversation_history 参数，兼容字符串和数组格式
+            let processedHistory: string[] = [];
+            if (conversation_history) {
+              if (typeof conversation_history === "string") {
+                try {
+                  // 尝试解析 JSON 字符串
+                  processedHistory = JSON.parse(conversation_history);
+                  console.log("📋 解析了字符串格式的对话历史");
+                } catch (_e) {
+                  // 如果解析失败，将字符串作为单个元素的数组
+                  processedHistory = [conversation_history];
+                  console.log("📋 将字符串转换为单元素数组");
+                }
+              } else if (Array.isArray(conversation_history)) {
+                processedHistory = conversation_history;
+              }
+            }
+
             // 生成回复 - 优先使用传入的配置数据
             const replyResult = await generateSmartReplyWithLLM(
               candidate_message || "",
-              conversation_history || [],
+              processedHistory,
               preferredBrand,
               modelConfig,
               configData, // 传递配置数据
@@ -1162,7 +1180,7 @@ export const computerTool = (
             console.log(`🎯 回复类型: ${replyResult.replyType}`);
             console.log(`💬 候选人消息: ${candidate_message}`);
             console.log(
-              `📝 对话历史: ${conversation_history?.length || 0}条消息`
+              `📝 对话历史: ${processedHistory.length}条消息`
             );
             console.log(`⚙️ 自动输入: ${auto_input ? "是" : "否"}`);
 
@@ -1174,7 +1192,7 @@ export const computerTool = (
             }"\n\n📊 生成详情:\n• 候选人消息: ${
               candidate_message || "无"
             }\n• 回复类型: ${replyResult.replyType}\n• 对话历史: ${
-              conversation_history?.length || 0
+              processedHistory.length
             }条消息\n• 使用数据: ${
               storeDatabase.stores.length
             }家门店，${storeDatabase.stores.reduce(
