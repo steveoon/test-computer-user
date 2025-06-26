@@ -1,6 +1,7 @@
 import { streamText, UIMessage } from "ai";
 import { killDesktop } from "@/lib/e2b/utils";
 import { bashTool, computerTool, feishuBotTool } from "@/lib/e2b/tool";
+import { puppeteerTool } from "@/lib/tools/puppeteer-tool";
 import { prunedMessages, shouldCleanupSandbox } from "@/lib/utils";
 import { getDynamicRegistry } from "@/lib/model-registry/dynamic-registry";
 import { getBossZhipinSystemPrompt } from "@/lib/loaders/system-prompts.loader";
@@ -135,6 +136,7 @@ export async function POST(req: Request) {
         ),
         bash: bashTool(sandboxId),
         feishu: feishuBotTool(),
+        puppeteer: puppeteerTool(),
       },
       providerOptions: {
         anthropic: { cacheControl: { type: "ephemeral" } },

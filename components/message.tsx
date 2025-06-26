@@ -20,6 +20,9 @@ import {
   ScrollText,
   StopCircle,
   MessageCircle,
+  Globe,
+  Hand,
+  Terminal,
 } from "lucide-react";
 
 const PurePreviewMessage = ({
@@ -362,6 +365,126 @@ const PurePreviewMessage = ({
                             )
                           ) : null}
                         </div>
+                      </motion.div>
+                    );
+                  }
+                  if (toolName === "puppeteer") {
+                    const {
+                      action,
+                      targetUrl,
+                      url,
+                      selector,
+                      value,
+                      script,
+                    } = args;
+                    let actionLabel = "";
+                    let actionDetail = "";
+                    let ActionIcon = null;
+
+                    switch (action) {
+                      case "connect_active_tab":
+                        actionLabel = "Connecting to browser";
+                        actionDetail = targetUrl ? `to ${targetUrl}` : "to active tab";
+                        ActionIcon = Globe;
+                        break;
+                      case "navigate":
+                        actionLabel = "Navigating";
+                        actionDetail = url ? `to ${url.slice(0, 40)}...` : "";
+                        ActionIcon = Globe;
+                        break;
+                      case "screenshot":
+                        actionLabel = "Taking screenshot";
+                        actionDetail = selector ? `of ${selector}` : "of page";
+                        ActionIcon = Camera;
+                        break;
+                      case "click":
+                        actionLabel = "Clicking";
+                        actionDetail = selector ? `on ${selector}` : "";
+                        ActionIcon = MousePointerClick;
+                        break;
+                      case "fill":
+                        actionLabel = "Filling input";
+                        actionDetail = selector ? `${selector} with "${value?.slice(0, 20)}..."` : "";
+                        ActionIcon = Keyboard;
+                        break;
+                      case "select":
+                        actionLabel = "Selecting option";
+                        actionDetail = selector ? `${selector}: "${value}"` : "";
+                        ActionIcon = MousePointer;
+                        break;
+                      case "hover":
+                        actionLabel = "Hovering";
+                        actionDetail = selector ? `over ${selector}` : "";
+                        ActionIcon = Hand;
+                        break;
+                      case "evaluate":
+                        actionLabel = "Executing JavaScript";
+                        actionDetail = script ? `${script.slice(0, 30)}...` : "";
+                        ActionIcon = Terminal;
+                        break;
+                      default:
+                        actionLabel = action;
+                        ActionIcon = Globe;
+                        break;
+                    }
+
+                    return (
+                      <motion.div
+                        initial={{ y: 5, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        key={`message-${message.id}-part-${i}`}
+                        className="flex flex-col gap-2 p-2 mb-3 text-sm bg-purple-50 dark:bg-purple-900/20 rounded-md border border-purple-200 dark:border-purple-800"
+                      >
+                        <div className="flex-1 flex items-center justify-center">
+                          <div className="flex items-center justify-center w-8 h-8 bg-purple-100 dark:bg-purple-800 rounded-full">
+                            {ActionIcon && <ActionIcon className="w-4 h-4 text-purple-600 dark:text-purple-400" />}
+                          </div>
+                          <div className="flex-1">
+                            <div className="font-medium font-mono flex items-baseline gap-2 text-purple-800 dark:text-purple-200">
+                              {actionLabel}
+                              {actionDetail && (
+                                <span className="text-xs text-purple-600 dark:text-purple-400 font-normal">
+                                  {actionDetail}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="w-5 h-5 flex items-center justify-center">
+                            {state === "call" ? (
+                              isLatestMessage && status !== "ready" ? (
+                                <Loader2 className="animate-spin h-4 w-4 text-purple-500" />
+                              ) : (
+                                <StopCircle className="h-4 w-4 text-red-500" />
+                              )
+                            ) : state === "result" ? (
+                              part.toolInvocation.result === ABORTED ? (
+                                <CircleSlash
+                                  size={14}
+                                  className="text-amber-600"
+                                />
+                              ) : (
+                                <CheckCircle
+                                  size={14}
+                                  className="text-green-600"
+                                />
+                              )
+                            ) : null}
+                          </div>
+                        </div>
+                        {state === "result" && action === "screenshot" ? (
+                          part.toolInvocation.result.type === "image" && (
+                            <div className="p-2">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={`data:image/jpeg;base64,${part.toolInvocation.result.data}`}
+                                alt="Puppeteer Screenshot"
+                                className="w-full rounded-sm"
+                              />
+                            </div>
+                          )
+                        ) : action === "screenshot" && state === "call" ? (
+                          <div className="w-full aspect-video rounded-sm bg-purple-200 dark:bg-purple-800 animate-pulse"></div>
+                        ) : null}
                       </motion.div>
                     );
                   }

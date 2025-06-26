@@ -9,10 +9,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `pnpm build` - Build production bundle
 - `pnpm lint` - Run ESLint checks
 - `pnpm start` - Start production server
+- `pnpm test:mcp-connection` - Test MCP connection using Puppeteer
 
-### API Testing
+### API Testing & Debugging
 - Visit `/test-llm-reply` - Web interface for testing LLM smart reply functionality
 - `POST /api/test-llm-reply` - API endpoint for programmatic testing
+- `GET /api/diagnose` - E2B diagnostic tools for troubleshooting sandbox issues
+- Visit `/admin/settings` - Configuration management interface
 
 ## Architecture Overview
 
@@ -20,9 +23,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a Next.js 15 AI recruitment assistant platform with the following key components:
 
 **Multi-Provider AI Integration:**
-- Primary: Anthropic Claude 3.7 Sonnet for computer use capabilities
+- Primary: Anthropic Claude Sonnet for computer use capabilities
 - Secondary: Qwen models via `qwen-ai-provider` for smart reply generation
-- Supports OpenAI and Google AI providers via AI SDK
+- Supports OpenAI, Google AI, and OpenRouter providers via AI SDK
+- Dynamic model provider management through `lib/model-registry/`
 
 **Configuration Management Architecture:**
 - **Unified Config Service** (`lib/services/config.service.ts`) - Central configuration management using localforage
@@ -102,17 +106,23 @@ The system supports 16 distinct reply scenarios:
 
 Required environment variables:
 ```bash
-# AI Providers
+# AI Providers (at least one required)
 ANTHROPIC_API_KEY=your_anthropic_key
 DASHSCOPE_API_KEY=your_dashscope_key  # For Qwen models
 OPENAI_API_KEY=your_openai_key  # Optional fallback
+OPENROUTER_API_KEY=your_openrouter_key  # Optional
+GEMINI_API_KEY=your_google_gemini_key  # Optional
 
-# E2B Desktop
+# E2B Desktop (for computer use features)
 E2B_API_KEY=your_e2b_key
 
-# Supabase (Optional)
+# Supabase (Optional - for authentication)
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_key
+
+# Feishu Integration (Optional)
+FEISHU_APP_ID=your_feishu_app_id
+FEISHU_APP_SECRET=your_feishu_app_secret
 ```
 
 ## Data Flow Patterns
@@ -122,8 +132,29 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_key
 3. **Computer Use**: User action → E2B tools → Desktop interaction → Screenshot/result
 4. **Model Selection**: `useModelConfigStore()` → Dynamic provider selection → AI SDK execution
 
+## Important Development Guidelines
+
 When working with this codebase:
 - Always check configuration state before accessing brand/prompt data
 - Use the type definitions in `types/config.d.ts` for configuration interfaces
 - Follow the two-phase AI pattern for new intelligent features
 - Test Chinese input scenarios when modifying desktop automation
+
+### Code Quality Standards
+- **Zero tolerance for `any` types** - Use `unknown` and type narrowing instead
+- **Schema-first architecture** - All data structures must derive from Zod schemas
+- **Strict TypeScript** - Enable strict null checks and exhaustive dependency checking
+- **Component props interfaces** - All components must have explicit prop type definitions
+- **Error handling** - All async operations must include proper error handling
+- **Performance considerations** - Avoid unnecessary re-renders and expensive calculations
+
+### MCP (Model Context Protocol) Integration
+- MCP server available at `lib/mcp/` for advanced tool integrations
+- Puppeteer usage examples in `examples/` directory
+- Test MCP connections using `pnpm test:mcp-connection`
+
+### Multi-language Support
+- Primary support for Chinese text processing and input
+- Special handling for Chinese IME in E2B environments
+- UTF-8 encoding considerations for all text operations
+- Reference `docs/CHINESE_INPUT_GUIDE.md` for troubleshooting input issues
