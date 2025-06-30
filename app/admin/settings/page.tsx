@@ -10,11 +10,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Settings, Database, MessageSquare, Cpu } from "lucide-react";
+import { Settings, Database, MessageSquare, Cpu, RefreshCw } from "lucide-react";
 import { BrandDataEditor } from "@/components/admin/brand-data-editor";
 import { PromptsEditor } from "@/components/admin/prompts-editor";
 import { SystemPromptsEditor } from "@/components/admin/system-prompts-editor";
 import { useConfigManager } from "@/hooks/useConfigManager";
+import { useRouter } from "next/navigation";
 
 export default function AdminSettingsPage() {
   const {
@@ -29,7 +30,8 @@ export default function AdminSettingsPage() {
     importConfig,
     resetConfig,
   } = useConfigManager();
-
+  
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState("overview");
   const [currentTime, setCurrentTime] = useState<string>("");
 
@@ -92,6 +94,13 @@ export default function AdminSettingsPage() {
 
         {/* 全局操作按钮 */}
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => router.push('/admin/settings/sync')}
+            className="px-3 py-2 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90 cursor-pointer flex items-center gap-2"
+          >
+            <RefreshCw className="h-4 w-4" />
+            数据同步
+          </button>
           <button
             onClick={exportConfig}
             className="px-3 py-2 text-sm bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80 cursor-pointer"

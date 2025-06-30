@@ -1,8 +1,9 @@
 import { streamText, UIMessage } from "ai";
 import { killDesktop } from "@/lib/e2b/utils";
-import { bashTool, computerTool, feishuBotTool } from "@/lib/e2b/tool";
-import { weChatBotTool } from "@/lib/e2b/wechat-bot-tool";
+import { bashTool, computerTool } from "@/lib/e2b/tool";
+import { feishuBotTool } from "@/lib/tools/feishu-bot-tool";
 import { puppeteerTool } from "@/lib/tools/puppeteer-tool";
+import { weChatBotTool } from "@/lib/tools/wechat-bot-tool";
 import { prunedMessages, shouldCleanupSandbox } from "@/lib/utils";
 import { getDynamicRegistry } from "@/lib/model-registry/dynamic-registry";
 import { getBossZhipinSystemPrompt } from "@/lib/loaders/system-prompts.loader";

@@ -78,7 +78,7 @@ export namespace DulidayRaw {
     weekWorkTimeRequirement: z.number(),
     perWeekNeedWorkDays: z.number().nullable(),
     perWeekWorkDays: z.number().nullable(),
-    perWeekRestDays: z.number(),
+    perWeekRestDays: z.number().nullable(),
     evenOddType: z.number().nullable(),
     customWorkTimes: z.array(z.unknown()).nullable(),
     dayWorkTimeRequirement: z.number(),
@@ -91,7 +91,7 @@ export namespace DulidayRaw {
     goOffWorkStartTime: z.number().nullable(),
     goOffWorkEndTime: z.number().nullable(),
     maxWorkTakingTime: z.number(),
-    restTimeDesc: z.string(),
+    restTimeDesc: z.string().nullable(),
     workTimeRemark: z.string(),
   });
 

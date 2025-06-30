@@ -165,9 +165,12 @@ export function generateSmartReply(
       ];
 
     const brandName = getBrandName(data);
-    let reply = `你好，${data.city}各区有${brandName}门店岗位空缺，兼职排班 ${randomPosition.workHours} 小时。基本薪资：${randomPosition.baseSalary} 元/小时。`;
-    if (randomPosition.levelSalary) {
-      reply += `阶梯薪资：${randomPosition.levelSalary}。`;
+    let reply = `你好，${data.city}各区有${brandName}门店岗位空缺，兼职排班 ${randomPosition.workHours} 小时。基本薪资：${randomPosition.salary.base} 元/小时。`;
+    if (randomPosition.salary.range) {
+      reply += `薪资范围：${randomPosition.salary.range}。`;
+    }
+    if (randomPosition.salary.bonus) {
+      reply += `奖金：${randomPosition.salary.bonus}。`;
     }
 
     // 添加排班类型和灵活性信息
@@ -310,9 +313,12 @@ export function generateSmartReply(
       availableStores[Math.floor(Math.random() * availableStores.length)];
     const position = randomStore.positions[0];
 
-    let reply = `基本薪资是 ${position.baseSalary} 元/小时`;
-    if (position.levelSalary) {
-      reply += `，${position.levelSalary}`;
+    let reply = `基本薪资是 ${position.salary.base} 元/小时`;
+    if (position.salary.range) {
+      reply += `，薪资范围：${position.salary.range}`;
+    }
+    if (position.salary.bonus) {
+      reply += `，奖金：${position.salary.bonus}`;
     }
     return reply;
   }
@@ -451,7 +457,7 @@ export async function classifyUserMessage(
           .map(
             (pos) =>
               `${pos.name}（${pos.timeSlots.join("、")}，${
-                pos.baseSalary
+                pos.salary.base
               }元/时）`
           )
           .join("、")}`
@@ -773,12 +779,23 @@ function buildContextInfo(
       store.positions.forEach((pos) => {
         context += `  职位：${pos.name}，时间：${pos.timeSlots.join(
           "、"
-        )}，薪资：${pos.baseSalary}元/时\n`;
-        if (pos.levelSalary) {
-          context += `  阶梯薪资：${pos.levelSalary}\n`;
+        )}，薪资：${pos.salary.base}元/时\n`;
+        if (pos.salary.range) {
+          context += `  薪资范围：${pos.salary.range}\n`;
         }
-        if (pos.benefits && pos.benefits !== "无") {
-          context += `  福利：${pos.benefits}\n`;
+        if (pos.salary.bonus) {
+          context += `  奖金：${pos.salary.bonus}\n`;
+        }
+        
+        // 处理结构化福利对象
+        if (pos.benefits && pos.benefits.items && pos.benefits.items.length > 0) {
+          const benefitsList = pos.benefits.items.filter(item => item !== "无");
+          if (benefitsList.length > 0) {
+            context += `  福利：${benefitsList.join("、")}\n`;
+          }
+        }
+        if (pos.benefits && pos.benefits.promotion) {
+          context += `  晚升福利：${pos.benefits.promotion}\n`;
         }
 
         // 新增：考勤和排班信息

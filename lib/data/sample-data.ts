@@ -25,11 +25,16 @@ export const sampleData: SampleData = {
             id: "pos_001",
             name: "前厅岗位",
             timeSlots: ["11:30~14:00"],
-            baseSalary: 24,
-            levelSalary:
-              "每月做满40小时之后，时薪是26元/时，每月做满80小时后，时薪是28元/时",
+            salary: {
+              base: 24,
+              range: "24-28元/时",
+              bonus: "每月做满40小时之后，时薪是26元/时，每月做满80小时后，时薪是28元/时",
+              memo: "每月做满40小时之后，时薪是26元/时，每月做满80小时后，时薪是28元/时",
+            },
             workHours: "2.5",
-            benefits: "无",
+            benefits: {
+              items: [],
+            },
             requirements: ["18-45岁", "有服务经验优先"],
             urgent: true,
             // 新增：考勤和排班信息
@@ -76,11 +81,16 @@ export const sampleData: SampleData = {
             id: "pos_002",
             name: "后厨岗位",
             timeSlots: ["11:00~14:00"],
-            baseSalary: 24,
-            levelSalary:
-              "每月做满40小时之后，时薪是26元/时，每月做满80小时后，时薪是28元/时",
+            salary: {
+              base: 24,
+              range: "24-28元/时",
+              bonus: "每月做满40小时之后，时薪是26元/时，每月做满80小时后，时薪是28元/时",
+              memo: "每月做满40小时之后，时薪是26元/时，每月做满80小时后，时薪是28元/时",
+            },
             workHours: "3",
-            benefits: "无",
+            benefits: {
+              items: [],
+            },
             requirements: ["18-45岁", "有服务经验优先"],
             urgent: false,
             // 新增：考勤和排班信息
@@ -141,11 +151,16 @@ export const sampleData: SampleData = {
             id: "pos_003",
             name: "前厅岗位",
             timeSlots: ["11:30~14:00", "17:30~20:30"],
-            baseSalary: 24,
-            levelSalary:
-              "每月做满40小时之后，时薪是26元/时，每月做满80小时后，时薪是28元/时",
+            salary: {
+              base: 24,
+              range: "24-28元/时",
+              bonus: "每月做满40小时之后，时薪是26元/时，每月做满80小时后，时薪是28元/时",
+              memo: "每月做满40小时之后，时薪是26元/时，每月做满80小时后，时薪是28元/时",
+            },
             workHours: "3",
-            benefits: "无",
+            benefits: {
+              items: [],
+            },
             requirements: ["18-45岁", "有服务经验优先"],
             urgent: true,
             // 新增：考勤和排班信息
@@ -211,11 +226,16 @@ export const sampleData: SampleData = {
             id: "pos_004",
             name: "前厅岗位",
             timeSlots: ["11:00~14:00"],
-            baseSalary: 24,
-            levelSalary:
-              "每月做满40小时之后，时薪是26元/时，每月做满80小时后，时薪是28元/时",
+            salary: {
+              base: 24,
+              range: "24-28元/时",
+              bonus: "每月做满40小时之后，时薪是26元/时，每月做满80小时后，时薪是28元/时",
+              memo: "每月做满40小时之后，时薪是26元/时，每月做满80小时后，时薪是28元/时",
+            },
             workHours: "3",
-            benefits: "无",
+            benefits: {
+              items: [],
+            },
             requirements: ["18-45岁", "有服务经验优先"],
             urgent: false,
             // 新增：考勤和排班信息
@@ -268,10 +288,15 @@ export const sampleData: SampleData = {
             id: "pos_005",
             name: "通岗",
             timeSlots: ["10:00~14:00"],
-            baseSalary: 23,
-            levelSalary: "基础时薪23-28元，具体工作内容听店长安排",
+            salary: {
+              base: 23,
+              range: "23-28元/时",
+              memo: "基础时薪23-28元，具体工作内容听店长安排",
+            },
             workHours: "4",
-            benefits: "面议",
+            benefits: {
+              items: ["面议"],
+            },
             requirements: ["18-45岁", "服从店长安排"],
             urgent: true,
             // 新增：考勤和排班信息
@@ -332,10 +357,15 @@ export const sampleData: SampleData = {
             id: "pos_006",
             name: "通岗",
             timeSlots: ["17:30~20:30"],
-            baseSalary: 23,
-            levelSalary: "基础时薪23-28元，具体工作内容听店长安排",
+            salary: {
+              base: 23,
+              range: "23-28元/时",
+              memo: "基础时薪23-28元，具体工作内容听店长安排",
+            },
             workHours: "3",
-            benefits: "面议",
+            benefits: {
+              items: ["面议"],
+            },
             requirements: ["18-45岁", "服从店长安排"],
             urgent: true,
             // 新增：考勤和排班信息

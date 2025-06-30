@@ -9,9 +9,12 @@ interface DesktopStreamProps {
   isInitializing: boolean;
   isPausing: boolean;
   isAuthenticated: boolean;
+  manualInit: boolean;
   onRefresh: () => void;
   onPause: () => void;
   onResume: () => void;
+  onInitialize: () => void;
+  setManualInit: (manual: boolean) => void;
 }
 
 export function DesktopStream({
@@ -20,9 +23,12 @@ export function DesktopStream({
   isInitializing,
   isPausing,
   isAuthenticated,
+  manualInit,
   onRefresh,
   onPause,
   onResume,
+  onInitialize,
+  setManualInit,
 }: DesktopStreamProps) {
   // 未登录状态
   if (!isAuthenticated) {
@@ -120,7 +126,40 @@ export function DesktopStream({
     );
   }
 
-  // 已登录但沙盒正在初始化
+  // 已登录但沙盒未初始化
+  if (manualInit && !streamUrl && !isInitializing) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full text-white p-8">
+        <div className="text-center max-w-md">
+          <div className="w-16 h-16 mx-auto mb-6 bg-green-600/20 rounded-full flex items-center justify-center">
+            <Bot className="w-8 h-8 text-green-400" />
+          </div>
+          <h2 className="text-xl font-semibold mb-3">准备启动沙盒环境</h2>
+          <p className="text-gray-300 mb-6 leading-relaxed">
+            点击下方按钮启动远程沙盒环境。如果您只需要使用本地浏览器工具，可以暂时不启动沙盒。
+          </p>
+          <Button
+            onClick={onInitialize}
+            className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded"
+            disabled={isInitializing}
+          >
+            {isInitializing ? "正在启动..." : "启动沙盒环境"}
+          </Button>
+          <div className="mt-4">
+            <Button
+              onClick={() => setManualInit(false)}
+              variant="link"
+              className="text-gray-400 hover:text-gray-300 text-sm"
+            >
+              设置为自动启动
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 已登录且沙盒正在初始化
   return (
     <div className="flex items-center justify-center h-full text-white">
       {isInitializing ? "Initializing desktop..." : "Loading stream..."}

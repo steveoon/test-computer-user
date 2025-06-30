@@ -187,7 +187,7 @@ export const puppeteerTool = () =>
         const result = await tool.execute(mcpParams);
 
         console.log(`✅ Puppeteer操作 ${action} 执行成功`);
-        console.log(`🔍 结果结构:`, result);
+        // console.log(`🔍 结果结构:`, result);
 
         // 处理结果（使用类型验证）
         const mcpResult = result as PuppeteerMCPResult;
@@ -197,13 +197,13 @@ export const puppeteerTool = () =>
             const imageContent = mcpResult.content.find(
               (content) => content.type === "image"
             );
-            
+
             if (imageContent && imageContent.type === "image") {
               // 压缩图片数据
               console.log(
-                `🖼️ Puppeteer截图原始大小: ${(imageContent.data.length / 1024).toFixed(
-                  2
-                )}KB`
+                `🖼️ Puppeteer截图原始大小: ${(
+                  imageContent.data.length / 1024
+                ).toFixed(2)}KB`
               );
 
               const { getEnvironmentLimits } = await import(
@@ -211,14 +211,17 @@ export const puppeteerTool = () =>
               );
               const envLimits = getEnvironmentLimits();
 
-              const compressedData = await compressImageServerV2(imageContent.data, {
-                targetSizeKB: envLimits.compressionTargetKB, // 环境自适应目标大小
-                maxSizeKB: envLimits.compressionMaxKB, // 环境自适应最大大小
-                maxQuality: 95, // 通用最高质量 (JPEG范围: 1-100)
-                minQuality: 60, // 通用最低质量 (确保可接受的图像质量)
-                enableAdaptive: true,
-                preserveText: true,
-              });
+              const compressedData = await compressImageServerV2(
+                imageContent.data,
+                {
+                  targetSizeKB: envLimits.compressionTargetKB, // 环境自适应目标大小
+                  maxSizeKB: envLimits.compressionMaxKB, // 环境自适应最大大小
+                  maxQuality: 95, // 通用最高质量 (JPEG范围: 1-100)
+                  minQuality: 60, // 通用最低质量 (确保可接受的图像质量)
+                  enableAdaptive: true,
+                  preserveText: true,
+                }
+              );
 
               console.log(
                 `✅ 服务端压缩完成，当前大小: ${(
@@ -233,12 +236,12 @@ export const puppeteerTool = () =>
               return PuppeteerResultSchema.parse(imageResult);
             }
           }
-          
+
           // 对于非截图操作，或者截图操作但没找到图片数据时，返回文本结果
           const textContent = mcpResult.content.find(
             (content) => content.type === "text"
           );
-          
+
           if (textContent && textContent.type === "text") {
             const textResult: PuppeteerResult = {
               type: "text",

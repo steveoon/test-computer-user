@@ -74,9 +74,12 @@ export default function Chat() {
               isInitializing={desktop.isInitializing}
               isPausing={desktop.isPausing}
               isAuthenticated={isAuthenticated}
+              manualInit={desktop.manualInit}
               onRefresh={desktop.refreshDesktop}
               onPause={desktop.pauseDesktop}
               onResume={desktop.resumeDesktop}
+              onInitialize={desktop.initializeDesktop}
+              setManualInit={desktop.setManualInit}
             />
           </ResizablePanel>
 

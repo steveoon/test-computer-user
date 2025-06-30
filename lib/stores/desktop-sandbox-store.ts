@@ -8,6 +8,7 @@ interface DesktopSandboxState {
   sandboxStatus: "running" | "paused" | "unknown";
   isInitializing: boolean;
   isPausing: boolean;
+  manualInit: boolean; // 控制是否需要手动初始化
 
   // Actions
   setSandboxId: (id: string | null) => void;
@@ -15,6 +16,7 @@ interface DesktopSandboxState {
   setSandboxStatus: (status: "running" | "paused" | "unknown") => void;
   setIsInitializing: (initializing: boolean) => void;
   setIsPausing: (pausing: boolean) => void;
+  setManualInit: (manual: boolean) => void;
   reset: () => void;
 }
 
@@ -24,6 +26,7 @@ const initialState = {
   sandboxStatus: "unknown" as const,
   isInitializing: false,
   isPausing: false,
+  manualInit: true, // 默认需要手动初始化
 };
 
 // 检查是否可以安全使用 devtools
@@ -57,6 +60,7 @@ const createStore = () => {
     setIsInitializing: (initializing: boolean) =>
       set({ isInitializing: initializing }),
     setIsPausing: (pausing: boolean) => set({ isPausing: pausing }),
+    setManualInit: (manual: boolean) => set({ manualInit: manual }),
 
     reset: () => set(initialState),
   });

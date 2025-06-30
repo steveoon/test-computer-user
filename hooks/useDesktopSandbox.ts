@@ -15,11 +15,13 @@ export function useDesktopSandbox() {
     sandboxStatus,
     isInitializing,
     isPausing,
+    manualInit,
     setSandboxId,
     setStreamUrl,
     setSandboxStatus,
     setIsInitializing,
     setIsPausing,
+    setManualInit,
     reset,
   } = useDesktopSandboxStore();
 
@@ -292,6 +294,11 @@ export function useDesktopSandbox() {
       return;
     }
 
+    // 如果设置为手动初始化，则不自动初始化
+    if (manualInit) {
+      return;
+    }
+
     // 防止重复初始化
     if (isInitializing || sandboxId || streamUrl) {
       return;
@@ -299,7 +306,7 @@ export function useDesktopSandbox() {
 
     initializeDesktop();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated, isAuthLoading]); // 移除不必要的依赖项，避免循环
+  }, [isAuthenticated, isAuthLoading, manualInit]); // 移除不必要的依赖项，避免循环
 
   return {
     sandboxId,
@@ -307,8 +314,11 @@ export function useDesktopSandbox() {
     sandboxStatus,
     isInitializing,
     isPausing,
+    manualInit,
     refreshDesktop,
     pauseDesktop,
     resumeDesktop: refreshDesktop, // 恢复和刷新使用相同的逻辑
+    initializeDesktop,
+    setManualInit,
   };
 }
