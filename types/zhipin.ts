@@ -2,6 +2,141 @@ import { z } from "zod";
 
 // Boss直聘相关数据类型定义
 
+// 🔧 结构化薪资与福利模型
+export const SalaryDetailsSchema = z.object({
+  base: z.number(),
+  // 例如: "5250元-5750元"
+  range: z.string().optional(),
+  // 例如: "季度奖金1000～1500"
+  bonus: z.string().optional(),
+  // 保留原始文本以供参考
+  memo: z.string(),
+});
+
+export const BenefitsSchema = z.object({
+  // 一个包含关键福利的数组，如 ["五险一金", "带薪年假"]
+  items: z.array(z.string()),
+  // 完整的晋升福利文本
+  promotion: z.string().optional(),
+});
+
+// 🔧 Duliday 原始 API 数据结构定义
+export namespace DulidayRaw {
+  export const MoreWelfareItemSchema = z.object({
+    content: z.string(),
+    image: z.string().nullable(),
+  });
+
+  export const WelfareSchema = z.object({
+    id: z.number(),
+    jobBasicInfoId: z.number(),
+    haveInsurance: z.number(),
+    accommodation: z.number(),
+    accommodationSalary: z.number().nullable(),
+    accommodationSalaryUnit: z.number().nullable(),
+    probationAccommodationSalaryReceive: z.number().nullable(),
+    catering: z.number(),
+    cateringImage: z.string().nullable(),
+    cateringSalary: z.number().nullable(),
+    cateringSalaryUnit: z.number().nullable(),
+    trafficAllowanceSalary: z.number().nullable(),
+    trafficAllowanceSalaryUnit: z.number().nullable(),
+    otherWelfare: z.string().nullable(),
+    moreWelfares: z.array(MoreWelfareItemSchema).nullable(),
+    insuranceFund: z.array(z.number()).nullable(),
+    insuranceFundCityId: z.number().nullable(),
+    insuranceFundCityStr: z.string().nullable(),
+    insuranceFundAmount: z.number().nullable(),
+    memo: z.string().nullable(),
+    promotionWelfare: z.string().nullable(),
+    accommodationNum: z.number().nullable(),
+    commuteDistance: z.number().nullable(),
+    accommodationEnv: z.string().nullable(),
+    imagesDTOList: z.array(z.unknown()).nullable(),
+  });
+
+  export const WorkTimeArrangementSlotSchema = z.object({
+    jobWorkTimeArrangementId: z.number(),
+    startTime: z.number(),
+    endTime: z.number(),
+    weekdays: z.array(z.number()),
+  });
+
+  export const WorkTimeArrangementSchema = z.object({
+    id: z.number(),
+    jobBasicInfoId: z.number(),
+    employmentForm: z.number(),
+    minWorkMonths: z.number(),
+    temporaryEmploymentStartTime: z.string().nullable(),
+    temporaryEmploymentEndTime: z.string().nullable(),
+    employmentDescription: z.string().nullable(),
+    monthWorkTimeRequirement: z.number(),
+    perMonthMinWorkTime: z.number().nullable(),
+    perMonthMinWorkTimeUnit: z.number().nullable(),
+    perMonthMaxRestTime: z.number().nullable(),
+    perMonthMaxRestTimeUnit: z.number().nullable(),
+    weekWorkTimeRequirement: z.number(),
+    perWeekNeedWorkDays: z.number().nullable(),
+    perWeekWorkDays: z.number().nullable(),
+    perWeekRestDays: z.number(),
+    evenOddType: z.number().nullable(),
+    customWorkTimes: z.array(z.unknown()).nullable(),
+    dayWorkTimeRequirement: z.number(),
+    perDayMinWorkHours: z.number().nullable(),
+    arrangementType: z.number(),
+    fixedArrangementTimes: z.array(z.unknown()).nullable(),
+    combinedArrangementTimes: z.array(WorkTimeArrangementSlotSchema).nullable(),
+    goToWorkStartTime: z.number().nullable(),
+    goToWorkEndTime: z.number().nullable(),
+    goOffWorkStartTime: z.number().nullable(),
+    goOffWorkEndTime: z.number().nullable(),
+    maxWorkTakingTime: z.number(),
+    restTimeDesc: z.string(),
+    workTimeRemark: z.string(),
+  });
+
+  export const PositionSchema = z.object({
+    jobBasicInfoId: z.number(),
+    jobStoreId: z.number(),
+    storeId: z.number(),
+    storeName: z.string(),
+    storeCityId: z.number(),
+    storeRegionId: z.number(),
+    jobName: z.string(),
+    jobId: z.number(),
+    cityName: z.array(z.string()),
+    salary: z.number(),
+    salaryUnitStr: z.string(),
+    workTimeArrangement: WorkTimeArrangementSchema,
+    welfare: WelfareSchema,
+    cooperationMode: z.number(),
+    requirementNum: z.number(),
+    thresholdNum: z.number(),
+    signUpNum: z.number().nullable(),
+    postTime: z.string(),
+    successDuliriUserId: z.number(),
+    successNameStr: z.string(),
+    storeAddress: z.string(),
+  });
+
+  export const ListResponseSchema = z.object({
+    code: z.number(),
+    message: z.string(),
+    data: z.object({
+      result: z.array(PositionSchema),
+      total: z.number(),
+    }),
+  });
+
+  // 导出类型
+  export type MoreWelfareItem = z.infer<typeof MoreWelfareItemSchema>;
+  export type Welfare = z.infer<typeof WelfareSchema>;
+  export type WorkTimeArrangement = z.infer<typeof WorkTimeArrangementSchema>;
+  export type WorkTimeArrangementSlot = z.infer<typeof WorkTimeArrangementSlotSchema>;
+  export type Position = z.infer<typeof PositionSchema>;
+  export type ListResponse = z.infer<typeof ListResponseSchema>;
+}
+
 // 预定义常见出勤模式
 export const ATTENDANCE_PATTERNS = {
   WEEKENDS: [6, 7],
@@ -53,15 +188,16 @@ export const SchedulingFlexibilitySchema = z.object({
   holidayRequired: z.boolean(),
 });
 
-// 岗位Schema
+// 岗位Schema（使用结构化的薪资与福利模型）
 export const PositionSchema = z.object({
   id: z.string(),
   name: z.string(),
   timeSlots: z.array(z.string()),
-  baseSalary: z.number().min(0),
-  levelSalary: z.string(),
+  // 🔧 使用结构化的薪资模型替代原有的 baseSalary 和 levelSalary
+  salary: SalaryDetailsSchema,
   workHours: z.string(),
-  benefits: z.string(),
+  // 🔧 使用结构化的福利模型替代原有的 benefits
+  benefits: BenefitsSchema,
   requirements: z.array(z.string()),
   urgent: z.boolean(),
   scheduleType: ScheduleTypeSchema,
@@ -211,6 +347,8 @@ export const MessageClassificationSchema = z.object({
 
 // 🔧 通过 z.infer 生成 TypeScript 类型
 
+export type SalaryDetails = z.infer<typeof SalaryDetailsSchema>;
+export type Benefits = z.infer<typeof BenefitsSchema>;
 export type AttendanceRequirement = z.infer<typeof AttendanceRequirementSchema>;
 export type ScheduleType = z.infer<typeof ScheduleTypeSchema>;
 export type AttendancePolicy = z.infer<typeof AttendancePolicySchema>;

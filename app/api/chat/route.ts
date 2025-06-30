@@ -1,6 +1,7 @@
 import { streamText, UIMessage } from "ai";
 import { killDesktop } from "@/lib/e2b/utils";
 import { bashTool, computerTool, feishuBotTool } from "@/lib/e2b/tool";
+import { weChatBotTool } from "@/lib/e2b/wechat-bot-tool";
 import { puppeteerTool } from "@/lib/tools/puppeteer-tool";
 import { prunedMessages, shouldCleanupSandbox } from "@/lib/utils";
 import { getDynamicRegistry } from "@/lib/model-registry/dynamic-registry";
@@ -136,6 +137,7 @@ export async function POST(req: Request) {
         ),
         bash: bashTool(sandboxId),
         feishu: feishuBotTool(),
+        wechat: weChatBotTool(),
         puppeteer: puppeteerTool(),
       },
       providerOptions: {
