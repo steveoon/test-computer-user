@@ -509,7 +509,7 @@ curl -X POST "https://k8s.duliday.com/persistence/a/job-requirement/details" \
 
 ### 4.3 hiringRequirement（招聘要求）
 
-| 字段                          | 类型        | 说明                   |
+| 字段                          | 类型        | 说明                   | 备注                 |
 | ----------------------------- | ----------- | ---------------------- | -------------------- |
 | id                            | number      | 招聘要求 ID            |
 | figureId                      | number      | 身材要求 ID            |
@@ -555,7 +555,7 @@ curl -X POST "https://k8s.duliday.com/persistence/a/job-requirement/details" \
 
 ### 4.4 workTimeArrangement（工作时间安排）
 
-| 字段                         | 类型      | 说明                       |
+| 字段                         | 类型      | 说明                       | 备注                 |
 | ---------------------------- | --------- | -------------------------- | -------------------- |
 | id                           | number    | 工作时间安排 ID            |
 | jobBasicInfoId               | number    | 关联岗位 ID                |
@@ -590,7 +590,7 @@ curl -X POST "https://k8s.duliday.com/persistence/a/job-requirement/details" \
 
 ### 4.5 processRequirement（面试流程）
 
-| 字段                          | 类型      | 说明           |
+| 字段                          | 类型      | 说明           | 备注               |
 | ----------------------------- | --------- | -------------- | ------------------ |
 | id                            | number    | 面试流程 ID    |
 | jobBasicInfoId                | number    | 关联岗位 ID    |
@@ -639,7 +639,7 @@ curl -X POST "https://k8s.duliday.com/persistence/a/job-requirement/details" \
 
 ### 4.6 storeRequirement（门店需求）
 
-| 字段                          | 类型      | 说明           |
+| 字段                          | 类型      | 说明           | 备注               |
 | ----------------------------- | --------- | -------------- | ------------------ |
 | id                            | number    | 门店需求 ID    |
 | jobBasicInfoId                | number    | 关联岗位 ID    |
@@ -677,7 +677,7 @@ curl -X POST "https://k8s.duliday.com/persistence/a/job-requirement/details" \
 
 #### company（公司信息）
 
-| 字段                  | 类型      | 说明         |
+| 字段                  | 类型      | 说明         | 备注        |
 | --------------------- | --------- | ------------ | ----------- |
 | id                    | number    | 公司 ID      |
 | name                  | string    | 公司名称     |
@@ -694,7 +694,7 @@ curl -X POST "https://k8s.duliday.com/persistence/a/job-requirement/details" \
 
 #### store（门店信息）
 
-| 字段             | 类型      | 说明         |
+| 字段             | 类型      | 说明         | 备注         |
 | ---------------- | --------- | ------------ | ------------ |
 | id               | number    | 门店 ID      |
 | name             | string    | 门店名称     |
