@@ -10,6 +10,7 @@ import { configService, getBrandData } from "@/lib/services/config.service";
 import { ZhipinData } from "@/types/zhipin";
 import { getAvailableBrands } from "@/lib/constants/organization-mapping";
 import { toast } from "sonner";
+import { configStore } from "@/hooks/useConfigManager";
 
 /**
  * 同步状态接口
@@ -155,6 +156,10 @@ export const useSyncStore = create<SyncState>()(
 
           try {
             await mergeAndSaveSyncData(result.results);
+            
+            // 🔄 重新加载配置以确保所有组件获取最新数据
+            await configStore.getState().loadConfig();
+            console.log("✅ 配置已重新加载，所有组件将看到最新数据");
           } catch (saveError) {
             console.warn("数据保存失败，但同步已完成:", saveError);
             // 即使保存失败，也不影响同步的成功状态

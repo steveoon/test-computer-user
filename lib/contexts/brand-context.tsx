@@ -7,7 +7,7 @@ import React, {
   ReactNode,
   useEffect,
 } from "react";
-import { getBrandData } from "../services/config.service";
+import { useConfigManager } from "@/hooks/useConfigManager";
 import {
   saveBrandPreference,
   loadBrandPreference,
@@ -33,44 +33,31 @@ interface BrandProviderProps {
 }
 
 export function BrandProvider({ children }: BrandProviderProps) {
-  const [brandData, setBrandData] = useState<ZhipinData | null>(null);
+  const { config, loading: configLoading } = useConfigManager();
   const [currentBrand, setCurrentBrand] = useState<string>("");
   const [isLoaded, setIsLoaded] = useState(false);
-  const [isConfigLoaded, setIsConfigLoaded] = useState(false);
 
-  // 🔄 从配置服务加载品牌数据
+  // 🔄 从 configStore 获取品牌数据
+  const brandData = config?.brandData || null;
+  const isConfigLoaded = !configLoading && config !== null;
+
+  // 🔄 当配置数据更新时，同步更新当前品牌
   useEffect(() => {
-    const loadConfigData = async () => {
-      try {
-        console.log("🔄 品牌上下文：开始加载配置数据...");
+    if (!brandData) return;
 
-        const configData = await getBrandData();
+    // 如果当前品牌不存在或为空，设置默认品牌
+    if (!currentBrand || !brandData.brands[currentBrand]) {
+      const defaultBrand =
+        brandData.defaultBrand || Object.keys(brandData.brands)[0] || "";
+      setCurrentBrand(defaultBrand);
 
-        if (configData) {
-          setBrandData(configData);
-
-          // 设置默认品牌
-          const defaultBrand =
-            configData.defaultBrand || Object.keys(configData.brands)[0] || "";
-          setCurrentBrand(defaultBrand);
-
-          console.log("✅ 品牌上下文：配置数据加载成功", {
-            brands: Object.keys(configData.brands),
-            defaultBrand,
-            stores: configData.stores.length,
-          });
-        } else {
-          console.warn("⚠️ 品牌上下文：未找到配置数据");
-        }
-      } catch (error) {
-        console.error("❌ 品牌上下文：配置数据加载失败:", error);
-      } finally {
-        setIsConfigLoaded(true);
-      }
-    };
-
-    loadConfigData();
-  }, []);
+      console.log("✅ 品牌上下文：配置数据已更新", {
+        brands: Object.keys(brandData.brands),
+        defaultBrand,
+        stores: brandData.stores.length,
+      });
+    }
+  }, [brandData, currentBrand]);
 
   // 🔄 从本地存储读取品牌选择（在配置数据加载后）
   useEffect(() => {
