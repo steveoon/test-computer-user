@@ -10,12 +10,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `pnpm lint` - Run ESLint checks
 - `pnpm start` - Start production server
 - `pnpm test:mcp-connection` - Test MCP connection using Puppeteer
+- `pnpm format` - Format code with Prettier
+- `pnpm format:check` - Check code formatting
 
 ### API Testing & Debugging
 - Visit `/test-llm-reply` - Web interface for testing LLM smart reply functionality
 - `POST /api/test-llm-reply` - API endpoint for programmatic testing
 - `GET /api/diagnose` - E2B diagnostic tools for troubleshooting sandbox issues
 - Visit `/admin/settings` - Configuration management interface
+- Visit `/admin/config` - Legacy configuration interface (redirects to settings)
 
 ## Architecture Overview
 
@@ -27,17 +30,19 @@ This is a Next.js 15 AI recruitment assistant platform with the following key co
 - Secondary: Qwen models via `qwen-ai-provider` for smart reply generation
 - Supports OpenAI, Google AI, and OpenRouter providers via AI SDK
 - Dynamic model provider management through `lib/model-registry/`
+- Provider caching to avoid recreating identical configurations
 
 **Configuration Management Architecture:**
 - **Unified Config Service** (`lib/services/config.service.ts`) - Central configuration management using localforage
 - **Three-tier data structure**: Brand data, System prompts, Reply prompts
 - **Migration system** from hardcoded data to persistent storage via `ConfigInitializer` component
 - **Zustand stores** for model configuration and state management
+- **LocalForage** for browser-based persistence (not localStorage) with IndexedDB fallback
 
 **Smart Reply System:**
 - **Two-phase AI architecture**: Classification (generateObject) → Reply generation (generateText)
 - **16 reply scenarios** with intelligent intent recognition (10 recruitment + 6 attendance)
-- **Multi-brand support** with dynamic brand detection
+- **Multi-brand support** with dynamic brand detection via React Context
 - **Fallback mechanism** to rule-based engine when LLM fails
 
 ### Key Technical Components
@@ -46,16 +51,26 @@ This is a Next.js 15 AI recruitment assistant platform with the following key co
 - `lib/e2b/tool.ts` - Computer use tools with screen capture and interaction
 - `@e2b/desktop` integration for sandbox environments
 - Chinese input handling with IME support
+- Automatic resource cleanup on process termination
 
 **Authentication & Data:**
-- Supabase integration for user authentication
-- Local storage with localforage for configuration persistence
-- Brand context system for multi-tenant support
+- Supabase integration for user authentication with middleware
+- Route-based protection with configurable public/protected routes
+- Cookie-based session management with SSR support
+- Graceful degradation when Supabase is not configured
+- Brand context system for multi-tenant support using React Context
 
 **AI Models Configuration:**
 - `lib/config/models.ts` - Centralized model registry
 - `lib/model-registry/` - Dynamic model provider management
 - Support for multiple AI providers with fallback chains
+- Runtime provider switching without code changes
+
+**MCP (Model Context Protocol) Integration:**
+- Singleton manager pattern for MCP client lifecycle
+- Multiple MCP servers (Puppeteer, Google Maps, Exa) with unified interface
+- Tool schema validation and type safety
+- Lazy connection establishment for performance
 
 ## Important Development Notes
 
@@ -74,6 +89,8 @@ This ensures runtime validation and compile-time type safety throughout the appl
 - Components use `ConfigInitializer` for automatic migration on first use
 - Admin interface at `/admin/settings` for visual configuration management
 - Never modify hardcoded data files - use the config service instead
+- Automatic versioning and migration system handles schema upgrades
+- Configuration data stored in browser IndexedDB via LocalForage
 
 ### Smart Reply Integration
 - Main function: `generateSmartReplyWithLLM()` in `lib/loaders/zhipin-data.loader.ts`
@@ -131,6 +148,8 @@ FEISHU_APP_SECRET=your_feishu_app_secret
 2. **Smart Replies**: User message → `generateSmartReplyWithLLM()` → Classification → Reply generation
 3. **Computer Use**: User action → E2B tools → Desktop interaction → Screenshot/result
 4. **Model Selection**: `useModelConfigStore()` → Dynamic provider selection → AI SDK execution
+5. **Authentication Flow**: Middleware → Supabase Auth → Session Cookie → Protected Routes
+6. **Sync Architecture**: External API → Server-side fetch → Client-side persistence via ConfigService
 
 ## Important Development Guidelines
 
@@ -147,6 +166,8 @@ When working with this codebase:
 - **Component props interfaces** - All components must have explicit prop type definitions
 - **Error handling** - All async operations must include proper error handling
 - **Performance considerations** - Avoid unnecessary re-renders and expensive calculations
+- **Singleton services** - Core services use singleton pattern for resource efficiency
+- **Hook-based composition** - Features encapsulated in custom hooks for reusability
 
 ### MCP (Model Context Protocol) Integration
 - MCP server available at `lib/mcp/` for advanced tool integrations
@@ -158,3 +179,33 @@ When working with this codebase:
 - Special handling for Chinese IME in E2B environments
 - UTF-8 encoding considerations for all text operations
 - Reference `docs/CHINESE_INPUT_GUIDE.md` for troubleshooting input issues
+
+## Architectural Highlights
+
+### Progressive Web App Capabilities
+The application supports multiple operational modes:
+- **Full mode**: With authentication, E2B desktop, and all features enabled
+- **Standalone mode**: Without Supabase authentication for local development
+- **Offline mode**: Using cached configurations from LocalForage
+- **Degraded mode**: Fallback to rule-based systems when AI providers fail
+
+### Service Architecture
+- **Singleton Pattern**: Core services (`configService`, `mcpClientManager`) use singleton pattern
+- **Lazy Loading**: MCP connections established only when needed
+- **Resource Management**: Automatic cleanup prevents memory leaks
+- **Error Boundaries**: Multiple levels of error handling from component to API
+
+### Type Safety Patterns
+```
+API Response → Zod Schema Validation → TypeScript Types → React Components
+```
+- Runtime validation at all external data boundaries
+- Compile-time type safety throughout the application
+- Schema-derived types eliminating duplication
+
+### Duliday Integration
+The new sync system demonstrates clean architecture:
+- Server-side data fetching without direct storage access
+- Client-side data persistence through the config service
+- Progress tracking with real-time updates
+- History management in localStorage for audit trails

@@ -1,6 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
-import { SUPABASE_URL, SUPABASE_PUBLIC_ANON_KEY } from "@/lib/constant";
+import { SUPABASE_URL, SUPABASE_PUBLIC_ANON_KEY } from "@/lib/constants";
 /**
  * 创建Supabase Server 客户端
  * 用于在服务器组件中创建Supabase客户端

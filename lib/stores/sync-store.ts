@@ -1,10 +1,15 @@
-import { create } from 'zustand';
-import { devtools } from 'zustand/middleware';
-import { SyncRecord, saveSyncRecord, getSyncHistory } from '@/lib/services/duliday-sync.service';
-import { configService, getBrandData } from '@/lib/services/config.service';
-import { ZhipinData } from '@/types/zhipin';
-import { getAvailableBrands } from '@/lib/constants/organization-mapping';
-import { toast } from 'sonner';
+import { create } from "zustand";
+import { devtools } from "zustand/middleware";
+import {
+  SyncRecord,
+  SyncResult,
+  saveSyncRecord,
+  getSyncHistory,
+} from "@/lib/services/duliday-sync.service";
+import { configService, getBrandData } from "@/lib/services/config.service";
+import { ZhipinData } from "@/types/zhipin";
+import { getAvailableBrands } from "@/lib/constants/organization-mapping";
+import { toast } from "sonner";
 
 /**
  * 同步状态接口
@@ -15,32 +20,32 @@ interface SyncState {
   currentStep: string;
   overallProgress: number;
   currentOrganization: number;
-  
+
   // 选中的品牌
   selectedBrands: number[];
-  
+
   // 同步历史
   syncHistory: SyncRecord[];
-  
+
   // 当前同步结果
   currentSyncResult: SyncRecord | null;
-  
+
   // 错误状态
   error: string | null;
-  
+
   // Actions
   setSelectedBrands: (brands: number[]) => void;
   toggleBrand: (brandId: number) => void;
   selectAllBrands: () => void;
   clearSelectedBrands: () => void;
-  
+
   startSync: () => Promise<void>;
   updateProgress: (progress: number, currentOrg: number, message: string) => void;
   setSyncResult: (result: SyncRecord) => void;
-  
+
   loadSyncHistory: () => void;
   clearHistory: () => void;
-  
+
   setError: (error: string | null) => void;
   reset: () => void;
 }
@@ -53,7 +58,7 @@ export const useSyncStore = create<SyncState>()(
     (set, get) => ({
       // 初始状态
       isSyncing: false,
-      currentStep: '',
+      currentStep: "",
       overallProgress: 0,
       currentOrganization: 0,
       selectedBrands: [],
@@ -62,11 +67,11 @@ export const useSyncStore = create<SyncState>()(
       error: null,
 
       // 品牌选择相关操作
-      setSelectedBrands: (brands) => {
+      setSelectedBrands: brands => {
         set({ selectedBrands: brands });
       },
 
-      toggleBrand: (brandId) => {
+      toggleBrand: brandId => {
         const { selectedBrands } = get();
         const newSelectedBrands = selectedBrands.includes(brandId)
           ? selectedBrands.filter(id => id !== brandId)
@@ -86,73 +91,83 @@ export const useSyncStore = create<SyncState>()(
       // 同步操作
       startSync: async () => {
         const { selectedBrands } = get();
-        
+
         if (selectedBrands.length === 0) {
-          set({ error: '请至少选择一个品牌进行同步' });
-          toast.error('请至少选择一个品牌进行同步');
+          set({ error: "请至少选择一个品牌进行同步" });
+          toast.error("请至少选择一个品牌进行同步");
           return;
         }
 
-        set({ 
-          isSyncing: true, 
-          error: null, 
-          overallProgress: 0, 
-          currentStep: '准备开始同步...',
-          currentSyncResult: null 
+        set({
+          isSyncing: true,
+          error: null,
+          overallProgress: 0,
+          currentStep: "准备开始同步...",
+          currentSyncResult: null,
         });
 
         try {
+          // 获取本地存储的Token
+          const localToken = localStorage.getItem("duliday_token");
+
           // 验证 API 配置
-          set({ currentStep: '验证 Duliday Token...' });
-          const configResponse = await fetch('/api/sync');
+          set({ currentStep: "验证 Duliday Token..." });
+          // 构建验证URL，如果有本地Token则传递
+          const validateUrl = localToken
+            ? `/api/sync?token=${encodeURIComponent(localToken)}`
+            : "/api/sync";
+          const configResponse = await fetch(validateUrl);
           const configData = await configResponse.json();
-          
+
           if (!configData.configured || !configData.tokenValid) {
-            throw new Error('Duliday Token 配置无效，请检查环境变量');
+            throw new Error(
+              `Duliday Token 配置无效：${configData.error || "请检查Token或环境变量"}`
+            );
           }
 
-          toast.info('开始数据同步...', {
+          toast.info("开始数据同步...", {
             description: `将同步 ${selectedBrands.length} 个品牌的数据`,
           });
 
-          set({ currentStep: '正在同步数据...', overallProgress: 10 });
+          set({ currentStep: "正在同步数据...", overallProgress: 10 });
 
           // 调用 API 端点进行同步
-          const syncResponse = await fetch('/api/sync', {
-            method: 'POST',
+          const syncResponse = await fetch("/api/sync", {
+            method: "POST",
             headers: {
-              'Content-Type': 'application/json',
+              "Content-Type": "application/json",
             },
             body: JSON.stringify({
               organizationIds: selectedBrands,
+              token: localToken, // 传递本地存储的token
             }),
           });
 
           if (!syncResponse.ok) {
             const errorData = await syncResponse.json();
-            throw new Error(errorData.error || '同步请求失败');
+            throw new Error(errorData.error || "同步请求失败");
           }
 
           const { data: result } = await syncResponse.json();
 
           // 处理转换后的数据并保存到本地配置
-          set({ currentStep: '正在保存数据到本地...', overallProgress: 90 });
-          
+          set({ currentStep: "正在保存数据到本地...", overallProgress: 90 });
+
           try {
             await mergeAndSaveSyncData(result.results);
           } catch (saveError) {
-            console.warn('数据保存失败，但同步已完成:', saveError);
+            console.warn("数据保存失败，但同步已完成:", saveError);
             // 即使保存失败，也不影响同步的成功状态
           }
 
           // 保存同步记录
           saveSyncRecord(result);
-          
-          set({ 
+
+          set({
             currentSyncResult: result,
             isSyncing: false,
-            currentStep: '同步完成',
-            overallProgress: 100 
+            currentStep: "同步完成",
+            overallProgress: 100,
           });
 
           // 刷新历史记录
@@ -160,46 +175,48 @@ export const useSyncStore = create<SyncState>()(
 
           // 显示结果通知
           if (result.overallSuccess) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const totalStores = result.results.reduce((sum: number, r: any) => sum + r.storeCount, 0);
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const totalRecords = result.results.reduce((sum: number, r: any) => sum + r.processedRecords, 0);
-            
-            toast.success('数据同步成功！', {
+            const totalStores = result.results.reduce(
+              (sum: number, r: SyncResult) => sum + r.storeCount,
+              0
+            );
+            const totalRecords = result.results.reduce(
+              (sum: number, r: SyncResult) => sum + r.processedRecords,
+              0
+            );
+
+            toast.success("数据同步成功！", {
               description: `共同步 ${totalRecords} 条记录，${totalStores} 家门店`,
             });
           } else {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const failedBrands = result.results.filter((r: any) => !r.success).length;
-            toast.warning('数据同步部分成功', {
+            const failedBrands = result.results.filter((r: SyncResult) => !r.success).length;
+            toast.warning("数据同步部分成功", {
               description: `${failedBrands} 个品牌同步失败，请查看详细信息`,
             });
           }
-
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : '同步过程中发生未知错误';
-          
-          set({ 
+          const errorMessage = error instanceof Error ? error.message : "同步过程中发生未知错误";
+
+          set({
             error: errorMessage,
             isSyncing: false,
-            currentStep: '同步失败',
+            currentStep: "同步失败",
           });
 
-          toast.error('数据同步失败', {
+          toast.error("数据同步失败", {
             description: errorMessage,
           });
         }
       },
 
       updateProgress: (progress, currentOrg, message) => {
-        set({ 
-          overallProgress: progress, 
+        set({
+          overallProgress: progress,
           currentOrganization: currentOrg,
-          currentStep: message 
+          currentStep: message,
         });
       },
 
-      setSyncResult: (result) => {
+      setSyncResult: result => {
         set({ currentSyncResult: result });
       },
 
@@ -212,18 +229,18 @@ export const useSyncStore = create<SyncState>()(
       clearHistory: () => {
         try {
           // Dynamic import to avoid require()
-          import('@/lib/services/duliday-sync.service').then(({ clearSyncHistory }) => {
+          import("@/lib/services/duliday-sync.service").then(({ clearSyncHistory }) => {
             clearSyncHistory();
             set({ syncHistory: [] });
-            toast.success('同步历史已清除');
+            toast.success("同步历史已清除");
           });
         } catch {
-          toast.error('清除历史记录失败');
+          toast.error("清除历史记录失败");
         }
       },
 
       // 错误处理
-      setError: (error) => {
+      setError: error => {
         set({ error });
       },
 
@@ -231,7 +248,7 @@ export const useSyncStore = create<SyncState>()(
       reset: () => {
         set({
           isSyncing: false,
-          currentStep: '',
+          currentStep: "",
           overallProgress: 0,
           currentOrganization: 0,
           currentSyncResult: null,
@@ -240,7 +257,7 @@ export const useSyncStore = create<SyncState>()(
       },
     }),
     {
-      name: 'sync-store',
+      name: "sync-store",
     }
   )
 );
@@ -251,7 +268,7 @@ export const useSyncStore = create<SyncState>()(
 export function formatDuration(milliseconds: number): string {
   const seconds = Math.floor(milliseconds / 1000);
   const minutes = Math.floor(seconds / 60);
-  
+
   if (minutes > 0) {
     return `${minutes}分${seconds % 60}秒`;
   }
@@ -262,14 +279,14 @@ export function formatDuration(milliseconds: number): string {
  * 获取同步状态文本
  */
 export function getSyncStatusText(isSuccess: boolean): string {
-  return isSuccess ? '成功' : '失败';
+  return isSuccess ? "成功" : "失败";
 }
 
 /**
  * 获取同步状态颜色
  */
 export function getSyncStatusColor(isSuccess: boolean): string {
-  return isSuccess ? 'text-green-600' : 'text-red-600';
+  return isSuccess ? "text-green-600" : "text-red-600";
 }
 
 /**
@@ -279,53 +296,82 @@ export function getSyncStatusColor(isSuccess: boolean): string {
 async function mergeAndSaveSyncData(syncResults: any[]): Promise<void> {
   // 获取现有配置
   const existingData = await getBrandData();
-  
+
   // 合并所有同步结果的数据
   const allConvertedData: Partial<ZhipinData>[] = syncResults
     .filter(result => result.success && result.convertedData)
     .map(result => result.convertedData);
-  
+
   if (allConvertedData.length === 0) {
-    console.log('没有需要保存的转换数据');
+    console.log("没有需要保存的转换数据");
     return;
   }
-  
-  // 合并数据
-  const mergedStores = [...(existingData?.stores || [])];
-  const mergedBrands = { ...(existingData?.brands || {}) };
+
+  // 收集所有同步的品牌名称
+  const syncedBrandNames = new Set<string>();
+  for (const data of allConvertedData) {
+    if (data.brands) {
+      Object.keys(data.brands).forEach(brandName => syncedBrandNames.add(brandName));
+    }
+  }
+
+  console.log(`🔄 开始合并数据，将替换品牌: ${Array.from(syncedBrandNames).join(", ")}`);
+
+  // 基础数据保持不变
   let mergedCity = existingData?.city || "上海市";
   let mergedDefaultBrand = existingData?.defaultBrand;
-  
-  // 合并每个同步结果的数据
+
+  // 品牌数据：保留现有品牌 + 完全替换同步的品牌
+  const mergedBrands = { ...(existingData?.brands || {}) };
+
+  // 门店数据：移除被同步品牌的现有门店，然后添加新门店
+  let mergedStores = [...(existingData?.stores || [])];
+
+  // 第一步：移除所有即将被同步品牌的现有门店
+  mergedStores = mergedStores.filter(store => !syncedBrandNames.has(store.brand));
+
+  console.log(`🗑️ 移除现有门店数据，剩余门店: ${mergedStores.length} 个`);
+
+  // 第二步：处理每个同步结果的数据
   for (const data of allConvertedData) {
-    // 合并城市（使用第一个非空的）
+    // 更新城市（使用第一个非空的）
     if (data.city && !mergedCity) {
       mergedCity = data.city;
     }
-    
-    // 合并默认品牌（使用第一个非空的）
+
+    // 更新默认品牌（使用第一个非空的）
     if (data.defaultBrand && !mergedDefaultBrand) {
       mergedDefaultBrand = data.defaultBrand;
     }
-    
-    // 合并品牌
-    Object.assign(mergedBrands, data.brands || {});
-    
-    // 合并门店（去重）
-    if (data.stores) {
-      for (const newStore of data.stores) {
-        const existingIndex = mergedStores.findIndex(store => store.id === newStore.id);
-        if (existingIndex >= 0) {
-          // 更新现有门店
-          mergedStores[existingIndex] = newStore;
+
+    // 智能合并品牌配置：保留现有品牌的话术模板，只更新其他配置
+    if (data.brands) {
+      Object.keys(data.brands).forEach(brandName => {
+        const newBrandConfig = data.brands![brandName];
+        const existingBrandConfig = mergedBrands[brandName];
+
+        if (existingBrandConfig) {
+          // 品牌已存在：保留现有的 templates（用户可能已修改），只更新其他配置
+          mergedBrands[brandName] = {
+            ...newBrandConfig,
+            templates: existingBrandConfig.templates, // 保留用户修改过的话术
+          };
+          console.log(`🔄 保留品牌 "${brandName}" 的现有话术模板`);
         } else {
-          // 添加新门店
-          mergedStores.push(newStore);
+          // 新品牌：使用完整的新配置（包括默认话术）
+          mergedBrands[brandName] = newBrandConfig;
+          console.log(`🆕 添加新品牌 "${brandName}" 及其默认话术模板`);
         }
-      }
+      });
+    }
+
+    // 添加新的门店数据（完全替换）
+    if (data.stores) {
+      mergedStores.push(...data.stores);
+      console.log(`➕ 添加品牌 "${data.stores[0]?.brand}" 的门店: ${data.stores.length} 个`);
     }
   }
-  
+
   // 构建最终数据
   const finalData: ZhipinData = {
     city: mergedCity,
@@ -333,8 +379,22 @@ async function mergeAndSaveSyncData(syncResults: any[]): Promise<void> {
     brands: mergedBrands,
     defaultBrand: mergedDefaultBrand,
   };
-  
+
   // 保存到配置
   await configService.updateBrandData(finalData);
-  console.log(`✅ 已保存 ${mergedStores.length} 个门店，${Object.keys(mergedBrands).length} 个品牌`);
+
+  const totalBrands = Object.keys(mergedBrands).length;
+  const syncedBrandCount = syncedBrandNames.size;
+  const newStoresCount = allConvertedData.reduce(
+    (sum, data) => sum + (data.stores?.length || 0),
+    0
+  );
+
+  console.log(`✅ 数据同步完成:`);
+  console.log(`   📊 总门店数: ${mergedStores.length} 个`);
+  console.log(`   🏢 总品牌数: ${totalBrands} 个`);
+  console.log(
+    `   🔄 替换品牌: ${syncedBrandCount} 个 (${Array.from(syncedBrandNames).join(", ")})`
+  );
+  console.log(`   🆕 新增门店: ${newStoresCount} 个`);
 }

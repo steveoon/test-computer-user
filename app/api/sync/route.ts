@@ -8,27 +8,29 @@ import { z } from "zod";
 const SyncRequestSchema = z.object({
   organizationIds: z.array(z.number()).min(1, "至少需要选择一个组织ID"),
   pageSize: z.number().optional().default(100),
+  validateOnly: z.boolean().optional().default(false),
+  token: z.string().optional(), // 支持从客户端传递token
 });
 
 /**
  * POST /api/sync
- * 
+ *
  * 执行数据同步
  */
 export async function POST(request: NextRequest) {
   try {
     // 解析请求体
     const body = await request.json();
-    const { organizationIds } = SyncRequestSchema.parse(body);
+    const { organizationIds, validateOnly, token: clientToken } = SyncRequestSchema.parse(body);
 
-    // 验证环境变量
-    const dulidayToken = process.env.DULIDAY_TOKEN;
+    // 确定使用的Token：优先使用客户端传递的token，然后是环境变量
+    const dulidayToken = clientToken || process.env.DULIDAY_TOKEN;
     if (!dulidayToken) {
       return NextResponse.json(
-        { 
-          success: false, 
-          error: "DULIDAY_TOKEN 环境变量未配置",
-          code: "MISSING_TOKEN" 
+        {
+          success: false,
+          error: "未找到Duliday Token，请在Token管理中设置或配置环境变量",
+          code: "MISSING_TOKEN",
         },
         { status: 500 }
       );
@@ -37,14 +39,37 @@ export async function POST(request: NextRequest) {
     // 创建同步服务
     const syncService = createSyncService(dulidayToken);
 
-    // 验证 Token 有效性
+    // 如果只是验证Token，验证后直接返回结果
+    if (validateOnly) {
+      const isTokenValid = await syncService.validateToken();
+
+      if (isTokenValid) {
+        return NextResponse.json({
+          success: true,
+          message: "Token验证成功",
+          tokenValid: true,
+        });
+      } else {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Duliday Token 无效或已过期，请检查Token或联系管理员更新",
+            code: "INVALID_TOKEN",
+            tokenValid: false,
+          },
+          { status: 401 }
+        );
+      }
+    }
+
+    // 对于实际同步操作，仍需验证Token
     const isTokenValid = await syncService.validateToken();
     if (!isTokenValid) {
       return NextResponse.json(
-        { 
-          success: false, 
-          error: "Duliday Token 无效或已过期",
-          code: "INVALID_TOKEN" 
+        {
+          success: false,
+          error: "Duliday Token 无效或已过期，请检查Token或联系管理员更新",
+          code: "INVALID_TOKEN",
         },
         { status: 401 }
       );
@@ -52,7 +77,7 @@ export async function POST(request: NextRequest) {
 
     // 执行数据同步
     console.log(`[SYNC API] 开始同步组织: ${organizationIds.join(", ")}`);
-    
+
     const syncRecord = await syncService.syncMultipleOrganizations(
       organizationIds,
       (progress, currentOrg, message) => {
@@ -70,18 +95,17 @@ export async function POST(request: NextRequest) {
       success: true,
       data: syncRecord,
     });
-
   } catch (error) {
     console.error("[SYNC API] 同步失败:", error);
-    
+
     // 处理 Zod 验证错误
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { 
-          success: false, 
+        {
+          success: false,
           error: "请求参数验证失败",
           details: error.errors,
-          code: "VALIDATION_ERROR"
+          code: "VALIDATION_ERROR",
         },
         { status: 400 }
       );
@@ -89,12 +113,12 @@ export async function POST(request: NextRequest) {
 
     // 处理其他错误
     const errorMessage = error instanceof Error ? error.message : "同步过程中发生未知错误";
-    
+
     return NextResponse.json(
-      { 
-        success: false, 
+      {
+        success: false,
         error: errorMessage,
-        code: "SYNC_ERROR"
+        code: "SYNC_ERROR",
       },
       { status: 500 }
     );
@@ -103,18 +127,25 @@ export async function POST(request: NextRequest) {
 
 /**
  * GET /api/sync
- * 
+ *
  * 获取同步状态或配置信息
+ * 支持通过查询参数传递客户端token: /api/sync?token=xxx
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const dulidayToken = process.env.DULIDAY_TOKEN;
-    
+    // 从查询参数获取客户端token
+    const { searchParams } = new URL(request.url);
+    const clientToken = searchParams.get("token");
+
+    // 确定使用的Token：优先使用客户端传递的token，然后是环境变量
+    const dulidayToken = clientToken || process.env.DULIDAY_TOKEN;
+
     // 检查 Token 配置
     if (!dulidayToken) {
       return NextResponse.json({
         configured: false,
-        error: "DULIDAY_TOKEN 环境变量未配置",
+        error: "未找到Duliday Token，请在Token管理中设置或配置环境变量",
+        tokenSource: "none",
       });
     }
 
@@ -125,14 +156,14 @@ export async function GET() {
     return NextResponse.json({
       configured: true,
       tokenValid: isTokenValid,
+      tokenSource: clientToken ? "client" : "environment",
       timestamp: new Date().toISOString(),
     });
-
   } catch (error) {
     console.error("[SYNC API] 状态检查失败:", error);
-    
+
     return NextResponse.json(
-      { 
+      {
         configured: false,
         error: error instanceof Error ? error.message : "状态检查失败",
       },

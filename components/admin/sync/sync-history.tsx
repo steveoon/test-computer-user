@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { 
+import {
   Table,
   TableBody,
   TableCell,
@@ -12,22 +12,22 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { 
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { 
-  History, 
-  MoreHorizontal, 
-  Trash2, 
-  Eye, 
-  CheckCircle, 
+import {
+  History,
+  MoreHorizontal,
+  Trash2,
+  Eye,
+  CheckCircle,
   XCircle,
   Clock,
   Database,
-  Users
+  Users,
 } from "lucide-react";
 import { useSyncStore, formatDuration, getSyncStatusText } from "@/lib/stores/sync-store";
 import { getAvailableBrands } from "@/lib/constants/organization-mapping";
@@ -35,7 +35,7 @@ import { getAvailableBrands } from "@/lib/constants/organization-mapping";
 export const SyncHistory = () => {
   const { syncHistory, loadSyncHistory, clearHistory } = useSyncStore();
   const [selectedRecord, setSelectedRecord] = useState<string | null>(null);
-  
+
   const availableBrands = getAvailableBrands();
 
   // 获取品牌名称 (unused for now but may be needed later)
@@ -72,16 +72,10 @@ export const SyncHistory = () => {
               <History className="h-5 w-5" />
               同步历史记录
             </CardTitle>
-            <CardDescription>
-              查看历史同步记录和详细信息
-            </CardDescription>
+            <CardDescription>查看历史同步记录和详细信息</CardDescription>
           </div>
           <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={loadSyncHistory}
-            >
+            <Button variant="outline" size="sm" onClick={loadSyncHistory}>
               刷新
             </Button>
             <Button
@@ -96,7 +90,7 @@ export const SyncHistory = () => {
           </div>
         </div>
       </CardHeader>
-      
+
       <CardContent>
         {syncHistory.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
@@ -119,17 +113,15 @@ export const SyncHistory = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {syncHistory.map((record) => (
+                {syncHistory.map(record => (
                   <TableRow key={record.id}>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Clock className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm">
-                          {formatTime(record.timestamp)}
-                        </span>
+                        <span className="text-sm">{formatTime(record.timestamp)}</span>
                       </div>
                     </TableCell>
-                    
+
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
                         {record.organizationIds.slice(0, 2).map(id => {
@@ -147,7 +139,7 @@ export const SyncHistory = () => {
                         )}
                       </div>
                     </TableCell>
-                    
+
                     <TableCell>
                       <div className="flex items-center gap-2">
                         {record.overallSuccess ? (
@@ -155,23 +147,28 @@ export const SyncHistory = () => {
                         ) : (
                           <XCircle className="h-4 w-4 text-red-600" />
                         )}
-                        <Badge variant={record.overallSuccess ? "default" : "destructive"}>
+                        <Badge
+                          variant={record.overallSuccess ? "default" : "destructive"}
+                          className={record.overallSuccess ? "" : "text-white"}
+                        >
                           {getSyncStatusText(record.overallSuccess)}
                         </Badge>
                       </div>
                     </TableCell>
-                    
+
                     <TableCell>
                       <span className="text-sm font-mono">
                         {formatDuration(record.totalDuration)}
                       </span>
                     </TableCell>
-                    
+
                     <TableCell>
                       <div className="flex items-center gap-3 text-sm">
                         <div className="flex items-center gap-1">
                           <Database className="h-3 w-3 text-blue-600" />
-                          <span>{record.results.reduce((sum, r) => sum + r.processedRecords, 0)}</span>
+                          <span>
+                            {record.results.reduce((sum, r) => sum + r.processedRecords, 0)}
+                          </span>
                         </div>
                         <div className="flex items-center gap-1">
                           <Users className="h-3 w-3 text-purple-600" />
@@ -179,7 +176,7 @@ export const SyncHistory = () => {
                         </div>
                       </div>
                     </TableCell>
-                    
+
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -208,8 +205,8 @@ export const SyncHistory = () => {
                     同步详情 - {formatTime(selectedRecordData.timestamp)}
                   </CardTitle>
                   <CardDescription>
-                    同步了 {selectedRecordData.organizationIds.length} 个品牌，
-                    共耗时 {formatDuration(selectedRecordData.totalDuration)}
+                    同步了 {selectedRecordData.organizationIds.length} 个品牌， 共耗时{" "}
+                    {formatDuration(selectedRecordData.totalDuration)}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -249,8 +246,8 @@ export const SyncHistory = () => {
                         <div
                           key={index}
                           className={`p-4 border rounded-lg ${
-                            result.success 
-                              ? "border-green-200 bg-green-50" 
+                            result.success
+                              ? "border-green-200 bg-green-50"
                               : "border-red-200 bg-red-50"
                           }`}
                         >
@@ -263,11 +260,14 @@ export const SyncHistory = () => {
                               )}
                               <span className="font-medium">{result.brandName}</span>
                             </div>
-                            <Badge variant={result.success ? "default" : "destructive"}>
+                            <Badge
+                              variant={result.success ? "default" : "destructive"}
+                              className={result.success ? "" : "text-white"}
+                            >
                               {getSyncStatusText(result.success)}
                             </Badge>
                           </div>
-                          
+
                           <div className="grid grid-cols-3 gap-4 text-sm">
                             <div>
                               <span className="text-muted-foreground">处理记录:</span>
@@ -279,13 +279,15 @@ export const SyncHistory = () => {
                             </div>
                             <div>
                               <span className="text-muted-foreground">耗时:</span>
-                              <span className="font-medium ml-1">{formatDuration(result.duration)}</span>
+                              <span className="font-medium ml-1">
+                                {formatDuration(result.duration)}
+                              </span>
                             </div>
                           </div>
 
                           {/* 错误信息 */}
                           {result.errors.length > 0 && (
-                            <div className="mt-3 p-2 bg-red-100 border border-red-200 rounded">
+                            <div className="mt-3 p-2">
                               <div className="text-sm font-medium text-red-800 mb-1">错误信息:</div>
                               {result.errors.map((error, errorIndex) => (
                                 <div key={errorIndex} className="text-sm text-red-700">

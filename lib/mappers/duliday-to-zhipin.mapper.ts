@@ -32,7 +32,10 @@ export function convertDulidayListToZhipinData(
     }
     
     const position = convertToPosition(item);
-    stores.get(storeId)!.positions.push(position);
+    const store = stores.get(storeId);
+    if (store) {
+      store.positions.push(position);
+    }
   });
 
   // 构建品牌配置（使用默认模板）
@@ -215,7 +218,7 @@ function parseBenefits(welfare: DulidayRaw.Welfare): Benefits {
   if (welfare.memo) {
     const benefitKeywords = ['年假', '补贴', '商保', '股票', '学历提升'];
     benefitKeywords.forEach(keyword => {
-      if (welfare.memo!.includes(keyword) && !benefitItems.some(item => item.includes(keyword))) {
+      if (welfare.memo?.includes(keyword) && !benefitItems.some(item => item.includes(keyword))) {
         benefitItems.push(keyword);
       }
     });

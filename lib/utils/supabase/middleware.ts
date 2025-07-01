@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
-import { SUPABASE_URL, SUPABASE_PUBLIC_ANON_KEY } from "@/lib/constant";
+import { SUPABASE_URL, SUPABASE_PUBLIC_ANON_KEY } from "@/lib/constants";
 import {
   isProtectedRoute,
   isPublicApiRoute,
