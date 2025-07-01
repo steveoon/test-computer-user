@@ -1,19 +1,14 @@
 "use client";
 
 import React, { useEffect } from "react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Save, RefreshCw, Eye, Code2, Database, MessageSquare, Calendar } from "lucide-react";
 import { TemplateEditor } from "./template-editor";
 import { ScheduleEditor } from "./schedule-editor";
+import { SearchPagination } from "@/components/ui/search-pagination";
 import { useBrandEditorStore } from "@/lib/stores/brand-editor-store";
 import type { ZhipinData } from "@/types";
 
@@ -22,10 +17,7 @@ interface BrandDataEditorProps {
   onSave: (data: ZhipinData) => Promise<void>;
 }
 
-export const BrandDataEditor: React.FC<BrandDataEditorProps> = ({
-  data,
-  onSave,
-}) => {
+export const BrandDataEditor: React.FC<BrandDataEditorProps> = ({ data, onSave }) => {
   const {
     localData,
     jsonData,
@@ -52,7 +44,7 @@ export const BrandDataEditor: React.FC<BrandDataEditorProps> = ({
       console.log("🔄 BrandDataEditor重新初始化数据", {
         brands: Object.keys(data.brands).length,
         stores: data.stores.length,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     }
   }, [data, initializeData]);
@@ -128,16 +120,10 @@ export const BrandDataEditor: React.FC<BrandDataEditorProps> = ({
                   </Button>
                 </div>
                 {editingType === "templates" && (
-                  <TemplateEditor 
-                    brandName={editingBrand} 
-                    onDataUpdate={onSave}
-                  />
+                  <TemplateEditor brandName={editingBrand} onDataUpdate={onSave} />
                 )}
                 {editingType === "schedule" && (
-                  <ScheduleEditor 
-                    brandName={editingBrand} 
-                    onDataUpdate={onSave}
-                  />
+                  <ScheduleEditor brandName={editingBrand} onDataUpdate={onSave} />
                 )}
               </div>
             ) : (
@@ -147,20 +133,13 @@ export const BrandDataEditor: React.FC<BrandDataEditorProps> = ({
                     <div className="flex items-center justify-between mb-3">
                       <h3 className="font-medium">{brandName}</h3>
                       <Badge variant="outline">
-                        {
-                          localData.stores.filter((store) => store.brand === brandName)
-                            .length
-                        }{" "}
-                        门店
+                        {localData.stores.filter(store => store.brand === brandName).length} 门店
                       </Badge>
                     </div>
                     <div className="text-sm text-muted-foreground space-y-1">
+                      <div>模板：{Object.keys(brandConfig.templates).length} 类</div>
                       <div>
-                        模板：{Object.keys(brandConfig.templates).length} 类
-                      </div>
-                      <div>
-                        筛选：年龄 {brandConfig.screening.age.min}-
-                        {brandConfig.screening.age.max}
+                        筛选：年龄 {brandConfig.screening.age.min}-{brandConfig.screening.age.max}
                       </div>
                     </div>
                     <div className="flex gap-2 mt-3">
@@ -199,25 +178,28 @@ export const BrandDataEditor: React.FC<BrandDataEditorProps> = ({
         {/* 门店列表 */}
         <Card>
           <CardHeader>
-            <CardTitle>门店配置</CardTitle>
+            <CardTitle>所有品牌门店配置</CardTitle>
             <CardDescription>门店分布和基本信息</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {localData.stores.map((store, index) => (
-                <div key={index} className="p-4 border rounded-lg">
+            <SearchPagination
+              data={localData.stores}
+              searchKeys={["name", "location", "district", "brand"]}
+              itemsPerPageOptions={[10, 20, 50, 100]}
+              defaultItemsPerPage={20}
+              placeholder="搜索门店名称、地址、区域或品牌..."
+              emptyMessage="暂无门店数据"
+              searchEmptyMessage="未找到匹配的门店"
+              renderItem={store => (
+                <div className="p-4 border rounded-lg">
                   <div className="flex items-center justify-between mb-2">
                     <div>
                       <h4 className="font-medium">{store.name}</h4>
-                      <p className="text-sm text-muted-foreground">
-                        {store.location}
-                      </p>
+                      <p className="text-sm text-muted-foreground">{store.location}</p>
                     </div>
                     <div className="text-right">
                       <Badge variant="secondary">{store.brand}</Badge>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {store.district}
-                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">{store.district}</p>
                     </div>
                   </div>
                   <div className="text-sm text-muted-foreground">
@@ -225,8 +207,8 @@ export const BrandDataEditor: React.FC<BrandDataEditorProps> = ({
                     <div>交通：{store.transportation}</div>
                   </div>
                 </div>
-              ))}
-            </div>
+              )}
+            />
           </CardContent>
         </Card>
 
@@ -276,9 +258,7 @@ export const BrandDataEditor: React.FC<BrandDataEditorProps> = ({
           <div className="flex items-center justify-between">
             <div>
               <CardTitle>品牌数据编辑器</CardTitle>
-              <CardDescription>
-                管理品牌配置和门店信息，支持概览查看和JSON编辑
-              </CardDescription>
+              <CardDescription>管理品牌配置和门店信息，支持概览查看和JSON编辑</CardDescription>
             </div>
             <div className="flex items-center gap-2">
               {hasUnsavedChanges && (
@@ -286,12 +266,7 @@ export const BrandDataEditor: React.FC<BrandDataEditorProps> = ({
                   未保存的更改
                 </Badge>
               )}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={resetData}
-                disabled={isSaving}
-              >
+              <Button variant="outline" size="sm" onClick={resetData} disabled={isSaving}>
                 <RefreshCw className="h-4 w-4 mr-2" />
                 重置
               </Button>
@@ -323,10 +298,7 @@ export const BrandDataEditor: React.FC<BrandDataEditorProps> = ({
       )}
 
       {/* 编辑模式切换 */}
-      <Tabs
-        value={editMode}
-        onValueChange={(value) => setEditMode(value as "overview" | "json")}
-      >
+      <Tabs value={editMode} onValueChange={value => setEditMode(value as "overview" | "json")}>
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="overview" className="flex items-center gap-2">
             <Eye className="h-4 w-4" />
@@ -346,14 +318,12 @@ export const BrandDataEditor: React.FC<BrandDataEditorProps> = ({
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">JSON 数据编辑</CardTitle>
-              <CardDescription>
-                直接编辑品牌数据的JSON格式，请确保语法正确
-              </CardDescription>
+              <CardDescription>直接编辑品牌数据的JSON格式，请确保语法正确</CardDescription>
             </CardHeader>
             <CardContent>
               <textarea
                 value={jsonData}
-                onChange={(e) => updateJsonData(e.target.value)}
+                onChange={e => updateJsonData(e.target.value)}
                 className="w-full h-96 p-4 font-mono text-sm border rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-ring"
                 placeholder="输入品牌数据的JSON格式..."
               />
