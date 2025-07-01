@@ -292,15 +292,15 @@ export function getSyncStatusColor(isSuccess: boolean): string {
 /**
  * 合并并保存同步数据到本地配置
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function mergeAndSaveSyncData(syncResults: any[]): Promise<void> {
+async function mergeAndSaveSyncData(syncResults: SyncResult[]): Promise<void> {
   // 获取现有配置
   const existingData = await getBrandData();
 
   // 合并所有同步结果的数据
   const allConvertedData: Partial<ZhipinData>[] = syncResults
     .filter(result => result.success && result.convertedData)
-    .map(result => result.convertedData);
+    .map(result => result.convertedData!)
+    .filter((data): data is Partial<ZhipinData> => data !== undefined);
 
   if (allConvertedData.length === 0) {
     console.log("没有需要保存的转换数据");
