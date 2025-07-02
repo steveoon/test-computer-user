@@ -46,3 +46,6 @@ next-env.d.ts
 /logs/
 *.log
 *-audit.json
+
+# serena files
+.serena/
