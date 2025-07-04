@@ -4,6 +4,7 @@ import { bashTool, computerTool } from "@/lib/e2b/tool";
 import { feishuBotTool } from "@/lib/tools/feishu-bot-tool";
 import { puppeteerTool } from "@/lib/tools/puppeteer-tool";
 import { weChatBotTool } from "@/lib/tools/wechat-bot-tool";
+import { jobPostingGeneratorTool } from "@/lib/tools/job-posting-generator-tool";
 import { zhipinTools } from "@/lib/tools/zhipin";
 import { prunedMessages, shouldCleanupSandbox } from "@/lib/utils";
 import { getDynamicRegistry } from "@/lib/model-registry/dynamic-registry";
@@ -123,6 +124,7 @@ export async function POST(req: Request) {
         bash: bashTool(sandboxId),
         feishu: feishuBotTool(),
         wechat: weChatBotTool(),
+        job_posting_generator: jobPostingGeneratorTool(configData),
         puppeteer: puppeteerTool(),
         // Zhipin automation tools
         zhipin_get_unread_candidates: zhipinTools.getUnreadCandidates,
