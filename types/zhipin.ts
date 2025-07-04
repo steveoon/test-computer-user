@@ -62,6 +62,19 @@ export namespace DulidayRaw {
     weekdays: z.array(z.number()),
   });
 
+  export const FixedTimeSlotSchema = z.object({
+    jobWorkTimeArrangementId: z.number(),
+    startTime: z.number(),
+    endTime: z.number(),
+  });
+
+  export const CustomWorkTimeSchema = z.object({
+    jobWorkTimeArrangementId: z.number(),
+    weekdays: z.array(z.number()),
+    minWorkDays: z.number(),
+    maxWorkDays: z.number(),
+  });
+
   export const WorkTimeArrangementSchema = z.object({
     id: z.number(),
     jobBasicInfoId: z.number(),
@@ -80,11 +93,11 @@ export namespace DulidayRaw {
     perWeekWorkDays: z.number().nullable(),
     perWeekRestDays: z.number().nullable(),
     evenOddType: z.number().nullable(),
-    customWorkTimes: z.array(z.unknown()).nullable(),
+    customWorkTimes: z.array(CustomWorkTimeSchema).nullable(),
     dayWorkTimeRequirement: z.number(),
     perDayMinWorkHours: z.number().nullable(),
     arrangementType: z.number(),
-    fixedArrangementTimes: z.array(z.unknown()).nullable(),
+    fixedArrangementTimes: z.array(FixedTimeSlotSchema).nullable(),
     combinedArrangementTimes: z.array(WorkTimeArrangementSlotSchema).nullable(),
     goToWorkStartTime: z.number().nullable(),
     goToWorkEndTime: z.number().nullable(),
@@ -133,6 +146,8 @@ export namespace DulidayRaw {
   export type Welfare = z.infer<typeof WelfareSchema>;
   export type WorkTimeArrangement = z.infer<typeof WorkTimeArrangementSchema>;
   export type WorkTimeArrangementSlot = z.infer<typeof WorkTimeArrangementSlotSchema>;
+  export type FixedTimeSlot = z.infer<typeof FixedTimeSlotSchema>;
+  export type CustomWorkTime = z.infer<typeof CustomWorkTimeSchema>;
   export type Position = z.infer<typeof PositionSchema>;
   export type ListResponse = z.infer<typeof ListResponseSchema>;
 }
@@ -155,12 +170,7 @@ export const AttendanceRequirementSchema = z.object({
 });
 
 // 排班类型Schema
-export const ScheduleTypeSchema = z.enum([
-  "fixed",
-  "flexible",
-  "rotating",
-  "on_call",
-]);
+export const ScheduleTypeSchema = z.enum(["fixed", "flexible", "rotating", "on_call"]);
 
 // 考勤政策Schema
 export const AttendancePolicySchema = z.object({
@@ -255,9 +265,7 @@ export const ReplyContextSchema = z.enum([
 ]);
 
 // 模板Schema（仅支持标准回复类型）
-export const TemplatesSchema = z
-  .record(ReplyContextSchema, z.array(z.string()))
-  .optional();
+export const TemplatesSchema = z.record(ReplyContextSchema, z.array(z.string())).optional();
 
 // 筛选规则Schema
 export const ScreeningRulesSchema = z.object({
@@ -272,7 +280,7 @@ export const ScreeningRulesSchema = z.object({
 
 // 品牌配置Schema
 export const BrandConfigSchema = z.object({
-  templates: TemplatesSchema.refine((val) => val !== undefined, {
+  templates: TemplatesSchema.refine(val => val !== undefined, {
     message: "品牌配置必须包含templates字段",
   }),
   screening: ScreeningRulesSchema,
@@ -365,9 +373,7 @@ export type ReplyContext = z.infer<typeof ReplyContextSchema>;
 export type CandidateInfo = z.infer<typeof CandidateInfoSchema>;
 export type ConversationMessage = z.infer<typeof ConversationMessageSchema>;
 export type MessageClassification = z.infer<typeof MessageClassificationSchema>;
-export type Extract = z.infer<
-  typeof MessageClassificationSchema
->["extractedInfo"];
+export type Extract = z.infer<typeof MessageClassificationSchema>["extractedInfo"];
 
 // 🔧 LLM工具参数类型映射（使用类型而非Schema，因为过于复杂）
 export type ReplyArgsMap = {
