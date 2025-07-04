@@ -4,29 +4,19 @@ import { bashTool, computerTool } from "@/lib/e2b/tool";
 import { feishuBotTool } from "@/lib/tools/feishu-bot-tool";
 import { puppeteerTool } from "@/lib/tools/puppeteer-tool";
 import { weChatBotTool } from "@/lib/tools/wechat-bot-tool";
+import { zhipinTools } from "@/lib/tools/zhipin";
 import { prunedMessages, shouldCleanupSandbox } from "@/lib/utils";
 import { getDynamicRegistry } from "@/lib/model-registry/dynamic-registry";
 import { getBossZhipinSystemPrompt } from "@/lib/loaders/system-prompts.loader";
-import {
-  DEFAULT_PROVIDER_CONFIGS,
-  DEFAULT_MODEL_CONFIG,
-} from "@/lib/config/models";
+import { DEFAULT_PROVIDER_CONFIGS, DEFAULT_MODEL_CONFIG } from "@/lib/config/models";
 import type { ModelConfig } from "@/lib/config/models";
-import type {
-  ZhipinData,
-  SystemPromptsConfig,
-  ReplyPromptsConfig,
-} from "@/types";
+import type { ZhipinData, SystemPromptsConfig, ReplyPromptsConfig } from "@/types";
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 300;
 
 // 清理沙箱的公共函数
-async function cleanupSandboxIfNeeded(
-  sandboxId: string,
-  error: unknown,
-  context: string
-) {
+async function cleanupSandboxIfNeeded(sandboxId: string, error: unknown, context: string) {
   if (shouldCleanupSandbox(error)) {
     try {
       console.log(`🧹 开始清理沙箱: ${sandboxId} (${context})`);
@@ -64,8 +54,7 @@ export async function POST(req: Request) {
   try {
     // 🎯 获取配置的模型和provider设置
     const chatModel = modelConfig?.chatModel || DEFAULT_MODEL_CONFIG.chatModel;
-    const providerConfigs =
-      modelConfig?.providerConfigs || DEFAULT_PROVIDER_CONFIGS;
+    const providerConfigs = modelConfig?.providerConfigs || DEFAULT_PROVIDER_CONFIGS;
 
     // 使用动态registry
     const dynamicRegistry = getDynamicRegistry(providerConfigs);
@@ -111,17 +100,12 @@ export async function POST(req: Request) {
     // 估算消息大小并记录优化效果
     const originalSize = JSON.stringify(messages).length;
     const processedSize = JSON.stringify(processedMessages).length;
-    const savedPercent = (
-      ((originalSize - processedSize) / originalSize) *
-      100
-    ).toFixed(2);
+    const savedPercent = (((originalSize - processedSize) / originalSize) * 100).toFixed(2);
 
     console.log(
-      `📊 消息优化: ${(originalSize / 1024).toFixed(2)}KB -> ${(
-        processedSize / 1024
-      ).toFixed(2)}KB (节省 ${savedPercent}%) | 消息数: ${messages.length} -> ${
-        processedMessages.length
-      }`
+      `📊 消息优化: ${(originalSize / 1024).toFixed(2)}KB -> ${(processedSize / 1024).toFixed(
+        2
+      )}KB (节省 ${savedPercent}%) | 消息数: ${messages.length} -> ${processedMessages.length}`
     );
 
     const result = streamText({
@@ -140,6 +124,13 @@ export async function POST(req: Request) {
         feishu: feishuBotTool(),
         wechat: weChatBotTool(),
         puppeteer: puppeteerTool(),
+        // Zhipin automation tools
+        zhipin_get_unread_candidates: zhipinTools.getUnreadCandidates,
+        zhipin_extract_candidate_info: zhipinTools.extractCandidateInfo,
+        zhipin_extract_chat_messages: zhipinTools.extractChatMessages,
+        zhipin_open_candidate_chat: zhipinTools.openCandidateChat,
+        zhipin_process_all_unread: zhipinTools.processAllUnread,
+        zhipin_process_all_unread_with_progress: zhipinTools.processAllUnreadWithProgress,
       },
       providerOptions: {
         anthropic: { cacheControl: { type: "ephemeral" } },
@@ -148,7 +139,7 @@ export async function POST(req: Request) {
         console.log("📊 usage", usage);
         console.log("🛠️ toolResults", toolResults);
       },
-      onError: async (error) => {
+      onError: async error => {
         console.error("Stream generation error:", error);
 
         // 清理沙箱
