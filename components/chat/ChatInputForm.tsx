@@ -41,6 +41,7 @@ export function ChatInputForm({
       });
       return;
     }
+    addToHistory(prompt);
     append({ role: "user", content: prompt });
   };
 
