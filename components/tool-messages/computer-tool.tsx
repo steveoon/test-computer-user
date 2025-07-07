@@ -86,14 +86,26 @@ export function ComputerToolMessage(props: ToolMessageProps) {
     detail = `${duration}秒`;
   }
 
+  // 检查 result 是否是图片类型
+  const isImageResult = result && 
+    typeof result === 'object' && 
+    'type' in result && 
+    result.type === 'image' &&
+    'data' in result;
+
   const content =
-    action === "screenshot" && state === "result" && result ? (
-      <div className="mt-2 relative rounded-sm overflow-hidden">
-        <Image
-          src={`data:image/jpeg;base64,${result as string}`}
-          alt="Desktop Screenshot"
-          className="w-full rounded-sm"
-        />
+    action === "screenshot" && state === "result" && isImageResult ? (
+      <div className="mt-2 relative w-full" style={{ maxHeight: '600px' }}>
+        <div className="relative w-full" style={{ aspectRatio: '16/9' }}>
+          <Image
+            src={`data:image/jpeg;base64,${result.data}`}
+            alt="Desktop Screenshot"
+            fill
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            className="rounded-sm object-contain"
+            priority
+          />
+        </div>
       </div>
     ) : action === "screenshot" && state === "call" ? (
       <div className="w-full aspect-video rounded-sm bg-zinc-200 dark:bg-zinc-800 animate-pulse mt-2"></div>
