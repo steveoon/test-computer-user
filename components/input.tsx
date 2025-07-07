@@ -1,5 +1,7 @@
 import { ArrowUp } from "lucide-react";
 import { Input as ShadcnInput } from "./ui/input";
+import { useInputHistoryStore } from "@/lib/stores/input-history-store";
+import { useEffect, useRef } from "react";
 
 interface InputProps {
   input: string;
@@ -22,19 +24,59 @@ export const Input = ({
   error,
   isAuthenticated = true,
 }: InputProps) => {
+  const { navigateHistory, resetIndex, setTempInput } = useInputHistoryStore();
+  const hasNavigated = useRef(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
   // 更智能的禁用逻辑：只有在真正加载中且没有错误时才禁用，或者用户未认证
-  const shouldDisable =
-    (isLoading && !error) || isInitializing || !isAuthenticated;
+  const shouldDisable = (isLoading && !error) || isInitializing || !isAuthenticated;
+
+  // Handle keyboard navigation
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+      e.preventDefault();
+
+      // Save current input if this is the first navigation
+      if (!hasNavigated.current && input.trim()) {
+        setTempInput(input);
+      }
+      hasNavigated.current = true;
+
+      const historicalInput = navigateHistory(e.key === "ArrowUp" ? "up" : "down");
+      if (historicalInput !== null) {
+        handleInputChange({
+          target: { value: historicalInput },
+        } as React.ChangeEvent<HTMLInputElement>);
+      }
+    }
+  };
+
+  // Reset navigation state when input changes manually
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (hasNavigated.current) {
+      hasNavigated.current = false;
+      resetIndex();
+    }
+    handleInputChange(e);
+  };
+
+  // Reset navigation state when status changes
+  useEffect(() => {
+    if (status === "submitted") {
+      hasNavigated.current = false;
+    }
+  }, [status]);
+
   return (
     <div className="relative w-full">
       <ShadcnInput
+        ref={inputRef}
         className="bg-secondary py-6 w-full rounded-xl pr-12"
         value={input}
         autoFocus
-        placeholder={
-          !isAuthenticated ? "请先登录以使用AI助手..." : "Tell me what to do..."
-        }
-        onChange={handleInputChange}
+        placeholder={!isAuthenticated ? "请先登录以使用AI助手..." : "Tell me what to do..."}
+        onChange={handleChange}
+        onKeyDown={handleKeyDown}
         disabled={shouldDisable}
       />
       {status === "streaming" || status === "submitted" ? (

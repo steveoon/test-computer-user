@@ -3,6 +3,7 @@
 import { Input } from "@/components/input";
 import { PromptSuggestions } from "@/components/prompt-suggestions";
 import { toast } from "sonner";
+import { useInputHistoryStore } from "@/lib/stores/input-history-store";
 
 interface ChatInputFormProps {
   input: string;
@@ -29,6 +30,8 @@ export function ChatInputForm({
   isAuthenticated,
   append,
 }: ChatInputFormProps) {
+  const { addToHistory } = useInputHistoryStore();
+  
   const submitPrompt = (prompt: string) => {
     if (!isAuthenticated) {
       toast.error("请先登录", {
@@ -50,7 +53,13 @@ export function ChatInputForm({
       />
 
       <div className="bg-white">
-        <form onSubmit={handleSubmit} className="p-4">
+        <form onSubmit={(e) => {
+          e.preventDefault();
+          if (input.trim()) {
+            addToHistory(input);
+          }
+          handleSubmit(e);
+        }} className="p-4">
           <Input
             handleInputChange={handleInputChange}
             input={input}
