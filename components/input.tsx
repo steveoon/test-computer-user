@@ -74,7 +74,9 @@ export const Input = ({
         className="bg-secondary py-6 w-full rounded-xl pr-12"
         value={input}
         autoFocus
-        placeholder={!isAuthenticated ? "请先登录以使用AI助手..." : "Tell me what to do..."}
+        placeholder={
+          !isAuthenticated ? "请先登录以使用AI助手..." : "输入提示词...使用↑↓键切换输入历史"
+        }
         onChange={handleChange}
         onKeyDown={handleKeyDown}
         disabled={shouldDisable}

@@ -3,9 +3,8 @@ import { Button } from "./ui/button";
 
 const suggestions = [
   {
-    text: "配置中文输入环境",
-    prompt:
-      "执行 setup_chinese_input 操作来配置完整的中文输入环境，包括字体、输入法和编码设置",
+    text: "发送前厅岗位空缺通知",
+    prompt: "生成前厅岗位空缺的通知消息，并用Wechat发送",
   },
   {
     text: "测试中文逐字符编码输入",
@@ -62,9 +61,7 @@ export const PromptSuggestions = ({
           disabled={disabled}
         >
           <span>
-            <span className="text-black text-sm">
-              {suggestion.text.toLowerCase()}
-            </span>
+            <span className="text-black text-sm">{suggestion.text.toLowerCase()}</span>
           </span>
           <ArrowUpRight className="ml-1 h-2 w-2 sm:h-3 sm:w-3 text-zinc-500 group-hover:opacity-70" />
         </Button>
