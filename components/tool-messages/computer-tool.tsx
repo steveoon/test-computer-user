@@ -14,8 +14,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { BaseToolMessage } from "./base-tool-message";
+import { ScreenshotToolMessage } from "./screenshot-tool-message";
 import { themes, type ToolMessageProps } from "./types";
-import Image from "next/image";
 
 const actionIcons: Record<string, LucideIcon> = {
   screenshot: Camera,
@@ -86,31 +86,26 @@ export function ComputerToolMessage(props: ToolMessageProps) {
     detail = `${duration}秒`;
   }
 
-  // 检查 result 是否是图片类型
-  const isImageResult = result && 
-    typeof result === 'object' && 
-    'type' in result && 
-    result.type === 'image' &&
-    'data' in result;
+  // 对截屏工具使用特殊的紧凑横向布局
+  if (action === "screenshot") {
+    return (
+      <ScreenshotToolMessage
+        icon={Icon}
+        label={label}
+        theme={themes.zinc}
+        state={state}
+        result={result}
+        isLatestMessage={isLatestMessage}
+        status={status}
+        messageId={messageId}
+        partIndex={partIndex}
+        imageFormat="jpeg"
+        maxHeight="600px"
+      />
+    );
+  }
 
-  const content =
-    action === "screenshot" && state === "result" && isImageResult ? (
-      <div className="mt-2 relative w-full" style={{ maxHeight: '600px' }}>
-        <div className="relative w-full" style={{ aspectRatio: '16/9' }}>
-          <Image
-            src={`data:image/jpeg;base64,${result.data}`}
-            alt="Desktop Screenshot"
-            fill
-            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-            className="rounded-sm object-contain"
-            priority
-          />
-        </div>
-      </div>
-    ) : action === "screenshot" && state === "call" ? (
-      <div className="w-full aspect-video rounded-sm bg-zinc-200 dark:bg-zinc-800 animate-pulse mt-2"></div>
-    ) : null;
-
+  // 其他工具使用默认布局（大多数情况下没有特殊内容）
   return (
     <BaseToolMessage
       icon={Icon}
@@ -123,8 +118,6 @@ export function ComputerToolMessage(props: ToolMessageProps) {
       status={status}
       messageId={messageId}
       partIndex={partIndex}
-    >
-      {content}
-    </BaseToolMessage>
+    />
   );
 }

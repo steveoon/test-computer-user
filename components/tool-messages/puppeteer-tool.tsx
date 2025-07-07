@@ -10,8 +10,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { BaseToolMessage } from "./base-tool-message";
+import { ScreenshotToolMessage } from "./screenshot-tool-message";
 import { themes, type ToolMessageProps } from "./types";
-import Image from "next/image";
 
 const actionIcons: Record<string, LucideIcon> = {
   connect: Globe,
@@ -58,31 +58,25 @@ export function PuppeteerToolMessage(props: ToolMessageProps) {
     detail = value.length > 20 ? value.substring(0, 20) + "..." : value;
   }
 
-  // 检查 result 是否是图片类型
-  const isImageResult = result && 
-    typeof result === 'object' && 
-    'type' in result && 
-    result.type === 'image' &&
-    'data' in result;
+  // 对截屏工具使用特殊的紧凑横向布局
+  if (action === "screenshot") {
+    return (
+      <ScreenshotToolMessage
+        icon={Icon}
+        label={label}
+        theme={themes.purple}
+        state={state}
+        result={result}
+        isLatestMessage={isLatestMessage}
+        status={status}
+        messageId={messageId}
+        partIndex={partIndex}
+        imageFormat="png"
+      />
+    );
+  }
 
-  const content =
-    action === "screenshot" && state === "result" && isImageResult ? (
-      <div className="mt-2 relative w-full" style={{ maxHeight: '500px' }}>
-        <div className="relative w-full" style={{ aspectRatio: '16/9' }}>
-          <Image
-            src={`data:image/png;base64,${result.data}`}
-            alt="Puppeteer Screenshot"
-            fill
-            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-            className="rounded-sm object-contain"
-            priority
-          />
-        </div>
-      </div>
-    ) : action === "screenshot" && state === "call" ? (
-      <div className="w-full aspect-video rounded-sm bg-purple-200 dark:bg-purple-800 animate-pulse mt-2"></div>
-    ) : null;
-
+  // 其他工具使用默认布局
   return (
     <BaseToolMessage
       icon={Icon}
@@ -95,8 +89,6 @@ export function PuppeteerToolMessage(props: ToolMessageProps) {
       status={status}
       messageId={messageId}
       partIndex={partIndex}
-    >
-      {content}
-    </BaseToolMessage>
+    />
   );
 }
