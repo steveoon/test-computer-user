@@ -57,10 +57,7 @@ export const puppeteerTool = () =>
         .describe("要执行的Puppeteer操作"),
 
       // 连接相关参数
-      targetUrl: z
-        .string()
-        .optional()
-        .describe("目标标签页URL，不指定则连接第一个可用标签页"),
+      targetUrl: z.string().optional().describe("目标标签页URL，不指定则连接第一个可用标签页"),
       debugPort: z.number().optional().describe("Chrome远程调试端口，默认9222"),
 
       // 导航参数
@@ -88,7 +85,7 @@ export const puppeteerTool = () =>
         name,
         selector,
         width = 1440,
-        height = 1050,
+        height = 900,
         value,
         script,
       } = params;
@@ -175,11 +172,7 @@ export const puppeteerTool = () =>
         console.log(`🔧 调用MCP工具: ${toolName}`, mcpParams);
 
         if (!tools[toolName]) {
-          throw new Error(
-            `MCP工具 ${toolName} 不存在。可用工具: ${Object.keys(tools).join(
-              ", "
-            )}`
-          );
+          throw new Error(`MCP工具 ${toolName} 不存在。可用工具: ${Object.keys(tools).join(", ")}`);
         }
 
         // AI SDK MCP工具调用方式
@@ -194,39 +187,28 @@ export const puppeteerTool = () =>
         if (mcpResult && mcpResult.content && mcpResult.content.length > 0) {
           // 对于截图操作，优先查找 image 类型的内容
           if (action === "screenshot") {
-            const imageContent = mcpResult.content.find(
-              (content) => content.type === "image"
-            );
+            const imageContent = mcpResult.content.find(content => content.type === "image");
 
             if (imageContent && imageContent.type === "image") {
               // 压缩图片数据
               console.log(
-                `🖼️ Puppeteer截图原始大小: ${(
-                  imageContent.data.length / 1024
-                ).toFixed(2)}KB`
+                `🖼️ Puppeteer截图原始大小: ${(imageContent.data.length / 1024).toFixed(2)}KB`
               );
 
-              const { getEnvironmentLimits } = await import(
-                "@/lib/utils/environment"
-              );
+              const { getEnvironmentLimits } = await import("@/lib/utils/environment");
               const envLimits = getEnvironmentLimits();
 
-              const compressedData = await compressImageServerV2(
-                imageContent.data,
-                {
-                  targetSizeKB: envLimits.compressionTargetKB, // 环境自适应目标大小
-                  maxSizeKB: envLimits.compressionMaxKB, // 环境自适应最大大小
-                  maxQuality: 95, // 通用最高质量 (JPEG范围: 1-100)
-                  minQuality: 60, // 通用最低质量 (确保可接受的图像质量)
-                  enableAdaptive: true,
-                  preserveText: true,
-                }
-              );
+              const compressedData = await compressImageServerV2(imageContent.data, {
+                targetSizeKB: envLimits.compressionTargetKB, // 环境自适应目标大小
+                maxSizeKB: envLimits.compressionMaxKB, // 环境自适应最大大小
+                maxQuality: 95, // 通用最高质量 (JPEG范围: 1-100)
+                minQuality: 60, // 通用最低质量 (确保可接受的图像质量)
+                enableAdaptive: true,
+                preserveText: true,
+              });
 
               console.log(
-                `✅ 服务端压缩完成，当前大小: ${(
-                  compressedData.length / 1024
-                ).toFixed(2)}KB`
+                `✅ 服务端压缩完成，当前大小: ${(compressedData.length / 1024).toFixed(2)}KB`
               );
 
               const imageResult: PuppeteerResult = {
@@ -238,9 +220,7 @@ export const puppeteerTool = () =>
           }
 
           // 对于非截图操作，或者截图操作但没找到图片数据时，返回文本结果
-          const textContent = mcpResult.content.find(
-            (content) => content.type === "text"
-          );
+          const textContent = mcpResult.content.find(content => content.type === "text");
 
           if (textContent && textContent.type === "text") {
             const textResult: PuppeteerResult = {
@@ -255,11 +235,7 @@ export const puppeteerTool = () =>
         if (result && typeof result === "object") {
           const fallbackResult: PuppeteerResult = {
             type: "text",
-            text: `Puppeteer操作 ${action} 执行完成: ${JSON.stringify(
-              result,
-              null,
-              2
-            )}`,
+            text: `Puppeteer操作 ${action} 执行完成: ${JSON.stringify(result, null, 2)}`,
           };
           return PuppeteerResultSchema.parse(fallbackResult);
         }
