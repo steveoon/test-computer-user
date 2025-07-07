@@ -693,16 +693,19 @@ function buildContextInfo(
   // 根据提到的品牌过滤门店
   let targetBrand = data.defaultBrand || getBrandName(data);
   let relevantStores = data.stores;
+  
+  // 获取目标品牌的所有门店，用于后续判断是否已经进行过位置过滤
+  const brandStores = data.stores.filter(
+    (store) => store.brand === (mentionedBrand || targetBrand)
+  );
 
   if (mentionedBrand && data.brands[mentionedBrand]) {
     // 有明确提到的品牌，使用该品牌
-    relevantStores = data.stores.filter(
-      (store) => store.brand === mentionedBrand
-    );
+    relevantStores = brandStores;
     targetBrand = mentionedBrand;
   } else {
     // 没有提到品牌，使用默认品牌的门店
-    relevantStores = data.stores.filter((store) => store.brand === targetBrand);
+    relevantStores = brandStores;
   }
 
   // 优先使用明确提到的工作城市进行过滤
@@ -738,8 +741,8 @@ function buildContextInfo(
     }
   }
 
-  // 如果还有mentionedDistrict，作为补充过滤条件
-  if (mentionedDistricts && relevantStores.length === data.stores.length) {
+  // 如果还有mentionedDistrict，且还没有进行过位置过滤（relevantStores包含品牌的所有门店）
+  if (mentionedDistricts && relevantStores.length === brandStores.length) {
     // 🎯 按置信度排序区域，优先匹配高置信度的区域
     const sortedDistricts = mentionedDistricts
       .filter((d) => d.confidence > 0.6) // 过滤掉置信度过低的区域
