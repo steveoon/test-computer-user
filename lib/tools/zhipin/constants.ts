@@ -7,20 +7,39 @@ export const UNREAD_SELECTORS = {
   // Main container for unread items
   container: '.chat-list-wrap',
   
+  // List item containers
+  listItem: '[role="listitem"]',
+  geekItemWrap: '.geek-item-wrap',
+  
   // Individual unread item
   item: '.chat-item',
   
-  // Unread badge/count
-  unreadBadge: '.unread-count',
+  // Unread badge/count - 根据实际 HTML 结构更新
+  unreadBadge: '.badge-count',  // 主要的未读徽章类
+  unreadBadgeNew: '.badge-count.badge-count-common-less',  // 特定的未读样式
+  unreadBadgeWithData: '[data-v-ddb4f62c].badge-count',  // 带有 data-v 属性的版本
+  unreadBadgeSpan: '.badge-count span',  // 未读数字在 span 内
   unreadDot: '.red-dot',
+  
+  // Badge 容器 (包含头像和未读数)
+  figure: '.figure',
+  badge: '.badge',
   
   // Candidate name in list
   candidateName: '.candidate-name',
   candidateNameAlt: '.chat-item-name',
+  candidateNameSelectors: '[class*="name"], .nickname, .geek-name',
+  candidateNameNew: '.geek-name',
+  
+  // Job title
+  jobTitle: '.source-job',
   
   // Last message preview
-  lastMessage: '.last-msg',
+  lastMessage: '.push-text',
   lastMessageAlt: '.chat-last-msg',
+  
+  // Time
+  messageTime: '.time, .time-shadow',
   
   // Click target area
   clickArea: '.chat-item-content',
@@ -51,76 +70,62 @@ export const CHAT_SELECTORS = {
   // Input area
   inputBox: '.chat-input',
   inputTextarea: 'textarea.chat-input',
+  inputEditorId: '#boss-chat-editor-input',  // 主要的输入框ID
   sendButton: '.btn-send',
+  
+  // 发送相关的选择器 - 基于用户提供的路径
+  conversationEditor: '.conversation-editor',
+  submitContent: '.submit-content',
+  sendButtonPath: '#container > div:nth-child(1) > div > div.chat-box > div.chat-container > div.chat-conversation > div.conversation-box > div.conversation-operate > div.conversation-editor > div.submit-content',
+  sendButtonAlt: '.conversation-editor .submit-content',
+  sendIcon: '.submit-content .icon-send',
   
   // System messages
   systemMessage: '.system-msg',
 } as const;
 
-// Candidate detail selectors
-export const CANDIDATE_SELECTORS = {
-  // Main info section
-  detailContainer: '.candidate-detail',
-  infoCard: '.info-card',
+
+// Chat details selectors
+export const CHAT_DETAILS_SELECTORS = {
+  // Candidate info container
+  candidateInfoContainer: '#container > div:nth-child(1) > div > div.chat-box > div.chat-container > div.chat-conversation > div.conversation-box > div.conversation-main > div.base-info-content',
   
-  // Basic info
-  name: '.candidate-name',
-  nameAlt: '.name-text',
-  position: '.position-name',
-  company: '.company-name',
-  salary: '.salary-text',
+  // Candidate info elements
+  candidateName: '.geek-name',
+  candidateInfoItem: '.geek-info-item',
+  candidateTag: '.geek-tag',
+  candidatePosition: '.geek-position',
+  candidatePositionAlt: '.position-name',
   
-  // Requirements
-  experience: '.experience-text',
-  education: '.education-text',
-  location: '.location-text',
+  // Chat message container
+  chatMessageContainer: '#container > div:nth-child(1) > div > div.chat-box > div.chat-container > div.chat-conversation > div.conversation-box > div.conversation-main > div.conversation-message',
   
-  // Additional info
-  age: '.age-text',
-  status: '.status-text',
-  expectedPosition: '.expect-position',
-  expectedSalary: '.expect-salary',
+  // Message elements
+  messageItem: '.message-item',
+  messageTime: '.message-time .time',
+  messageTextSpan: '.text span',
   
-  // Skills
-  skillsList: '.skills-list',
-  skillItem: '.skill-item',
+  // Message types
+  systemMessage: '.item-system',
+  friendMessage: '.item-friend',
+  myMessage: '.item-myself',
+  resumeMessage: '.item-resume',
   
-  // Introduction
-  introduction: '.self-introduction',
-  introductionAlt: '.candidate-intro',
+  // Message status
+  readStatus: '.status-read',
 } as const;
 
-// Navigation selectors
-export const NAV_SELECTORS = {
-  // Tab navigation
-  chatTab: '.menu-chat',
-  candidateTab: '.menu-recommend',
+// Exchange WeChat selectors
+export const EXCHANGE_WECHAT_SELECTORS = {
+  // Exchange button
+  exchangeButton: '.operate-btn:contains("换微信")',
+  exchangeButtonPath: '#container > div:nth-child(1) > div > div.chat-box > div.chat-container > div.chat-conversation > div.conversation-box > div.conversation-operate > div.toolbar-box > div.toolbar-box-right > div.operate-exchange-left > div:nth-child(3) > span.operate-btn',
   
-  // Back/return buttons
-  backButton: '.icon-back',
-  returnButton: '.btn-return',
-  
-  // Page indicators
-  pageTitle: '.page-title',
-  breadcrumb: '.breadcrumb',
-} as const;
-
-// Common UI elements
-export const UI_SELECTORS = {
-  // Loading states
-  loading: '.loading',
-  spinner: '.spinner',
-  skeleton: '.skeleton',
-  
-  // Error states
-  errorMessage: '.error-msg',
-  emptyState: '.empty-state',
-  
-  // Modals/popups
-  modal: '.modal-wrapper',
-  modalClose: '.modal-close',
-  confirm: '.btn-confirm',
-  cancel: '.btn-cancel',
+  // Confirm dialog
+  confirmDialog: '.exchange-tooltip',
+  confirmButton: '.exchange-tooltip .boss-btn-primary.boss-btn',
+  confirmButtonPath: '#container > div:nth-child(1) > div > div.chat-box > div.chat-container > div.chat-conversation > div.conversation-box > div.conversation-operate > div.toolbar-box > div.toolbar-box-right > div.operate-exchange-left > div:nth-child(3) > div > div > span.boss-btn-primary.boss-btn',
+  cancelButton: '.exchange-tooltip .boss-btn-outline.boss-btn',
 } as const;
 
 // Timing constants
@@ -140,10 +145,3 @@ export const TIMING = {
   retryDelay: 1000,
 } as const;
 
-// Zhipin URLs
-export const ZHIPIN_URLS = {
-  base: 'https://www.zhipin.com',
-  chat: 'https://www.zhipin.com/web/boss/chat',
-  recommend: 'https://www.zhipin.com/web/boss/recommend',
-  login: 'https://www.zhipin.com/web/user/login',
-} as const;

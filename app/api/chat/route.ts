@@ -5,6 +5,7 @@ import { feishuBotTool } from "@/lib/tools/feishu-bot-tool";
 import { puppeteerTool } from "@/lib/tools/puppeteer-tool";
 import { weChatBotTool } from "@/lib/tools/wechat-bot-tool";
 import { jobPostingGeneratorTool } from "@/lib/tools/job-posting-generator-tool";
+import { zhipinReplyTool } from "@/lib/tools/zhipin-reply-tool";
 import { zhipinTools } from "@/lib/tools/zhipin";
 import { prunedMessages, shouldCleanupSandbox } from "@/lib/utils";
 import { getDynamicRegistry } from "@/lib/model-registry/dynamic-registry";
@@ -125,14 +126,19 @@ export async function POST(req: Request) {
         feishu: feishuBotTool(),
         wechat: weChatBotTool(),
         job_posting_generator: jobPostingGeneratorTool(configData),
+        zhipin_reply_generator: zhipinReplyTool(
+          preferredBrand,
+          modelConfig || DEFAULT_MODEL_CONFIG,
+          configData,
+          replyPrompts
+        ),
         puppeteer: puppeteerTool(),
         // Zhipin automation tools
-        zhipin_get_unread_candidates: zhipinTools.getUnreadCandidates,
-        zhipin_extract_candidate_info: zhipinTools.extractCandidateInfo,
-        zhipin_extract_chat_messages: zhipinTools.extractChatMessages,
-        zhipin_open_candidate_chat: zhipinTools.openCandidateChat,
-        zhipin_process_all_unread: zhipinTools.processAllUnread,
-        zhipin_process_all_unread_with_progress: zhipinTools.processAllUnreadWithProgress,
+        zhipin_get_unread_candidates_improved: zhipinTools.getUnreadCandidatesImproved,
+        zhipin_open_candidate_chat_improved: zhipinTools.openCandidateChatImproved,
+        zhipin_send_message: zhipinTools.sendMessage(),
+        zhipin_get_chat_details: zhipinTools.getChatDetails(),
+        zhipin_exchange_wechat: zhipinTools.exchangeWechat(),
       },
       providerOptions: {
         anthropic: { cacheControl: { type: "ephemeral" } },

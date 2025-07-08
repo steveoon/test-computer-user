@@ -9,11 +9,7 @@ import { useBrand } from "@/lib/contexts/brand-context";
 import { useAuthStore } from "@/lib/stores/auth-store";
 import { useModelConfig } from "@/lib/stores/model-config-store";
 import { StorageDebug } from "@/components/storage-debug";
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from "@/components/ui/resizable";
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 
 /**
  * 🏠 主聊天界面组件

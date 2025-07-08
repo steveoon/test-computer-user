@@ -4,7 +4,10 @@ import {
   MessageCircle, 
   MessageSquare, 
   Briefcase, 
-  Globe 
+  Globe,
+  Bot,
+  Users,
+  Smartphone 
 } from "lucide-react";
 import { ComputerToolMessage } from "./computer-tool";
 import { BashToolMessage } from "./bash-tool";
@@ -12,6 +15,11 @@ import { FeishuToolMessage } from "./feishu-tool";
 import { WechatToolMessage } from "./wechat-tool";
 import { JobPostingToolMessage } from "./job-posting-tool";
 import { PuppeteerToolMessage } from "./puppeteer-tool";
+import { ZhipinReplyToolMessage } from "./zhipin-reply-tool";
+import { ZhipinToolMessage } from "./zhipin-tool";
+import { ZhipinSendMessageTool } from "./zhipin-send-message-tool";
+import { ZhipinChatDetailsTool } from "./zhipin-chat-details-tool";
+import { ZhipinExchangeWechatTool } from "./zhipin-exchange-wechat-tool";
 import { themes, type ToolConfig } from "./types";
 
 // 工具注册表
@@ -45,6 +53,37 @@ export const toolRegistry: Record<string, ToolConfig> = {
     icon: Globe,
     defaultTheme: themes.purple,
     render: PuppeteerToolMessage,
+  },
+  zhipin_reply_generator: {
+    icon: Bot,
+    defaultTheme: themes.yellow,
+    render: ZhipinReplyToolMessage,
+  },
+  // Zhipin automation tools
+  zhipin_get_unread_candidates_improved: {
+    icon: Users,
+    defaultTheme: themes.blue,
+    render: ZhipinToolMessage,
+  },
+  zhipin_open_candidate_chat_improved: {
+    icon: Users,
+    defaultTheme: themes.blue,
+    render: ZhipinToolMessage,
+  },
+  zhipin_send_message: {
+    icon: MessageSquare,
+    defaultTheme: themes.blue,
+    render: ZhipinSendMessageTool,
+  },
+  zhipin_get_chat_details: {
+    icon: ScrollText,
+    defaultTheme: themes.blue,
+    render: ZhipinChatDetailsTool,
+  },
+  zhipin_exchange_wechat: {
+    icon: Smartphone,
+    defaultTheme: themes.green,
+    render: ZhipinExchangeWechatTool,
   },
 };
 

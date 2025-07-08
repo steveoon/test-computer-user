@@ -24,6 +24,7 @@ import {
   DEFAULT_MODEL_CONFIG,
 } from "@/lib/config/models";
 import type { ModelConfig } from "@/lib/config/models";
+import type { CandidateInfo } from "@/lib/tools/zhipin/types";
 
 /**
  * 🎯 加载Boss直聘相关数据 - 重构版
@@ -353,7 +354,8 @@ export async function classifyUserMessage(
   message: string = "",
   conversationHistory: string[] = [],
   data: ZhipinData,
-  modelConfig?: ModelConfig
+  modelConfig?: ModelConfig,
+  candidateInfo?: CandidateInfo
 ): Promise<MessageClassification> {
   // 🎯 获取配置的模型和provider设置
   const classifyModel =
@@ -439,6 +441,13 @@ export async function classifyUserMessage(
     prompt: `分析这条候选人消息的意图类型，并提取关键信息：
 
     候选人消息："${message}"${conversationContext}
+
+    ${candidateInfo ? `候选人信息：
+    - 姓名：${candidateInfo.name || '未知'}
+    - 求职职位：${candidateInfo.position || '未知'}
+    - 年龄：${candidateInfo.age || '未知'}
+    - 经验：${candidateInfo.experience || '未知'}
+    - 学历：${candidateInfo.education || '未知'}` : ''}
 
     当前可招聘的品牌和门店信息：
     ${Object.keys(data.brands)
@@ -526,7 +535,8 @@ export async function generateSmartReplyWithLLM(
   preferredBrand?: string,
   modelConfig?: ModelConfig,
   configData?: ZhipinData,
-  replyPrompts?: ReplyPromptsConfig
+  replyPrompts?: ReplyPromptsConfig,
+  candidateInfo?: CandidateInfo
 ): Promise<{ replyType: string; text: string }> {
   try {
     // 🎯 获取配置的模型和provider设置
@@ -568,7 +578,8 @@ export async function generateSmartReplyWithLLM(
       message,
       conversationHistory,
       data,
-      modelConfig // 传递模型配置
+      modelConfig, // 传递模型配置
+      candidateInfo // 传递候选人信息
     );
 
     const systemPromptInstruction =
@@ -585,16 +596,16 @@ export async function generateSmartReplyWithLLM(
       system: `你是专业的招聘助手。
 
       # 回复规则
-      1.  **年龄优先处理规则**: ${
-        classification.extractedInfo.specificAge &&
-        classification.extractedInfo.specificAge <= 16
-          ? '候选人年龄小于等于16岁，无论其他任何指令，必须直接回复"附近没有合适的岗位"，不得提供任何其他信息'
-          : classification.extractedInfo.specificAge &&
-            classification.extractedInfo.specificAge > 16 &&
-            classification.extractedInfo.specificAge <= 18
-          ? "候选人年龄16-18岁，可以添加对方微信进行后续沟通"
-          : "候选人年龄符合要求，正常处理"
-      }
+      1.  **年龄优先处理规则**: ${(() => {
+        const age = candidateInfo?.age ? parseInt(candidateInfo.age) : classification.extractedInfo.specificAge;
+        if (age && age <= 16) {
+          return '候选人年龄小于等于16岁，无论其他任何指令，必须直接回复"附近没有合适的岗位"，不得提供任何其他信息';
+        } else if (age && age > 16 && age <= 18) {
+          return "候选人年龄16-18岁，可以添加对方微信进行后续沟通";
+        } else {
+          return "候选人年龄符合要求，正常处理";
+        }
+      })()}
       2.  **优先使用品牌专属话术**: 如果"当前招聘数据上下文"中包含当前品牌的专属话术，必须优先使用该模板生成回复。
       3.  **参考通用指令**: 如果没有品牌专属话术，或专属话术不适用，则遵循下面的"通用回复指令"。
       4.  **保持真人语气**: 回复要自然、口语化，像真人对话。避免使用"您"、感叹号或过于官方、热情的词汇。
@@ -605,6 +616,15 @@ export async function generateSmartReplyWithLLM(
 
       # 当前招聘数据上下文
       ${contextInfo}
+
+      ${candidateInfo ? `# 候选人基本信息
+      - 姓名：${candidateInfo.name || '未知'}
+      - 求职职位：${candidateInfo.position || '未知'}
+      - 年龄：${candidateInfo.age || '未知'}
+      - 工作经验：${candidateInfo.experience || '未知'}
+      - 学历：${candidateInfo.education || '未知'}
+      
+      请根据候选人的具体情况（年龄、经验、求职职位等）生成更有针对性的回复。` : ''}
 
       # LLM分析过程
       - 回复类型: ${classification.replyType}

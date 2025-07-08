@@ -32,13 +32,19 @@ export const puppeteerTool = () =>
     description: `
       Puppeteer浏览器自动化工具，用于控制本地Chrome浏览器执行各种自动化操作。
       
-      主要功能：
-      - 连接到现有Chrome浏览器或创建新实例
-      - 导航到指定URL
-      - 截取页面或元素截图
-      - 执行点击、填充、选择等页面交互
-      - 运行JavaScript代码
-      - 捕获控制台日志
+      支持的操作类型：
+      - connect_active_tab: 连接到浏览器标签页
+      - navigate: 导航到指定URL
+      - screenshot: 截取页面或元素截图
+      - click: 点击页面元素
+      - fill: 填充表单字段
+      - select: 选择下拉选项
+      - hover: 悬停在元素上
+      - evaluate: 执行JavaScript代码
+      
+      ⚠️ 重要限制：
+      - 不支持 wait 操作
+      - 如需等待，请使用 evaluate 操作执行 JavaScript 等待代码
       
       注意：使用前请确保Chrome浏览器已启动并开启远程调试模式。
     `,
@@ -255,7 +261,26 @@ export const puppeteerTool = () =>
 
         // 根据不同错误类型提供解决建议
         if (error instanceof Error) {
-          if (error.message.includes("Could not connect")) {
+          // 检查是否是不支持的操作类型错误
+          if (error.message.includes("Invalid enum value") && error.message.includes("wait")) {
+            errorMessage = `❌ Puppeteer工具不支持 "wait" 操作。
+
+            📝 支持的操作类型：
+            - connect_active_tab: 连接浏览器标签页
+            - navigate: 导航到URL
+            - screenshot: 截图
+            - click: 点击元素
+            - fill: 填充表单
+            - select: 选择下拉选项
+            - hover: 悬停元素
+            - evaluate: 执行JavaScript代码
+
+            💡 如需等待，请使用以下替代方案：
+            1. 使用 evaluate 操作执行 JavaScript 等待：
+              script: "await new Promise(resolve => setTimeout(resolve, 3000))"
+            2. 使用 evaluate 操作等待元素出现：
+              script: "await new Promise(resolve => { const check = () => { if (document.querySelector('selector')) resolve(); else setTimeout(check, 100); }; check(); })"`;
+          } else if (error.message.includes("Could not connect")) {
             errorMessage += `\n\n💡 解决建议：\n1. 确保Chrome浏览器已启动\n2. 启动Chrome时添加远程调试参数：\n   - Windows: chrome.exe --remote-debugging-port=${debugPort}\n   - Mac: /Applications/Google\\ Chrome.app/Contents/MacOS/Google\\ Chrome --remote-debugging-port=${debugPort}`;
           } else if (error.message.includes("Cannot find element")) {
             errorMessage += `\n\n💡 解决建议：\n1. 检查CSS选择器是否正确\n2. 确认元素是否存在于页面中\n3. 等待页面完全加载后再操作`;
@@ -271,23 +296,40 @@ export const puppeteerTool = () =>
         return PuppeteerResultSchema.parse(errorResult);
       }
     },
-    experimental_toToolResultContent(result: PuppeteerResult) {
-      // 验证结果类型
-      const validatedResult = PuppeteerResultSchema.parse(result);
+    experimental_toToolResultContent(result: unknown) {
+      try {
+        // 如果result是字符串，将其包装为text类型的结果
+        if (typeof result === "string") {
+          console.warn("⚠️ Puppeteer工具返回了字符串而非对象，自动包装为text类型");
+          return [{ type: "text" as const, text: result }];
+        }
 
-      if (isPuppeteerTextResult(validatedResult)) {
-        return [{ type: "text" as const, text: validatedResult.text }];
+        // 验证结果类型
+        const validatedResult = PuppeteerResultSchema.parse(result);
+
+        if (isPuppeteerTextResult(validatedResult)) {
+          return [{ type: "text" as const, text: validatedResult.text }];
+        }
+        if (isPuppeteerImageResult(validatedResult)) {
+          return [
+            {
+              type: "image" as const,
+              data: validatedResult.data,
+              mimeType: "image/jpeg",
+            },
+          ];
+        }
+        throw new Error("Invalid Puppeteer result format");
+      } catch (error) {
+        console.error("❌ Puppeteer结果处理失败:", error);
+
+        // 降级处理：无论如何都返回一个文本结果
+        const errorText = error instanceof Error ? error.message : String(error);
+        const fallbackText =
+          typeof result === "string" ? result : `Puppeteer操作完成，但结果格式异常: ${errorText}`;
+
+        return [{ type: "text" as const, text: fallbackText }];
       }
-      if (isPuppeteerImageResult(validatedResult)) {
-        return [
-          {
-            type: "image" as const,
-            data: validatedResult.data,
-            mimeType: "image/jpeg",
-          },
-        ];
-      }
-      throw new Error("Invalid Puppeteer result format");
     },
   });
 

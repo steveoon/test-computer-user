@@ -5,28 +5,27 @@
 export * from './types';
 export * from './constants';
 export * from './helpers';
-export * from './get-unread-candidates.tool';
-export * from './extract-candidate-info.tool';
-export * from './extract-chat-messages.tool';
-export * from './open-candidate-chat.tool';
-export * from './process-all-unread.tool';
+export * from './get-unread-candidates-improved.tool';
+export * from './open-candidate-chat-improved.tool';
+export * from './send-message.tool';
+export * from './get-chat-details.tool';
+export * from './exchange-wechat.tool';
 
 // Re-export tools for convenience
-import { getUnreadCandidatesTool } from './get-unread-candidates.tool';
-import { extractCandidateInfoTool } from './extract-candidate-info.tool';
-import { extractChatMessagesTool } from './extract-chat-messages.tool';
-import { openCandidateChatTool } from './open-candidate-chat.tool';
-import { processAllUnreadTool, processAllUnreadWithProgressTool } from './process-all-unread.tool';
+import { getUnreadCandidatesImprovedTool } from './get-unread-candidates-improved.tool';
+import { openCandidateChatImprovedTool } from './open-candidate-chat-improved.tool';
+import { zhipinSendMessageTool } from './send-message.tool';
+import { zhipinGetChatDetailsTool } from './get-chat-details.tool';
+import { zhipinExchangeWechatTool } from './exchange-wechat.tool';
 
 /**
  * All available Zhipin tools
  */
 export const zhipinTools = {
-  getUnreadCandidates: getUnreadCandidatesTool,
-  extractCandidateInfo: extractCandidateInfoTool,
-  extractChatMessages: extractChatMessagesTool,
-  openCandidateChat: openCandidateChatTool,
-  processAllUnread: processAllUnreadTool,
-  processAllUnreadWithProgress: processAllUnreadWithProgressTool,
+  getUnreadCandidatesImproved: getUnreadCandidatesImprovedTool,
+  openCandidateChatImproved: openCandidateChatImprovedTool,
+  sendMessage: zhipinSendMessageTool,
+  getChatDetails: zhipinGetChatDetailsTool,
+  exchangeWechat: zhipinExchangeWechatTool,
   // Add more tools here as they are created
 } as const;

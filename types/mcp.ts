@@ -281,16 +281,14 @@ export type PuppeteerToolParams = PuppeteerParams;
  * 检查是否为Puppeteer文本结果
  */
 export function isPuppeteerTextResult(result: unknown): result is { type: "text"; text: string } {
-  return PuppeteerResultSchema.safeParse(result).success && 
-         (result as any).type === "text";
+  return PuppeteerResultSchema.safeParse(result).success && (result as any).type === "text";
 }
 
 /**
  * 检查是否为Puppeteer图片结果
  */
 export function isPuppeteerImageResult(result: unknown): result is { type: "image"; data: string } {
-  return PuppeteerResultSchema.safeParse(result).success && 
-         (result as any).type === "image";
+  return PuppeteerResultSchema.safeParse(result).success && (result as any).type === "image";
 }
 
 /**
