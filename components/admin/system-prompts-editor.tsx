@@ -37,6 +37,7 @@ export const SystemPromptsEditor: React.FC<SystemPromptsEditorProps> = ({
       data || {
         bossZhipinSystemPrompt: "",
         generalComputerSystemPrompt: "",
+        bossZhipinLocalSystemPrompt: "",
       }
   );
   const [saving, setSaving] = useState(false);
@@ -58,8 +59,9 @@ export const SystemPromptsEditor: React.FC<SystemPromptsEditorProps> = ({
     try {
       // 基本验证
       if (
-        !prompts.bossZhipinSystemPrompt.trim() ||
-        !prompts.generalComputerSystemPrompt.trim()
+        !prompts.bossZhipinSystemPrompt?.trim() ||
+        !prompts.generalComputerSystemPrompt?.trim() ||
+        !prompts.bossZhipinLocalSystemPrompt?.trim()
       ) {
         throw new Error("系统提示词不能为空");
       }
@@ -99,7 +101,9 @@ export const SystemPromptsEditor: React.FC<SystemPromptsEditorProps> = ({
       if (!onActivePromptChange) return;
       
       // 类型保护，确保是有效的提示词类型
-      if (promptType !== 'bossZhipinSystemPrompt' && promptType !== 'generalComputerSystemPrompt') {
+      if (promptType !== 'bossZhipinSystemPrompt' && 
+          promptType !== 'generalComputerSystemPrompt' && 
+          promptType !== 'bossZhipinLocalSystemPrompt') {
         setError('无效的提示词类型');
         return;
       }
@@ -109,7 +113,11 @@ export const SystemPromptsEditor: React.FC<SystemPromptsEditorProps> = ({
       
       try {
         await onActivePromptChange(promptType as keyof SystemPromptsConfig);
-        console.log(`✅ 已切换到 ${promptType === 'bossZhipinSystemPrompt' ? 'Boss直聘' : '通用计算机'} 系统提示词`);
+        console.log(`✅ 已切换到 ${
+          promptType === 'bossZhipinSystemPrompt' ? 'Boss直聘' : 
+          promptType === 'bossZhipinLocalSystemPrompt' ? 'Boss直聘(本地版)' : 
+          '通用计算机'
+        } 系统提示词`);
       } catch (error) {
         console.error("❌ 切换系统提示词失败:", error);
         setError(error instanceof Error ? error.message : "切换失败");
@@ -211,6 +219,16 @@ export const SystemPromptsEditor: React.FC<SystemPromptsEditorProps> = ({
                     <span>Boss直聘招聘助手</span>
                   </div>
                 </SelectItem>
+                <SelectItem value="bossZhipinLocalSystemPrompt">
+                  <div className="flex items-center gap-2">
+                    {activePrompt === "bossZhipinLocalSystemPrompt" ? (
+                      <ToggleRight className="h-4 w-4 text-primary" />
+                    ) : (
+                      <ToggleLeft className="h-4 w-4" />
+                    )}
+                    <span>Boss直聘招聘助手(本地版)</span>
+                  </div>
+                </SelectItem>
                 <SelectItem value="generalComputerSystemPrompt">
                   <div className="flex items-center gap-2">
                     {activePrompt === "generalComputerSystemPrompt" ? (
@@ -252,7 +270,7 @@ export const SystemPromptsEditor: React.FC<SystemPromptsEditorProps> = ({
         </CardHeader>
         <CardContent>
           <textarea
-            value={prompts.bossZhipinSystemPrompt}
+            value={prompts.bossZhipinSystemPrompt || ""}
             onChange={(e) =>
               updatePrompt("bossZhipinSystemPrompt", e.target.value)
             }
@@ -261,7 +279,31 @@ export const SystemPromptsEditor: React.FC<SystemPromptsEditorProps> = ({
           />
           <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
             <span>定义AI在Boss直聘平台上的招聘行为、沟通策略和操作流程</span>
-            <span>{prompts.bossZhipinSystemPrompt.length} 字符</span>
+            <span>{prompts.bossZhipinSystemPrompt?.length || 0} 字符</span>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Boss直聘本地版系统提示词 */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Boss直聘招聘助手(本地版)</CardTitle>
+          <CardDescription>
+            专用于Boss直聘平台的本地自动化招聘系统提示词，使用Puppeteer工具进行自动化操作
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <textarea
+            value={prompts.bossZhipinLocalSystemPrompt || ""}
+            onChange={(e) =>
+              updatePrompt("bossZhipinLocalSystemPrompt", e.target.value)
+            }
+            className="w-full h-64 p-4 text-sm border rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+            placeholder="输入Boss直聘本地版系统提示词..."
+          />
+          <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+            <span>定义AI使用本地Puppeteer工具进行Boss直聘自动化操作的行为规范</span>
+            <span>{prompts.bossZhipinLocalSystemPrompt?.length || 0} 字符</span>
           </div>
         </CardContent>
       </Card>
@@ -276,7 +318,7 @@ export const SystemPromptsEditor: React.FC<SystemPromptsEditorProps> = ({
         </CardHeader>
         <CardContent>
           <textarea
-            value={prompts.generalComputerSystemPrompt}
+            value={prompts.generalComputerSystemPrompt || ""}
             onChange={(e) =>
               updatePrompt("generalComputerSystemPrompt", e.target.value)
             }
@@ -285,7 +327,7 @@ export const SystemPromptsEditor: React.FC<SystemPromptsEditorProps> = ({
           />
           <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
             <span>定义AI在执行一般计算机操作时的行为准则和交互方式</span>
-            <span>{prompts.generalComputerSystemPrompt.length} 字符</span>
+            <span>{prompts.generalComputerSystemPrompt?.length || 0} 字符</span>
           </div>
         </CardContent>
       </Card>
@@ -302,6 +344,12 @@ export const SystemPromptsEditor: React.FC<SystemPromptsEditorProps> = ({
               <h4 className="font-medium mb-1">🎯 Boss直聘提示词</h4>
               <p className="text-muted-foreground">
                 控制AI在Boss直聘平台上的行为，包括候选人沟通策略、信息收集方式、微信获取流程等关键环节。
+              </p>
+            </div>
+            <div>
+              <h4 className="font-medium mb-1">🤖 Boss直聘本地版提示词</h4>
+              <p className="text-muted-foreground">
+                使用本地Puppeteer工具自动化处理Boss直聘招聘流程，包括获取未读消息、智能回复、批量处理等功能。
               </p>
             </div>
             <div>

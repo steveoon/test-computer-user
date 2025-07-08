@@ -4,6 +4,7 @@
  */
 
 import localforage from "localforage";
+import { CONFIG_VERSION } from "@/types";
 import type {
   AppConfigData,
   ConfigService,
@@ -11,7 +12,6 @@ import type {
   ReplyPromptsConfig,
   ZhipinData,
   CONFIG_STORAGE_KEY,
-  CONFIG_VERSION,
 } from "@/types";
 
 // 创建专门的配置存储实例
@@ -32,9 +32,7 @@ class AppConfigService implements ConfigService {
    */
   async getConfig(): Promise<AppConfigData | null> {
     try {
-      const config = await configStorage.getItem<AppConfigData>(
-        this.storageKey
-      );
+      const config = await configStorage.getItem<AppConfigData>(this.storageKey);
 
       if (config) {
         console.log("✅ 配置数据已从 localforage 加载");
@@ -59,7 +57,7 @@ class AppConfigService implements ConfigService {
         ...data,
         metadata: {
           ...data.metadata,
-          version: "1.1.2" as typeof CONFIG_VERSION,
+          version: data.metadata.version || CONFIG_VERSION, // 保留传入的版本号，只有在没有版本号时才使用默认值
           lastUpdated: new Date().toISOString(),
         },
       };
@@ -120,9 +118,7 @@ class AppConfigService implements ConfigService {
   /**
    * 更新活动系统提示词
    */
-  async updateActiveSystemPrompt(
-    promptType: keyof SystemPromptsConfig
-  ): Promise<void> {
+  async updateActiveSystemPrompt(promptType: keyof SystemPromptsConfig): Promise<void> {
     const currentConfig = await this.getConfig();
     if (!currentConfig) {
       throw new Error("配置数据不存在，请先进行初始化");
@@ -152,9 +148,7 @@ class AppConfigService implements ConfigService {
    */
   async isConfigured(): Promise<boolean> {
     try {
-      const config = await configStorage.getItem<AppConfigData>(
-        this.storageKey
-      );
+      const config = await configStorage.getItem<AppConfigData>(this.storageKey);
       return config !== null;
     } catch (error) {
       console.warn("检查配置状态失败:", error);
@@ -225,10 +219,8 @@ export async function needsDataUpgrade(): Promise<boolean> {
 
     // 检查版本号（包括缺失版本的情况）
     const currentVersion = config.metadata?.version;
-    if (!currentVersion || currentVersion !== "1.1.2") {
-      console.log(
-        `🔄 检测到版本升级需求: ${currentVersion || "undefined"} -> 1.1.2`
-      );
+    if (!currentVersion || currentVersion !== CONFIG_VERSION) {
+      console.log(`🔄 检测到版本升级需求: ${currentVersion || "undefined"} -> ${CONFIG_VERSION}`);
       return true;
     }
 
@@ -257,38 +249,23 @@ export async function needsDataUpgrade(): Promise<boolean> {
     ];
 
     const hasAllReplyPrompts = requiredReplyPromptKeys.every(
-      (key) =>
-        config.replyPrompts[key as keyof typeof config.replyPrompts] !==
-        undefined
+      key => config.replyPrompts[key as keyof typeof config.replyPrompts] !== undefined
     );
 
     if (!hasAllReplyPrompts) {
       const missingKeys = requiredReplyPromptKeys.filter(
-        (key) =>
-          config.replyPrompts[key as keyof typeof config.replyPrompts] ===
-          undefined
+        key => config.replyPrompts[key as keyof typeof config.replyPrompts] === undefined
       );
-      console.log(
-        `🔄 检测到缺失的replyPrompts字段: ${missingKeys.join(
-          ", "
-        )}，需要数据升级`
-      );
-      console.log(
-        `📊 当前replyPrompts字段: ${Object.keys(config.replyPrompts).join(
-          ", "
-        )}`
-      );
+      console.log(`🔄 检测到缺失的replyPrompts字段: ${missingKeys.join(", ")}，需要数据升级`);
+      console.log(`📊 当前replyPrompts字段: ${Object.keys(config.replyPrompts).join(", ")}`);
       return true;
     }
 
     // 检查是否存在废弃的顶层字段（需要清理）
-    const hasDeprecatedFields =
-      "templates" in config.brandData || "screening" in config.brandData;
+    const hasDeprecatedFields = "templates" in config.brandData || "screening" in config.brandData;
 
     if (hasDeprecatedFields) {
-      console.log(
-        "🔄 检测到废弃的顶层字段（templates/screening），需要数据升级"
-      );
+      console.log("🔄 检测到废弃的顶层字段（templates/screening），需要数据升级");
       return true;
     }
 
@@ -296,6 +273,12 @@ export async function needsDataUpgrade(): Promise<boolean> {
     const hasLocationMatch = "location_match" in config.replyPrompts;
     if (hasLocationMatch) {
       console.log("🔄 检测到废弃的 location_match 字段，需要数据升级");
+      return true;
+    }
+
+    // 检查是否缺少新的系统提示词
+    if (!config.systemPrompts?.bossZhipinLocalSystemPrompt) {
+      console.log("🔄 检测到缺少 bossZhipinLocalSystemPrompt 系统提示词，需要数据升级");
       return true;
     }
 
@@ -339,9 +322,7 @@ export async function getReplyPrompts(): Promise<ReplyPromptsConfig | null> {
 /**
  * 便捷函数：获取活动系统提示词类型
  */
-export async function getActiveSystemPromptType(): Promise<
-  keyof SystemPromptsConfig
-> {
+export async function getActiveSystemPromptType(): Promise<keyof SystemPromptsConfig> {
   const config = await configService.getConfig();
   return config?.activeSystemPrompt || "bossZhipinSystemPrompt";
 }
@@ -363,10 +344,8 @@ export async function migrateFromHardcodedData(): Promise<void> {
 
     if (existingConfig) {
       const currentVersion = existingConfig.metadata?.version;
-      if (!currentVersion || currentVersion !== "1.1.2") {
-        console.log(
-          `🔄 执行数据升级 ${currentVersion || "undefined"} -> 1.1.2...`
-        );
+      if (!currentVersion || currentVersion !== CONFIG_VERSION) {
+        console.log(`🔄 执行数据升级 ${currentVersion || "undefined"} -> ${CONFIG_VERSION}...`);
         await upgradeConfigData(existingConfig);
         console.log("✅ 数据升级完成！");
         return;
@@ -380,7 +359,7 @@ export async function migrateFromHardcodedData(): Promise<void> {
     // 动态导入硬编码数据（仅在浏览器中）
     const [
       { zhipinData },
-      { getBossZhipinSystemPrompt, getGeneralComputerSystemPrompt },
+      { getBossZhipinSystemPrompt, getGeneralComputerSystemPrompt, getBossZhipinLocalSystemPrompt },
     ] = await Promise.all([
       import("../../lib/data/sample-data"),
       import("../../lib/system-prompts"),
@@ -421,6 +400,7 @@ export async function migrateFromHardcodedData(): Promise<void> {
       systemPrompts: {
         bossZhipinSystemPrompt: getBossZhipinSystemPrompt(),
         generalComputerSystemPrompt: getGeneralComputerSystemPrompt(),
+        bossZhipinLocalSystemPrompt: getBossZhipinLocalSystemPrompt(),
       },
 
       // 智能回复指令
@@ -431,7 +411,7 @@ export async function migrateFromHardcodedData(): Promise<void> {
 
       // 配置元信息
       metadata: {
-        version: "1.1.2",
+        version: CONFIG_VERSION,
         lastUpdated: new Date().toISOString(),
         migratedAt: new Date().toISOString(),
       },
@@ -453,7 +433,7 @@ export async function migrateFromHardcodedData(): Promise<void> {
 async function upgradeConfigData(existingConfig: AppConfigData): Promise<void> {
   try {
     const fromVersion = existingConfig.metadata?.version || "undefined";
-    console.log(`🔄 开始升级配置数据从版本 ${fromVersion} 到 1.1.2`);
+    console.log(`🔄 开始升级配置数据从版本 ${fromVersion} 到 ${CONFIG_VERSION}`);
     console.log(`📊 升级前数据状态:`, {
       replyPromptsCount: Object.keys(existingConfig.replyPrompts || {}).length,
       storesCount: existingConfig.brandData?.stores?.length || 0,
@@ -477,43 +457,39 @@ async function upgradeConfigData(existingConfig: AppConfigData): Promise<void> {
     }
 
     // 为每个门店的每个岗位添加attendanceRequirement字段
-    upgradedBrandData.stores.forEach(
-      (store: Record<string, unknown>, storeIndex: number) => {
-        const positions = store.positions as Array<Record<string, unknown>>;
-        store.positions = positions.map(
-          (position: Record<string, unknown>, positionIndex: number) => {
-            // 如果已经有attendanceRequirement，保持不变
-            if (position.attendanceRequirement) {
-              return position;
-            }
-
-            // 尝试从sample-data中找到对应的position作为模板
-            const sampleStore = zhipinData.stores[storeIndex];
-            const samplePosition = sampleStore?.positions[positionIndex];
-
-            let defaultAttendanceRequirement;
-
-            if (samplePosition?.attendanceRequirement) {
-              // 使用对应的sample数据
-              defaultAttendanceRequirement =
-                samplePosition.attendanceRequirement;
-            } else {
-              // 生成默认的attendanceRequirement
-              defaultAttendanceRequirement =
-                generateDefaultAttendanceRequirement({
-                  name: position.name as string,
-                  urgent: position.urgent as boolean,
-                });
-            }
-
-            return {
-              ...position,
-              attendanceRequirement: defaultAttendanceRequirement,
-            };
+    upgradedBrandData.stores.forEach((store: Record<string, unknown>, storeIndex: number) => {
+      const positions = store.positions as Array<Record<string, unknown>>;
+      store.positions = positions.map(
+        (position: Record<string, unknown>, positionIndex: number) => {
+          // 如果已经有attendanceRequirement，保持不变
+          if (position.attendanceRequirement) {
+            return position;
           }
-        );
-      }
-    );
+
+          // 尝试从sample-data中找到对应的position作为模板
+          const sampleStore = zhipinData.stores[storeIndex];
+          const samplePosition = sampleStore?.positions[positionIndex];
+
+          let defaultAttendanceRequirement;
+
+          if (samplePosition?.attendanceRequirement) {
+            // 使用对应的sample数据
+            defaultAttendanceRequirement = samplePosition.attendanceRequirement;
+          } else {
+            // 生成默认的attendanceRequirement
+            defaultAttendanceRequirement = generateDefaultAttendanceRequirement({
+              name: position.name as string,
+              urgent: position.urgent as boolean,
+            });
+          }
+
+          return {
+            ...position,
+            attendanceRequirement: defaultAttendanceRequirement,
+          };
+        }
+      );
+    });
 
     // 升级回复指令配置，添加新的分类
     const upgradedReplyPrompts = { ...existingConfig.replyPrompts };
@@ -555,14 +531,25 @@ async function upgradeConfigData(existingConfig: AppConfigData): Promise<void> {
       upgradedReplyPrompts.part_time_support = `兼职支持咨询，参考这个话术: "完全支持兼职，{part_time_allowed}，时间可以和其他工作错开安排。"。突出对兼职的支持和理解。`;
     }
 
+    // 升级系统提示词（添加缺失的bossZhipinLocalSystemPrompt）
+    const upgradedSystemPrompts = { ...existingConfig.systemPrompts };
+
+    if (!upgradedSystemPrompts.bossZhipinLocalSystemPrompt) {
+      // 导入getBossZhipinLocalSystemPrompt
+      const { getBossZhipinLocalSystemPrompt } = await import("../../lib/system-prompts");
+      upgradedSystemPrompts.bossZhipinLocalSystemPrompt = getBossZhipinLocalSystemPrompt();
+      console.log("✅ 添加了新的系统提示词: bossZhipinLocalSystemPrompt");
+    }
+
     // 创建升级后的配置
     const upgradedConfig: AppConfigData = {
       ...existingConfig,
       brandData: upgradedBrandData,
       replyPrompts: upgradedReplyPrompts,
+      systemPrompts: upgradedSystemPrompts,
       metadata: {
         ...existingConfig.metadata,
-        version: "1.1.2",
+        version: CONFIG_VERSION,
         lastUpdated: new Date().toISOString(),
         upgradedAt: new Date().toISOString(),
       },
@@ -576,12 +563,10 @@ async function upgradeConfigData(existingConfig: AppConfigData): Promise<void> {
       version: upgradedConfig.metadata.version,
       replyPromptsCount: Object.keys(upgradedConfig.replyPrompts).length,
       replyPromptsKeys: Object.keys(upgradedConfig.replyPrompts),
-      hasAttendanceRequirements: upgradedBrandData.stores.every(
-        (store: Record<string, unknown>) =>
-          (store.positions as Array<Record<string, unknown>>).every(
-            (pos: Record<string, unknown>) =>
-              pos.attendanceRequirement !== undefined
-          )
+      hasAttendanceRequirements: upgradedBrandData.stores.every((store: Record<string, unknown>) =>
+        (store.positions as Array<Record<string, unknown>>).every(
+          (pos: Record<string, unknown>) => pos.attendanceRequirement !== undefined
+        )
       ),
     });
   } catch (error) {
@@ -604,10 +589,7 @@ async function upgradeConfigData(existingConfig: AppConfigData): Promise<void> {
 /**
  * 为现有岗位生成默认的出勤要求
  */
-function generateDefaultAttendanceRequirement(position: {
-  name?: string;
-  urgent?: boolean;
-}) {
+function generateDefaultAttendanceRequirement(position: { name?: string; urgent?: boolean }) {
   // 导入ATTENDANCE_PATTERNS常量
   const ATTENDANCE_PATTERNS = {
     WEEKENDS: [6, 7],

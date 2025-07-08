@@ -70,19 +70,29 @@ export async function POST(req: Request) {
     if (systemPrompts && systemPrompts[promptType]) {
       console.log(
         `✅ 使用客户端传入的${
-          promptType === "bossZhipinSystemPrompt" ? "Boss直聘" : "通用计算机"
+          promptType === "bossZhipinSystemPrompt" ? "Boss直聘" : 
+          promptType === "bossZhipinLocalSystemPrompt" ? "Boss直聘(本地版)" :
+          "通用计算机"
         }系统提示词`
       );
       systemPrompt = systemPrompts[promptType];
     } else {
       console.log(
         `⚠️ 使用默认${
-          promptType === "bossZhipinSystemPrompt" ? "Boss直聘" : "通用计算机"
+          promptType === "bossZhipinSystemPrompt" ? "Boss直聘" : 
+          promptType === "bossZhipinLocalSystemPrompt" ? "Boss直聘(本地版)" :
+          "通用计算机"
         }系统提示词（降级模式）`
       );
       // 降级到默认提示词
       if (promptType === "bossZhipinSystemPrompt") {
         systemPrompt = await getBossZhipinSystemPrompt();
+      } else if (promptType === "bossZhipinLocalSystemPrompt") {
+        // 需要导入getBossZhipinLocalSystemPrompt
+        const { getBossZhipinLocalSystemPrompt } = await import(
+          "@/lib/loaders/system-prompts.loader"
+        );
+        systemPrompt = await getBossZhipinLocalSystemPrompt();
       } else {
         // 需要导入getGeneralComputerSystemPrompt
         const { getGeneralComputerSystemPrompt } = await import(

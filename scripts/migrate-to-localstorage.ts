@@ -6,10 +6,12 @@
  */
 
 import { configService } from "../lib/services/config.service";
+import { CONFIG_VERSION } from "@/types";
 import { zhipinData } from "../lib/data/sample-data";
 import {
   getBossZhipinSystemPrompt,
   getGeneralComputerSystemPrompt,
+  getBossZhipinLocalSystemPrompt,
 } from "../lib/system-prompts";
 import type { AppConfigData, ReplyPromptsConfig } from "@/types";
 
@@ -69,6 +71,7 @@ async function migrate() {
       systemPrompts: {
         bossZhipinSystemPrompt: getBossZhipinSystemPrompt(),
         generalComputerSystemPrompt: getGeneralComputerSystemPrompt(),
+        bossZhipinLocalSystemPrompt: getBossZhipinLocalSystemPrompt(),
       },
 
       // 智能回复指令
@@ -76,7 +79,7 @@ async function migrate() {
 
       // 配置元信息
       metadata: {
-        version: "1.0.0",
+        version: CONFIG_VERSION,
         lastUpdated: new Date().toISOString(),
         migratedAt: new Date().toISOString(),
       },
@@ -90,16 +93,10 @@ async function migrate() {
     if (savedConfig) {
       console.log("✅ 数据迁移成功！");
       console.log(`📊 统计信息:`);
-      console.log(
-        `  - 品牌数量: ${Object.keys(savedConfig.brandData.brands).length}`
-      );
+      console.log(`  - 品牌数量: ${Object.keys(savedConfig.brandData.brands).length}`);
       console.log(`  - 门店数量: ${savedConfig.brandData.stores.length}`);
-      console.log(
-        `  - 系统提示词: ${Object.keys(savedConfig.systemPrompts).length} 个`
-      );
-      console.log(
-        `  - 回复指令: ${Object.keys(savedConfig.replyPrompts).length} 个`
-      );
+      console.log(`  - 系统提示词: ${Object.keys(savedConfig.systemPrompts).length} 个`);
+      console.log(`  - 回复指令: ${Object.keys(savedConfig.replyPrompts).length} 个`);
       console.log(`  - 配置版本: ${savedConfig.metadata.version}`);
       console.log(`  - 迁移时间: ${savedConfig.metadata.migratedAt}`);
     } else {
@@ -126,7 +123,7 @@ async function main() {
 
 // 执行迁移（如果直接运行此脚本）
 if (require.main === module) {
-  main().catch((error) => {
+  main().catch(error => {
     console.error("迁移脚本执行失败:", error);
     process.exit(1);
   });

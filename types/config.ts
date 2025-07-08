@@ -17,13 +17,11 @@ import {
 export const SystemPromptsConfigSchema = z.object({
   bossZhipinSystemPrompt: z.string(),
   generalComputerSystemPrompt: z.string(),
+  bossZhipinLocalSystemPrompt: z.string(),
 });
 
 // 智能回复指令配置Schema
-export const ReplyPromptsConfigSchema = z.record(
-  ReplyContextSchema,
-  z.string()
-);
+export const ReplyPromptsConfigSchema = z.record(ReplyContextSchema, z.string());
 
 // 统一应用配置数据Schema
 export const AppConfigDataSchema = z.object({
@@ -31,7 +29,7 @@ export const AppConfigDataSchema = z.object({
   systemPrompts: SystemPromptsConfigSchema,
   replyPrompts: ReplyPromptsConfigSchema,
   activeSystemPrompt: z
-    .enum(["bossZhipinSystemPrompt", "generalComputerSystemPrompt"])
+    .enum(["bossZhipinSystemPrompt", "generalComputerSystemPrompt", "bossZhipinLocalSystemPrompt"])
     .optional(),
   metadata: z.object({
     version: z.string(),
@@ -44,25 +42,19 @@ export const AppConfigDataSchema = z.object({
 // 配置服务接口Schema（仅用于接口定义，不用于数据验证）
 export const ConfigServiceSchema = z.object({
   getConfig: z.function().returns(z.promise(AppConfigDataSchema.nullable())),
-  saveConfig: z
-    .function()
-    .args(AppConfigDataSchema)
-    .returns(z.promise(z.void())),
-  updateBrandData: z
-    .function()
-    .args(ZhipinDataSchema)
-    .returns(z.promise(z.void())),
-  updateSystemPrompts: z
-    .function()
-    .args(SystemPromptsConfigSchema)
-    .returns(z.promise(z.void())),
-  updateReplyPrompts: z
-    .function()
-    .args(ReplyPromptsConfigSchema)
-    .returns(z.promise(z.void())),
+  saveConfig: z.function().args(AppConfigDataSchema).returns(z.promise(z.void())),
+  updateBrandData: z.function().args(ZhipinDataSchema).returns(z.promise(z.void())),
+  updateSystemPrompts: z.function().args(SystemPromptsConfigSchema).returns(z.promise(z.void())),
+  updateReplyPrompts: z.function().args(ReplyPromptsConfigSchema).returns(z.promise(z.void())),
   updateActiveSystemPrompt: z
     .function()
-    .args(z.enum(["bossZhipinSystemPrompt", "generalComputerSystemPrompt"]))
+    .args(
+      z.enum([
+        "bossZhipinSystemPrompt",
+        "generalComputerSystemPrompt",
+        "bossZhipinLocalSystemPrompt",
+      ])
+    )
     .returns(z.promise(z.void())),
   clearConfig: z.function().returns(z.promise(z.void())),
   isConfigured: z.function().returns(z.promise(z.boolean())),
@@ -96,9 +88,7 @@ export interface ConfigService {
   updateBrandData(brandData: ZhipinData): Promise<void>;
   updateSystemPrompts(prompts: SystemPromptsConfig): Promise<void>;
   updateReplyPrompts(prompts: ReplyPromptsConfig): Promise<void>;
-  updateActiveSystemPrompt(
-    promptType: keyof SystemPromptsConfig
-  ): Promise<void>;
+  updateActiveSystemPrompt(promptType: keyof SystemPromptsConfig): Promise<void>;
   clearConfig(): Promise<void>;
   isConfigured(): Promise<boolean>;
 }
@@ -124,6 +114,6 @@ export interface ConfigManagerState {
  * LocalForage 存储键名常量
  */
 export const CONFIG_STORAGE_KEY = "APP_CONFIG_DATA" as const;
-export const CONFIG_VERSION = "1.1.2" as const;
+export const CONFIG_VERSION = "1.2.0" as const;
 
 // 不再重新导出zhipin中的类型，使用时直接从 './zhipin' 导入

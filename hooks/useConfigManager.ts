@@ -48,6 +48,16 @@ const useConfigStore = create<ConfigState>()(
 
         try {
           console.log("🔄 开始加载应用配置...");
+          
+          // 首先检查是否需要升级
+          const { needsDataUpgrade, migrateFromHardcodedData } = await import("../lib/services/config.service");
+          const needsUpgradeResult = await needsDataUpgrade();
+          if (needsUpgradeResult) {
+            console.log("🔄 检测到需要数据升级，开始自动升级...");
+            await migrateFromHardcodedData();
+            console.log("✅ 数据升级完成");
+          }
+          
           const config = await configService.getConfig();
 
           if (!config) {
@@ -64,6 +74,7 @@ const useConfigStore = create<ConfigState>()(
             stores: config.brandData?.stores?.length || 0,
             systemPrompts: Object.keys(config.systemPrompts || {}).length,
             replyPrompts: Object.keys(config.replyPrompts || {}).length,
+            version: config.metadata?.version || "unknown",
           });
 
           set({ config, loading: false, error: null });
@@ -195,6 +206,8 @@ const useConfigStore = create<ConfigState>()(
             `✅ 已切换到 ${
               promptType === "bossZhipinSystemPrompt"
                 ? "Boss直聘"
+                : promptType === "bossZhipinLocalSystemPrompt"
+                ? "Boss直聘(本地版)"
                 : "通用计算机"
             } 系统提示词`
           );
