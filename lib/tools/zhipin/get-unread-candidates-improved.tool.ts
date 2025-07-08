@@ -1,7 +1,7 @@
-import { tool } from 'ai';
-import { z } from 'zod';
-import { UNREAD_SELECTORS } from './constants';
-import { getPuppeteerMCPClient } from '@/lib/mcp/client-manager';
+import { tool } from "ai";
+import { z } from "zod";
+import { UNREAD_SELECTORS } from "./constants";
+import { getPuppeteerMCPClient } from "@/lib/mcp/client-manager";
 
 export const getUnreadCandidatesImprovedTool = tool({
   description: `获取当前聊天列表中所有未读候选人的改进版
@@ -12,36 +12,34 @@ export const getUnreadCandidatesImprovedTool = tool({
   - 返回更详细的候选人信息
   - 支持过滤和排序选项
   `,
-  
+
   parameters: z.object({
-    selector: z.string()
+    selector: z
+      .string()
       .optional()
       .default(UNREAD_SELECTORS.unreadCandidates)
-      .describe('CSS选择器用于查找候选人项'),
-      
-    max: z.number()
-      .optional()
-      .describe('返回的最大候选人数量'),
-      
-    onlyUnread: z.boolean()
-      .optional()
-      .default(false)
-      .describe('是否只返回有未读消息的候选人'),
-      
-    sortBy: z.enum(['time', 'unreadCount', 'name'])
-      .optional()
-      .default('time')
-      .describe('排序方式')
+      .describe("CSS选择器用于查找候选人项"),
+
+    max: z.number().optional().describe("返回的最大候选人数量"),
+
+    onlyUnread: z.boolean().optional().default(false).describe("是否只返回有未读消息的候选人"),
+
+    sortBy: z.enum(["time", "unreadCount", "name"]).optional().default("time").describe("排序方式"),
   }),
-  
-  execute: async ({ selector = UNREAD_SELECTORS.unreadCandidates, max, onlyUnread = false, sortBy = 'time' }) => {
+
+  execute: async ({
+    selector = UNREAD_SELECTORS.unreadCandidates,
+    max,
+    onlyUnread = false,
+    sortBy = "time",
+  }) => {
     try {
       const client = await getPuppeteerMCPClient();
-      
+
       // 创建脚本 - 需要包含 return 语句
       const script = `
         const selector = '${selector}';
-        const max = ${max || 'null'};
+        const max = ${max || "null"};
         const onlyUnread = ${onlyUnread};
         const sortBy = '${sortBy}';
         
@@ -161,53 +159,55 @@ export const getUnreadCandidatesImprovedTool = tool({
           }
         };
       `;
-      
+
       // 执行脚本
       const tools = await client.tools();
-      const toolName = 'puppeteer_evaluate';
-      
+      const toolName = "puppeteer_evaluate";
+
       if (!tools[toolName]) {
         throw new Error(`MCP tool ${toolName} not available`);
       }
-      
+
       const tool = tools[toolName];
-      
+
       // 执行脚本
       const result = await tool.execute({ script });
-      
+
       // 解析结果
-      const mcpResult = result as any;
+      const mcpResult = result as { content?: Array<{ text?: string }> };
       if (mcpResult?.content?.[0]?.text) {
         const resultText = mcpResult.content[0].text;
-        
+
         try {
           // 尝试从 "Execution result:" 后面提取实际结果
-          const executionMatch = resultText.match(/Execution result:\s*\n([\s\S]*?)(\n\nConsole output|$)/);
-          
-          if (executionMatch && executionMatch[1].trim() !== 'undefined') {
+          const executionMatch = resultText.match(
+            /Execution result:\s*\n([\s\S]*?)(\n\nConsole output|$)/
+          );
+
+          if (executionMatch && executionMatch[1].trim() !== "undefined") {
             const jsonResult = executionMatch[1].trim();
             // 结果已经是 JSON 字符串，直接解析
             const parsedResult = JSON.parse(jsonResult);
-            
+
             return {
               ...parsedResult,
-              message: parsedResult.success ? 
-                `成功获取 ${parsedResult.count} 个候选人 (总计: ${parsedResult.stats.total}, 有名字: ${parsedResult.stats.withName}, 未读: ${parsedResult.stats.withUnread})` :
-                '获取候选人失败'
+              message: parsedResult.success
+                ? `成功获取 ${parsedResult.count} 个候选人 (总计: ${parsedResult.stats.total}, 有名字: ${parsedResult.stats.withName}, 未读: ${parsedResult.stats.withUnread})`
+                : "获取候选人失败",
             };
           }
-          
+
           // 如果执行结果是 undefined，可能是脚本执行有问题
-          console.error('Script execution returned undefined');
+          console.error("Script execution returned undefined");
           return {
             success: false,
             candidates: [],
             count: 0,
-            error: 'Script execution returned undefined',
-            rawResult: resultText
+            error: "Script execution returned undefined",
+            rawResult: resultText,
           };
         } catch (e) {
-          console.error('Failed to parse script result:', e);
+          console.error("Failed to parse script result:", e);
           // 尝试直接提取 JSON 部分
           try {
             // 查找 JSON 对象的开始和结束
@@ -216,45 +216,44 @@ export const getUnreadCandidatesImprovedTool = tool({
               const parsedResult = JSON.parse(jsonMatch[0]);
               return {
                 ...parsedResult,
-                message: parsedResult.success ? 
-                  `成功获取 ${parsedResult.count} 个候选人` :
-                  '获取候选人失败'
+                message: parsedResult.success
+                  ? `成功获取 ${parsedResult.count} 个候选人`
+                  : "获取候选人失败",
               };
             }
-          } catch (e2) {
+          } catch {
             // 忽略二次解析错误
           }
-          
+
           return {
             success: false,
             candidates: [],
             count: 0,
-            error: 'Failed to parse result: ' + e,
-            rawResult: resultText
+            error: "Failed to parse result: " + e,
+            rawResult: resultText,
           };
         }
       }
-      
+
       return {
         success: false,
         candidates: [],
         count: 0,
-        error: 'Unexpected result format'
+        error: "Unexpected result format",
       };
-      
     } catch (error) {
-      console.error('Failed to get unread candidates:', error);
-      
+      console.error("Failed to get unread candidates:", error);
+
       return {
         success: false,
         candidates: [],
         count: 0,
-        error: error instanceof Error ? error.message : 'Unknown error occurred',
-        message: '获取未读候选人时发生错误'
+        error: error instanceof Error ? error.message : "Unknown error occurred",
+        message: "获取未读候选人时发生错误",
       };
     }
   },
 });
 
 // 导出工具动作名称
-export const GET_UNREAD_CANDIDATES_IMPROVED_ACTION = 'get_unread_candidates_improved';
+export const GET_UNREAD_CANDIDATES_IMPROVED_ACTION = "get_unread_candidates_improved";

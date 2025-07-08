@@ -5,7 +5,7 @@ import { EXCHANGE_WECHAT_SELECTORS } from "./constants";
 
 /**
  * 交换微信工具
- * 
+ *
  * 功能：
  * - 点击"换微信"按钮
  * - 在弹出的确认对话框中点击"确定"
@@ -24,37 +24,45 @@ export const zhipinExchangeWechatTool = () =>
     - 需要先打开候选人聊天窗口
     - 需要确保当前聊天对象支持交换微信
     - 操作有先后顺序，会自动等待弹窗出现`,
-    
+
     parameters: z.object({
-      waitBetweenClicks: z.number().optional().default(500).describe("两次点击之间的等待时间（毫秒）"),
-      waitAfterExchange: z.number().optional().default(1000).describe("交换完成后的等待时间（毫秒）"),
+      waitBetweenClicks: z
+        .number()
+        .optional()
+        .default(500)
+        .describe("两次点击之间的等待时间（毫秒）"),
+      waitAfterExchange: z
+        .number()
+        .optional()
+        .default(1000)
+        .describe("交换完成后的等待时间（毫秒）"),
     }),
-    
+
     execute: async ({ waitBetweenClicks = 500, waitAfterExchange = 1000 }) => {
       try {
         const client = await getPuppeteerMCPClient();
         const tools = await client.tools();
-        
+
         // 检查必需的工具是否可用
-        const requiredTools = ['puppeteer_click', 'puppeteer_evaluate'];
+        const requiredTools = ["puppeteer_click", "puppeteer_evaluate"];
         for (const toolName of requiredTools) {
           if (!tools[toolName]) {
             throw new Error(`MCP tool ${toolName} not available`);
           }
         }
-        
+
         // 第一步：点击"换微信"按钮
         const exchangeButtonSelectors = [
           EXCHANGE_WECHAT_SELECTORS.exchangeButtonPath,
           EXCHANGE_WECHAT_SELECTORS.exchangeButton,
           '.operate-icon-item span.operate-btn:contains("换微信")',
           'span:contains("换微信").operate-btn',
-          '.operate-exchange-left .operate-btn'
+          ".operate-exchange-left .operate-btn",
         ];
-        
+
         let exchangeClicked = false;
-        let usedExchangeSelector = '';
-        
+        let usedExchangeSelector = "";
+
         // 尝试点击交换微信按钮
         for (const selector of exchangeButtonSelectors) {
           try {
@@ -72,13 +80,13 @@ export const zhipinExchangeWechatTool = () =>
               }
               return element ? { exists: true, text: element.textContent ? element.textContent.trim() : '' } : { exists: false };
             `;
-            
+
             const checkResult = await tools.puppeteer_evaluate.execute({ script: checkScript });
             const checkData = parseEvaluateResult(checkResult);
-            
-            if (checkData?.exists || selector.includes(':contains')) {
+
+            if (checkData?.exists || selector.includes(":contains")) {
               // 如果是 :contains 选择器，需要用特殊方式点击
-              if (selector.includes(':contains')) {
+              if (selector.includes(":contains")) {
                 const clickScript = `
                   const spans = document.querySelectorAll('span.operate-btn');
                   for (const span of spans) {
@@ -110,31 +118,31 @@ export const zhipinExchangeWechatTool = () =>
             console.log(`Failed to click with selector ${selector}: ${error}`);
           }
         }
-        
+
         if (!exchangeClicked) {
           return {
             success: false,
             error: '未找到"换微信"按钮',
             triedSelectors: exchangeButtonSelectors,
-            message: '请确保已打开候选人聊天窗口'
+            message: "请确保已打开候选人聊天窗口",
           };
         }
-        
+
         // 等待弹窗出现
         await new Promise(resolve => setTimeout(resolve, waitBetweenClicks));
-        
+
         // 第二步：点击确认对话框中的"确定"按钮
         const confirmButtonSelectors = [
           EXCHANGE_WECHAT_SELECTORS.confirmButtonPath,
           EXCHANGE_WECHAT_SELECTORS.confirmButton,
-          '.exchange-tooltip .btn-box .boss-btn-primary',
+          ".exchange-tooltip .btn-box .boss-btn-primary",
           '.btn-box span.boss-btn-primary:contains("确定")',
-          'span.boss-btn-primary:contains("确定")'
+          'span.boss-btn-primary:contains("确定")',
         ];
-        
+
         let confirmClicked = false;
-        let usedConfirmSelector = '';
-        
+        let usedConfirmSelector = "";
+
         // 尝试点击确定按钮
         for (const selector of confirmButtonSelectors) {
           try {
@@ -152,13 +160,13 @@ export const zhipinExchangeWechatTool = () =>
               }
               return element ? { exists: true, visible: element.offsetParent !== null } : { exists: false };
             `;
-            
+
             const checkResult = await tools.puppeteer_evaluate.execute({ script: checkScript });
             const checkData = parseEvaluateResult(checkResult);
-            
+
             if (checkData?.exists && checkData?.visible) {
               // 如果是 :contains 选择器，需要用特殊方式点击
-              if (selector.includes(':contains')) {
+              if (selector.includes(":contains")) {
                 const clickScript = `
                   const buttons = document.querySelectorAll('span.boss-btn-primary');
                   for (const btn of buttons) {
@@ -174,7 +182,7 @@ export const zhipinExchangeWechatTool = () =>
                 if (clickData?.success) {
                   confirmClicked = true;
                   usedConfirmSelector = selector;
-                  console.log('Successfully clicked confirm button');
+                  console.log("Successfully clicked confirm button");
                   break;
                 }
               } else {
@@ -190,42 +198,41 @@ export const zhipinExchangeWechatTool = () =>
             console.log(`Failed to click confirm with selector ${selector}: ${error}`);
           }
         }
-        
+
         if (!confirmClicked) {
           return {
             success: false,
             error: '未找到确认对话框中的"确定"按钮',
             triedSelectors: confirmButtonSelectors,
             exchangeButtonClicked: true,
-            message: '已点击交换微信按钮，但未能找到确认按钮'
+            message: "已点击交换微信按钮，但未能找到确认按钮",
           };
         }
-        
+
         // 等待交换完成
         if (waitAfterExchange > 0) {
           await new Promise(resolve => setTimeout(resolve, waitAfterExchange));
         }
-        
+
         // 验证是否成功（可选）
         // 可以检查是否出现了成功提示或微信号显示
-        
+
         return {
           success: true,
-          message: '成功交换微信',
+          message: "成功交换微信",
           details: {
             exchangeButtonSelector: usedExchangeSelector,
             confirmButtonSelector: usedConfirmSelector,
-            waitTime: waitBetweenClicks + waitAfterExchange
-          }
+            waitTime: waitBetweenClicks + waitAfterExchange,
+          },
         };
-        
       } catch (error) {
-        console.error('Failed to exchange WeChat:', error);
-        
+        console.error("Failed to exchange WeChat:", error);
+
         return {
           success: false,
-          error: error instanceof Error ? error.message : 'Unknown error occurred',
-          message: '交换微信时发生错误'
+          error: error instanceof Error ? error.message : "Unknown error occurred",
+          message: "交换微信时发生错误",
         };
       }
     },
@@ -234,20 +241,22 @@ export const zhipinExchangeWechatTool = () =>
 /**
  * 解析 puppeteer_evaluate 的结果
  */
-function parseEvaluateResult(result: any): any {
+function parseEvaluateResult(result: unknown): Record<string, unknown> | null {
   try {
-    const mcpResult = result as any;
+    const mcpResult = result as { content?: Array<{ text?: string }> };
     if (mcpResult?.content?.[0]?.text) {
       const resultText = mcpResult.content[0].text;
-      const executionMatch = resultText.match(/Execution result:\s*\n([\s\S]*?)(\n\nConsole output|$)/);
-      
-      if (executionMatch && executionMatch[1].trim() !== 'undefined') {
+      const executionMatch = resultText.match(
+        /Execution result:\s*\n([\s\S]*?)(\n\nConsole output|$)/
+      );
+
+      if (executionMatch && executionMatch[1].trim() !== "undefined") {
         const jsonResult = executionMatch[1].trim();
-        return JSON.parse(jsonResult);
+        return JSON.parse(jsonResult) as Record<string, unknown>;
       }
     }
   } catch (e) {
-    console.error('Failed to parse evaluate result:', e);
+    console.error("Failed to parse evaluate result:", e);
   }
   return null;
 }

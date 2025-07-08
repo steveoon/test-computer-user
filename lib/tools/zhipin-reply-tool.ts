@@ -10,14 +10,14 @@ import { CandidateInfoSchema } from "@/lib/tools/zhipin/types";
 
 /**
  * Boss直聘智能回复工具
- * 
+ *
  * 功能特性：
  * - 🤖 根据候选人消息生成智能回复
  * - 📝 支持对话历史上下文
  * - 🏢 多品牌支持
  * - 🎯 16种回复场景分类
  * - 💬 自然语言生成
- * 
+ *
  * 使用场景：
  * - 招聘自动化回复
  * - 批量处理候选人咨询
@@ -47,46 +47,38 @@ export const zhipinReplyTool = (
       - 招聘聊天机器人
     `,
     parameters: z.object({
-      candidate_message: z
-        .string()
-        .describe("候选人发送的消息内容"),
-      
+      candidate_message: z.string().describe("候选人发送的消息内容"),
+
       conversation_history: z
-        .union([
-          z.array(z.string()),
-          z.string()
-        ])
+        .union([z.array(z.string()), z.string()])
         .optional()
         .describe("对话历史记录，用于提供上下文。可以是字符串数组或JSON字符串"),
-      
-      candidate_info: CandidateInfoSchema
-        .optional()
-        .describe("候选人基本信息，包括姓名、求职职位、年龄、经验、学历等"),
-      
-      brand: z
-        .string()
-        .optional()
-        .describe("指定品牌名称，如果不指定则使用默认品牌"),
-      
+
+      candidate_info: CandidateInfoSchema.optional().describe(
+        "候选人基本信息，包括姓名、求职职位、年龄、经验、学历等"
+      ),
+
+      brand: z.string().optional().describe("指定品牌名称，如果不指定则使用默认品牌"),
+
       include_stats: z
         .boolean()
         .optional()
         .default(false)
-        .describe("是否在响应中包含统计信息（门店数量、岗位数量等）")
+        .describe("是否在响应中包含统计信息（门店数量、岗位数量等）"),
     }),
-    
+
     execute: async (params, _context) => {
       const {
         candidate_message,
         conversation_history,
         candidate_info,
         brand,
-        include_stats = false
+        include_stats = false,
       } = params;
-      
+
       try {
         console.log("🤖 开始生成Boss直聘智能回复...");
-        
+
         // 处理对话历史参数
         let processedHistory: string[] = [];
         if (conversation_history) {
@@ -102,13 +94,13 @@ export const zhipinReplyTool = (
             processedHistory = conversation_history;
           }
         }
-        
+
         // 使用传入的品牌或默认品牌
         const effectiveBrand = brand || preferredBrand;
-        
+
         // 使用传入的模型配置或默认配置
         const effectiveModelConfig = modelConfig || DEFAULT_MODEL_CONFIG;
-        
+
         // 生成智能回复
         const replyResult = await generateSmartReplyWithLLM(
           candidate_message,
@@ -119,46 +111,51 @@ export const zhipinReplyTool = (
           replyPrompts,
           candidate_info
         );
-        
+
         console.log(`✅ 回复生成成功`);
         console.log(`📝 回复内容: ${replyResult.text}`);
         console.log(`🎯 回复类型: ${replyResult.replyType}`);
-        
+
         // 构建响应
-        let response: any = {
+        const response: {
+          reply: string;
+          replyType: string;
+          candidateMessage: string;
+          historyCount: number;
+          stats?: {
+            totalStores: number;
+            totalPositions: number;
+            brand: string;
+          };
+        } = {
           reply: replyResult.text,
           replyType: replyResult.replyType,
           candidateMessage: candidate_message,
-          historyCount: processedHistory.length
+          historyCount: processedHistory.length,
         };
-        
+
         // 如果需要包含统计信息
         if (include_stats) {
-          const storeDatabase = configData || await loadZhipinData(effectiveBrand);
+          const storeDatabase = configData || (await loadZhipinData(effectiveBrand));
           const totalPositions = storeDatabase.stores.reduce(
             (sum, store) => sum + store.positions.length,
             0
           );
-          
+
           response.stats = {
             totalStores: storeDatabase.stores.length,
             totalPositions: totalPositions,
-            brand: effectiveBrand || storeDatabase.defaultBrand
+            brand: effectiveBrand || storeDatabase.defaultBrand || "未知品牌",
           };
         }
-        
+
         return response;
-        
       } catch (error) {
         console.error("❌ 智能回复生成失败:", error);
-        throw new Error(
-          `智能回复生成失败: ${
-            error instanceof Error ? error.message : "未知错误"
-          }`
-        );
+        throw new Error(`智能回复生成失败: ${error instanceof Error ? error.message : "未知错误"}`);
       }
     },
-    
+
     experimental_toToolResultContent(result) {
       // 格式化输出结果
       let content = `✅ 智能回复已生成\n\n`;
@@ -166,16 +163,16 @@ export const zhipinReplyTool = (
       content += `🎯 回复类型: ${result.replyType}\n`;
       content += `💬 候选人消息: "${result.candidateMessage}"\n`;
       content += `📋 历史记录: ${result.historyCount}条\n`;
-      
+
       if (result.stats) {
         content += `\n📊 数据统计:\n`;
         content += `• 品牌: ${result.stats.brand}\n`;
         content += `• 门店数: ${result.stats.totalStores}家\n`;
         content += `• 岗位数: ${result.stats.totalPositions}个`;
       }
-      
+
       return [{ type: "text" as const, text: content }];
-    }
+    },
   });
 
 /**
@@ -190,19 +187,19 @@ export const createZhipinReplyTool = zhipinReplyTool;
 
 /**
  * 智能回复工具使用示例
- * 
+ *
  * ```typescript
  * // 1. 基础使用
  * const result = await zhipinReplyTool.execute({
  *   candidate_message: "你们还招人吗？"
  * });
- * 
+ *
  * // 2. 带对话历史
  * const result = await zhipinReplyTool.execute({
  *   candidate_message: "工资多少？",
  *   conversation_history: ["你好，请问贵公司还在招聘吗？", "是的，我们正在招聘前厅服务员"]
  * });
- * 
+ *
  * // 3. 指定品牌
  * const result = await zhipinReplyTool.execute({
  *   candidate_message: "有什么要求吗？",
@@ -213,18 +210,15 @@ export const createZhipinReplyTool = zhipinReplyTool;
  */
 export const ZHIPIN_REPLY_USAGE_EXAMPLES = {
   basic: {
-    candidate_message: "你们还招人吗？"
+    candidate_message: "你们还招人吗？",
   },
   withHistory: {
     candidate_message: "工资多少？",
-    conversation_history: [
-      "你好，请问贵公司还在招聘吗？",
-      "是的，我们正在招聘前厅服务员"
-    ]
+    conversation_history: ["你好，请问贵公司还在招聘吗？", "是的，我们正在招聘前厅服务员"],
   },
   withBrandAndStats: {
     candidate_message: "有什么要求吗？",
     brand: "蜀地源冒菜",
-    include_stats: true
-  }
+    include_stats: true,
+  },
 } as const;

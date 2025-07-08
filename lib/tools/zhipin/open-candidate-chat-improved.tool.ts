@@ -1,7 +1,7 @@
-import { tool } from 'ai';
-import { z } from 'zod';
-import { UNREAD_SELECTORS } from './constants';
-import { getPuppeteerMCPClient } from '@/lib/mcp/client-manager';
+import { tool } from "ai";
+import { z } from "zod";
+import { UNREAD_SELECTORS } from "./constants";
+import { getPuppeteerMCPClient } from "@/lib/mcp/client-manager";
 
 export const openCandidateChatImprovedTool = tool({
   description: `打开指定候选人的聊天窗口（改进版）
@@ -13,35 +13,25 @@ export const openCandidateChatImprovedTool = tool({
   - 返回详细的候选人信息
   - 使用更精确的选择器
   `,
-  
+
   parameters: z.object({
-    candidateName: z.string()
-      .optional()
-      .describe('要打开的候选人姓名（支持部分匹配）'),
-      
-    index: z.number()
-      .optional()
-      .describe('要打开的候选人索引（0开始，如果不指定姓名）'),
-      
-    preferUnread: z.boolean()
-      .optional()
-      .default(true)
-      .describe('是否优先选择有未读消息的候选人'),
-      
-    listOnly: z.boolean()
-      .optional()
-      .default(false)
-      .describe('仅列出候选人，不执行点击操作')
+    candidateName: z.string().optional().describe("要打开的候选人姓名（支持部分匹配）"),
+
+    index: z.number().optional().describe("要打开的候选人索引（0开始，如果不指定姓名）"),
+
+    preferUnread: z.boolean().optional().default(true).describe("是否优先选择有未读消息的候选人"),
+
+    listOnly: z.boolean().optional().default(false).describe("仅列出候选人，不执行点击操作"),
   }),
-  
+
   execute: async ({ candidateName, index, preferUnread = true, listOnly = false }) => {
     try {
       const client = await getPuppeteerMCPClient();
-      
+
       // 创建脚本 - 需要包含 return 语句
       const script = `
-          const candidateName = ${candidateName ? `'${candidateName}'` : 'null'};
-          const targetIndex = ${index !== undefined ? index : 'null'};
+          const candidateName = ${candidateName ? `'${candidateName}'` : "null"};
+          const targetIndex = ${index !== undefined ? index : "null"};
           const preferUnread = ${preferUnread};
           const listOnly = ${listOnly};
           
@@ -199,66 +189,67 @@ export const openCandidateChatImprovedTool = tool({
             };
           }
       `;
-      
+
       // 执行脚本
       const tools = await client.tools();
-      const toolName = 'puppeteer_evaluate';
-      
+      const toolName = "puppeteer_evaluate";
+
       if (!tools[toolName]) {
         throw new Error(`MCP tool ${toolName} not available`);
       }
-      
+
       const tool = tools[toolName];
       const result = await tool.execute({ script });
-      
+
       // 解析结果
-      const mcpResult = result as any;
+      const mcpResult = result as { content?: Array<{ text?: string }> };
       if (mcpResult?.content?.[0]?.text) {
         const resultText = mcpResult.content[0].text;
-        
+
         try {
           // 尝试从 "Execution result:" 后面提取实际结果
-          const executionMatch = resultText.match(/Execution result:\s*\n([\s\S]*?)(\n\nConsole output|$)/);
-          
-          if (executionMatch && executionMatch[1].trim() !== 'undefined') {
+          const executionMatch = resultText.match(
+            /Execution result:\s*\n([\s\S]*?)(\n\nConsole output|$)/
+          );
+
+          if (executionMatch && executionMatch[1].trim() !== "undefined") {
             const jsonResult = executionMatch[1].trim();
             const parsedResult = JSON.parse(jsonResult);
             return parsedResult;
           }
-          
+
           // 如果执行结果是 undefined，可能是脚本执行有问题
-          console.error('Script execution returned undefined');
+          console.error("Script execution returned undefined");
           return {
             success: false,
-            error: 'Script execution returned undefined',
-            rawResult: resultText
+            error: "Script execution returned undefined",
+            rawResult: resultText,
           };
         } catch (e) {
-          console.error('Failed to parse result:', e);
+          console.error("Failed to parse result:", e);
           return {
             success: false,
-            error: 'Failed to parse script result',
-            rawResult: resultText
+            error: "Failed to parse script result",
+            rawResult: resultText,
           };
         }
       }
-      
+
       return {
         success: false,
-        error: 'Unexpected result format',
-        rawResult: result
+        error: "Unexpected result format",
+        rawResult: result,
       };
-      
     } catch (error) {
-      console.error('Failed to open candidate chat:', error);
+      console.error("Failed to open candidate chat:", error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        message: '打开候选人聊天失败'
+        error: error instanceof Error ? error.message : "Unknown error",
+        message: "打开候选人聊天失败",
       };
     }
-  }
+  },
 });
 
 // 导出工具
-export const OPEN_CANDIDATE_CHAT_IMPROVED_ACTION = 'open_candidate_chat_improved';
+export const OPEN_CANDIDATE_CHAT_IMPROVED_ACTION = "open_candidate_chat_improved";

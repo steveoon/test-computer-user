@@ -156,7 +156,7 @@ export const useSyncStore = create<SyncState>()(
 
           try {
             await mergeAndSaveSyncData(result.results);
-            
+
             // 🔄 重新加载配置以确保所有组件获取最新数据
             await configStore.getState().loadConfig();
             console.log("✅ 配置已重新加载，所有组件将看到最新数据");
@@ -304,8 +304,8 @@ async function mergeAndSaveSyncData(syncResults: SyncResult[]): Promise<void> {
   // 合并所有同步结果的数据
   const allConvertedData: Partial<ZhipinData>[] = syncResults
     .filter(result => result.success && result.convertedData)
-    .map(result => result.convertedData!)
-    .filter((data): data is Partial<ZhipinData> => data !== undefined);
+    .map(result => result.convertedData)
+    .filter((data): data is Partial<ZhipinData> => data !== undefined && data !== null);
 
   if (allConvertedData.length === 0) {
     console.log("没有需要保存的转换数据");
@@ -351,8 +351,9 @@ async function mergeAndSaveSyncData(syncResults: SyncResult[]): Promise<void> {
 
     // 智能合并品牌配置：保留现有品牌的话术模板，只更新其他配置
     if (data.brands) {
-      Object.keys(data.brands).forEach(brandName => {
-        const newBrandConfig = data.brands![brandName];
+      const brands = data.brands;
+      Object.keys(brands).forEach(brandName => {
+        const newBrandConfig = brands[brandName];
         const existingBrandConfig = mergedBrands[brandName];
 
         if (existingBrandConfig) {

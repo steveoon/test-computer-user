@@ -5,7 +5,7 @@ import { CHAT_DETAILS_SELECTORS } from "./constants";
 
 /**
  * 获取聊天详情工具
- * 
+ *
  * 功能：
  * - 获取候选人基本信息（姓名、职位、年龄、经验等）
  * - 获取完整的聊天记录
@@ -25,20 +25,20 @@ export const zhipinGetChatDetailsTool = () =>
     注意：
     - 需要先打开候选人聊天窗口
     - 返回结构化的候选人信息和聊天记录`,
-    
+
     parameters: z.object({
       includeHtml: z.boolean().optional().default(false).describe("是否包含原始HTML（用于调试）"),
     }),
-    
+
     execute: async ({ includeHtml = false }) => {
       try {
         const client = await getPuppeteerMCPClient();
         const tools = await client.tools();
-        
+
         if (!tools.puppeteer_evaluate) {
-          throw new Error('MCP tool puppeteer_evaluate not available');
+          throw new Error("MCP tool puppeteer_evaluate not available");
         }
-        
+
         // 创建获取聊天详情的脚本
         const script = `
           // 获取候选人基本信息
@@ -171,67 +171,70 @@ export const zhipinGetChatDetailsTool = () =>
             extractedAt: new Date().toISOString()
           };
         `;
-        
+
         // 执行脚本
         const result = await tools.puppeteer_evaluate.execute({ script });
-        
+
         // 解析结果
-        const mcpResult = result as any;
+        const mcpResult = result as { content?: Array<{ text?: string }> };
         if (mcpResult?.content?.[0]?.text) {
           const resultText = mcpResult.content[0].text;
-          
+
           try {
-            const executionMatch = resultText.match(/Execution result:\s*\n([\s\S]*?)(\n\nConsole output|$)/);
-            
-            if (executionMatch && executionMatch[1].trim() !== 'undefined') {
+            const executionMatch = resultText.match(
+              /Execution result:\s*\n([\s\S]*?)(\n\nConsole output|$)/
+            );
+
+            if (executionMatch && executionMatch[1].trim() !== "undefined") {
               const jsonResult = executionMatch[1].trim();
               const parsedResult = JSON.parse(jsonResult);
-              
+
               if (parsedResult.candidateInfoFound || parsedResult.chatContainerFound) {
                 return {
                   success: true,
-                  message: '成功获取聊天详情',
+                  message: "成功获取聊天详情",
                   data: parsedResult,
                   summary: {
-                    candidateName: parsedResult.candidateInfo?.name || '未知',
-                    candidatePosition: parsedResult.candidateInfo?.position || '未知职位',
+                    candidateName: parsedResult.candidateInfo?.name || "未知",
+                    candidatePosition: parsedResult.candidateInfo?.position || "未知职位",
                     totalMessages: parsedResult.stats?.totalMessages || 0,
-                    lastMessageTime: parsedResult.chatMessages?.[parsedResult.chatMessages.length - 1]?.time || '无'
+                    lastMessageTime:
+                      parsedResult.chatMessages?.[parsedResult.chatMessages.length - 1]?.time ||
+                      "无",
                   },
-                  formattedHistory: parsedResult.formattedHistory || []
+                  formattedHistory: parsedResult.formattedHistory || [],
                 };
               } else {
                 return {
                   success: false,
-                  error: '未找到聊天窗口或候选人信息',
-                  message: '请确保已打开候选人聊天窗口'
+                  error: "未找到聊天窗口或候选人信息",
+                  message: "请确保已打开候选人聊天窗口",
                 };
               }
             }
           } catch (e) {
-            console.error('Failed to parse result:', e);
+            console.error("Failed to parse result:", e);
           }
-          
+
           return {
             success: false,
-            error: 'Failed to parse chat details',
-            rawResult: includeHtml ? resultText : undefined
+            error: "Failed to parse chat details",
+            rawResult: includeHtml ? resultText : undefined,
           };
         }
-        
+
         return {
           success: false,
-          error: 'Unexpected result format',
-          message: '获取聊天详情时出现未知错误'
+          error: "Unexpected result format",
+          message: "获取聊天详情时出现未知错误",
         };
-        
       } catch (error) {
-        console.error('Failed to get chat details:', error);
-        
+        console.error("Failed to get chat details:", error);
+
         return {
           success: false,
-          error: error instanceof Error ? error.message : 'Unknown error occurred',
-          message: '获取聊天详情时发生错误'
+          error: error instanceof Error ? error.message : "Unknown error occurred",
+          message: "获取聊天详情时发生错误",
         };
       }
     },
