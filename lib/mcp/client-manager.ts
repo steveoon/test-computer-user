@@ -64,10 +64,18 @@ class MCPClientManager {
    */
   private initializeClientConfigs(): void {
     // Puppeteer MCP 配置
+    // 注意：puppeteer-mcp-server 通过 npx 运行，会在首次运行时自动下载 Chromium
+    // 不需要在 Docker 容器中预装 Chromium
     const puppeteerConfig = validateMCPClientConfig({
       name: 'puppeteer',
       command: 'npx',
       args: ['-y', 'puppeteer-mcp-server'],
+      env: {
+        NODE_ENV: process.env.NODE_ENV || 'production',
+        LOG_LEVEL: 'error',
+        // 尝试禁用文件日志记录
+        NO_FILE_LOGGING: 'true',
+      },
       description: 'Puppeteer浏览器自动化服务',
       enabled: true,
     });

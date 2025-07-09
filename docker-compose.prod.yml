@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  app:
+    # 生产环境只使用镜像，不构建
+    image: ghcr.io/steveoon/ai-computer-use:latest
+    container_name: ai-computer-use
+    ports:
+      - "4000:3000"
+    environment:
+      # AI Provider Keys (至少需要一个)
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+      - DASHSCOPE_API_KEY=${DASHSCOPE_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      
+      # E2B Desktop
+      - E2B_API_KEY=${E2B_API_KEY}
+      
+      # Supabase (可选)
+      - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
+      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+      
+      # Feishu Integration (可选)
+      - FEISHU_APP_ID=${FEISHU_APP_ID}
+      - FEISHU_APP_SECRET=${FEISHU_APP_SECRET}
+      - FEISHU_BOT_WEBHOOK=${FEISHU_BOT_WEBHOOK}
+      
+      # WeChat Bot Integration (可选)
+      - WECHAT_BOT_ACCESS_TOKEN=${WECHAT_BOT_ACCESS_TOKEN}
+      - WECHAT_BOT_WEBHOOK=${WECHAT_BOT_WEBHOOK}
+      
+      # Duliday Integration
+      - DULIDAY_TOKEN=${DULIDAY_TOKEN}
+      
+      # Puppeteer Configuration
+      # Puppeteer MCP Server 会通过 npx 自动管理 Chromium
+      
+      # Node Environment
+      - NODE_ENV=production
+    # volumes:
+    #   # 可选：如果需要持久化日志，可以挂载日志目录
+    #   - ./logs:/app/logs
+    #   # 可选：如果需要持久化配置数据
+    #   - ./data:/app/data
+    restart: always
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

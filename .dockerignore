@@ -1,0 +1,31 @@
+Dockerfile
+.dockerignore
+node_modules
+npm-debug.log
+README.md
+.next
+.next.cache
+docker
+.git
+.gitignore
+
+# 环境变量文件 - 绝对不要包含在镜像中
+.env
+.env.*
+.env.local
+.env.development
+.env.production
+.env.test
+
+# 其他敏感文件
+*.pem
+*.key
+.DS_Store
+
+# 日志文件
+logs
+*.log
+
+# 临时文件
+*.tmp
+*.temp

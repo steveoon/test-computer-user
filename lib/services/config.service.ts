@@ -14,12 +14,17 @@ import type {
   CONFIG_STORAGE_KEY,
 } from "@/types";
 
-// 创建专门的配置存储实例
-const configStorage = localforage.createInstance({
-  name: "ai-sdk-computer-use",
-  storeName: "app_config",
-  description: "应用配置数据存储",
-});
+// 检查是否在客户端环境
+const isClient = typeof window !== "undefined";
+
+// 创建专门的配置存储实例（仅在客户端）
+const configStorage = isClient
+  ? localforage.createInstance({
+      name: "ai-sdk-computer-use",
+      storeName: "app_config",
+      description: "应用配置数据存储",
+    })
+  : null;
 
 /**
  * 核心配置服务实现
@@ -31,6 +36,11 @@ class AppConfigService implements ConfigService {
    * 获取完整配置数据
    */
   async getConfig(): Promise<AppConfigData | null> {
+    if (!isClient || !configStorage) {
+      console.log("ℹ️ 服务器端环境，跳过配置加载");
+      return null;
+    }
+    
     try {
       const config = await configStorage.getItem<AppConfigData>(this.storageKey);
 
@@ -51,6 +61,11 @@ class AppConfigService implements ConfigService {
    * 保存完整配置数据
    */
   async saveConfig(data: AppConfigData): Promise<void> {
+    if (!isClient || !configStorage) {
+      console.log("ℹ️ 服务器端环境，跳过配置保存");
+      return;
+    }
+    
     try {
       // 更新元信息
       const configWithMetadata: AppConfigData = {
@@ -134,6 +149,11 @@ class AppConfigService implements ConfigService {
    * 清除所有配置数据
    */
   async clearConfig(): Promise<void> {
+    if (!isClient || !configStorage) {
+      console.log("ℹ️ 服务器端环境，跳过配置清除");
+      return;
+    }
+    
     try {
       await configStorage.removeItem(this.storageKey);
       console.log("✅ 配置数据已清除");
@@ -147,6 +167,10 @@ class AppConfigService implements ConfigService {
    * 检查是否已配置
    */
   async isConfigured(): Promise<boolean> {
+    if (!isClient || !configStorage) {
+      return false;
+    }
+    
     try {
       const config = await configStorage.getItem<AppConfigData>(this.storageKey);
       return config !== null;

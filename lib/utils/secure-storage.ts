@@ -6,22 +6,31 @@ import type { StateStorage } from "zustand/middleware";
  * 使用 IndexedDB 存储敏感数据，比 localStorage 更安全
  */
 class SecureStorage {
-  private storage: LocalForage;
+  private storage: LocalForage | null = null;
+  private isClient: boolean;
 
   constructor(storeName: string) {
-    this.storage = localforage.createInstance({
-      name: "ai-sdk-secure-storage",
-      storeName: storeName,
-      driver: [
-        localforage.INDEXEDDB,
-        localforage.WEBSQL,
-        localforage.LOCALSTORAGE, // 后备方案
-      ],
-      description: "安全存储用户认证状态",
-    });
+    this.isClient = typeof window !== "undefined";
+    
+    if (this.isClient) {
+      this.storage = localforage.createInstance({
+        name: "ai-sdk-secure-storage",
+        storeName: storeName,
+        driver: [
+          localforage.INDEXEDDB,
+          localforage.WEBSQL,
+          localforage.LOCALSTORAGE, // 后备方案
+        ],
+        description: "安全存储用户认证状态",
+      });
+    }
   }
 
   async getItem(key: string): Promise<string | null> {
+    if (!this.isClient || !this.storage) {
+      return null;
+    }
+    
     try {
       const value = await this.storage.getItem<string>(key);
       return value;
@@ -32,6 +41,10 @@ class SecureStorage {
   }
 
   async setItem(key: string, value: string): Promise<void> {
+    if (!this.isClient || !this.storage) {
+      return;
+    }
+    
     try {
       await this.storage.setItem(key, value);
     } catch (error) {
@@ -41,6 +54,10 @@ class SecureStorage {
   }
 
   async removeItem(key: string): Promise<void> {
+    if (!this.isClient || !this.storage) {
+      return;
+    }
+    
     try {
       await this.storage.removeItem(key);
     } catch (error) {
@@ -50,6 +67,10 @@ class SecureStorage {
   }
 
   async clear(): Promise<void> {
+    if (!this.isClient || !this.storage) {
+      return;
+    }
+    
     try {
       await this.storage.clear();
     } catch (error) {
