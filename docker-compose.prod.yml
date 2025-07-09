@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   app:
@@ -12,34 +12,30 @@ services:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
       - DASHSCOPE_API_KEY=${DASHSCOPE_API_KEY}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
       - GEMINI_API_KEY=${GEMINI_API_KEY}
-      
+
       # E2B Desktop
       - E2B_API_KEY=${E2B_API_KEY}
-      
+
       # Supabase (可选)
       - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
       - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
-      
+
       # Feishu Integration (可选)
-      - FEISHU_APP_ID=${FEISHU_APP_ID}
-      - FEISHU_APP_SECRET=${FEISHU_APP_SECRET}
       - FEISHU_BOT_WEBHOOK=${FEISHU_BOT_WEBHOOK}
-      
+
       # WeChat Bot Integration (可选)
-      - WECHAT_BOT_ACCESS_TOKEN=${WECHAT_BOT_ACCESS_TOKEN}
       - WECHAT_BOT_WEBHOOK=${WECHAT_BOT_WEBHOOK}
-      
+
       # Duliday Integration
       - DULIDAY_TOKEN=${DULIDAY_TOKEN}
-      
+
       # Puppeteer Configuration
       # Puppeteer MCP Server 会通过 npx 自动管理 Chromium
-      
+
       # Node Environment
       - NODE_ENV=production
     # volumes:

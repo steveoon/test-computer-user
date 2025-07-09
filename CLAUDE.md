@@ -15,11 +15,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `pnpm format:check` - Check code formatting
 - `npx tsc --noEmit` - Run TypeScript type checking without emitting files
 
+### Docker Deployment Commands
+
+- `./scripts/deploy.sh` - Automated Docker build and push to GitHub Container Registry
+- `docker compose -f docker-compose.local.yml up -d` - Run locally on macOS (ARM64)
+- `docker compose -f docker-compose.yml up -d` - Build and run production image (AMD64)
+- `docker compose -f docker-compose.prod.yml up -d` - Deploy on VPS (production)
+
 ### API Testing & Debugging
 
 - Visit `/test-llm-reply` - Web interface for testing LLM smart reply functionality
 - `POST /api/test-llm-reply` - API endpoint for programmatic testing
 - `GET /api/diagnose` - E2B diagnostic tools for troubleshooting sandbox issues
+- `GET /api/health` - Health check endpoint for monitoring and load balancers
 - Visit `/admin/settings` - Configuration management interface
 - Visit `/admin/config` - Legacy configuration interface (redirects to settings)
 
@@ -165,7 +173,7 @@ Required environment variables:
 # AI Providers (at least one required)
 ANTHROPIC_API_KEY=your_anthropic_key
 DASHSCOPE_API_KEY=your_dashscope_key  # For Qwen models
-OPENAI_API_KEY=your_openai_key  # Optional fallback
+DEEPSEEK_API_KEY=your_deepseek_key  # Optional
 OPENROUTER_API_KEY=your_openrouter_key  # Optional
 GEMINI_API_KEY=your_google_gemini_key  # Optional
 
@@ -177,12 +185,40 @@ NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_key
 
 # Feishu Integration (Optional)
-FEISHU_APP_ID=your_feishu_app_id
-FEISHU_APP_SECRET=your_feishu_app_secret
+FEISHU_BOT_WEBHOOK=your_feishu_webhook_url
 
 # WeChat Bot Integration (Optional)
-WECHAT_BOT_ACCESS_TOKEN=your_wechat_bot_token
+WECHAT_BOT_WEBHOOK=your_wechat_webhook_url
+
+# Duliday Integration (Optional)
+DULIDAY_TOKEN=your_duliday_token
+
+# MCP Server APIs (Optional)
+EXA_API_KEY=your_exa_search_key
 ```
+
+## Docker Deployment Architecture
+
+The application supports multi-platform Docker deployment with three distinct configurations:
+
+### Docker Configuration Files
+
+- **`docker-compose.yml`** - Production image build (linux/amd64), used for CI/CD and VPS deployment
+- **`docker-compose.local.yml`** - Local development on macOS (ARM64), avoids Puppeteer architecture conflicts
+- **`docker-compose.prod.yml`** - VPS production deployment, only pulls pre-built images
+
+### Deployment Workflow
+
+1. **Local Development**: Use `docker-compose.local.yml` or run `pnpm dev` directly
+2. **Production Build**: Use `./scripts/deploy.sh` to build and push to GitHub Container Registry
+3. **VPS Deployment**: Use `docker-compose.prod.yml` with environment variables from `.env`
+
+### Security Considerations
+
+- `.env` files are excluded from Docker images via `.dockerignore`
+- Build-time variables (`NEXT_PUBLIC_*`) are injected during build
+- Runtime variables (API keys) are passed via environment variables
+- Health check endpoint `/api/health` for monitoring and load balancers
 
 ## Data Flow Patterns
 
@@ -192,6 +228,7 @@ WECHAT_BOT_ACCESS_TOKEN=your_wechat_bot_token
 4. **Model Selection**: `useModelConfigStore()` → Dynamic provider selection → AI SDK execution
 5. **Authentication Flow**: Middleware → Supabase Auth → Session Cookie → Protected Routes
 6. **Sync Architecture**: External API → Server-side fetch → Client-side persistence via ConfigService
+7. **Docker Deployment**: Local build → GitHub Container Registry → VPS pull and run
 
 ## Important Development Guidelines
 
@@ -304,3 +341,11 @@ The new sync system demonstrates clean architecture:
 - Server-side tools receive config data as parameters
 - Check `configData` is passed from route handler to tool
 - Verify environment variables are loaded correctly
+
+### Docker Deployment Issues
+
+- **macOS Puppeteer errors**: Use `docker-compose.local.yml` instead of `docker-compose.yml`
+- **Environment variable warnings**: Check `.env` file exists in same directory as docker-compose file
+- **Image architecture conflicts**: Ensure correct docker-compose file for your platform
+- **Container health checks**: Use `curl http://localhost:PORT/api/health` to verify service
+- **VPS deployment**: Always use `docker-compose.prod.yml` with pre-built images from GitHub Container Registry
