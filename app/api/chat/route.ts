@@ -7,6 +7,7 @@ import { weChatBotTool } from "@/lib/tools/wechat-bot-tool";
 import { jobPostingGeneratorTool } from "@/lib/tools/job-posting-generator-tool";
 import { zhipinReplyTool } from "@/lib/tools/zhipin-reply-tool";
 import { zhipinTools } from "@/lib/tools/zhipin";
+import { filterToolsBySystemPrompt } from "@/lib/tools/tool-filter";
 import { prunedMessages, shouldCleanupSandbox } from "@/lib/utils";
 import { getDynamicRegistry } from "@/lib/model-registry/dynamic-registry";
 import { getBossZhipinSystemPrompt } from "@/lib/loaders/system-prompts.loader";
@@ -120,36 +121,42 @@ export async function POST(req: Request) {
       )}KB (节省 ${savedPercent}%) | 消息数: ${messages.length} -> ${processedMessages.length}`
     );
 
+    // 定义所有可用的工具
+    const allTools = {
+      computer: computerTool(
+        sandboxId,
+        preferredBrand,
+        modelConfig || DEFAULT_MODEL_CONFIG,
+        configData, // 传递配置数据
+        replyPrompts // 传递回复指令
+      ),
+      bash: bashTool(sandboxId),
+      feishu: feishuBotTool(),
+      wechat: weChatBotTool(),
+      job_posting_generator: jobPostingGeneratorTool(configData),
+      zhipin_reply_generator: zhipinReplyTool(
+        preferredBrand,
+        modelConfig || DEFAULT_MODEL_CONFIG,
+        configData,
+        replyPrompts
+      ),
+      puppeteer: puppeteerTool(),
+      // Zhipin automation tools
+      zhipin_get_unread_candidates_improved: zhipinTools.getUnreadCandidatesImproved,
+      zhipin_open_candidate_chat_improved: zhipinTools.openCandidateChatImproved,
+      zhipin_send_message: zhipinTools.sendMessage(),
+      zhipin_get_chat_details: zhipinTools.getChatDetails(),
+      zhipin_exchange_wechat: zhipinTools.exchangeWechat(),
+    };
+
+    // 根据系统提示词过滤工具
+    const filteredTools = filterToolsBySystemPrompt(allTools, promptType);
+
     const result = streamText({
       model: dynamicRegistry.languageModel(chatModel), // 使用配置的模型
       system: systemPrompt,
       messages: processedMessages,
-      tools: {
-        computer: computerTool(
-          sandboxId,
-          preferredBrand,
-          modelConfig || DEFAULT_MODEL_CONFIG,
-          configData, // 传递配置数据
-          replyPrompts // 传递回复指令
-        ),
-        bash: bashTool(sandboxId),
-        feishu: feishuBotTool(),
-        wechat: weChatBotTool(),
-        job_posting_generator: jobPostingGeneratorTool(configData),
-        zhipin_reply_generator: zhipinReplyTool(
-          preferredBrand,
-          modelConfig || DEFAULT_MODEL_CONFIG,
-          configData,
-          replyPrompts
-        ),
-        puppeteer: puppeteerTool(),
-        // Zhipin automation tools
-        zhipin_get_unread_candidates_improved: zhipinTools.getUnreadCandidatesImproved,
-        zhipin_open_candidate_chat_improved: zhipinTools.openCandidateChatImproved,
-        zhipin_send_message: zhipinTools.sendMessage(),
-        zhipin_get_chat_details: zhipinTools.getChatDetails(),
-        zhipin_exchange_wechat: zhipinTools.exchangeWechat(),
-      },
+      tools: filteredTools,
       providerOptions: {
         anthropic: { cacheControl: { type: "ephemeral" } },
       },
