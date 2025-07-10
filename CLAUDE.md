@@ -33,6 +33,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Available AI Tools
 
+- **bash** - Execute bash commands with safety features
+  - E2B sandbox mode: Auto-executes in isolated environment when sandboxId present
+  - Local mode: Returns command preview with copy button for manual execution
+  - Built-in dangerous command blacklist (rm -rf /, dd if=, etc.)
+  - Production environment blocks local execution for safety
 - **job_posting_generator** - Generates formatted job vacancy messages for WeChat groups
   - Supports position types: 前厅, 后厨, 洗碗, 早班
   - Automatically extracts and formats store information

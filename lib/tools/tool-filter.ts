@@ -16,6 +16,7 @@ export type SystemPromptType =
 // 定义工具分组
 const TOOL_GROUPS = {
   // 通用工具 - 所有场景都可用
+  // bash: 在 E2B 模式下执行沙箱命令，在本地模式下执行本地命令（开发环境下会显示警告）
   universal: ["bash", "feishu", "wechat"],
   
   // E2B桌面自动化工具
