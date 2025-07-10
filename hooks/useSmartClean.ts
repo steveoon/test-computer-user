@@ -26,10 +26,11 @@ export function useSmartClean({
   envLimits,
   envInfo,
 }: UseSmartCleanProps) {
-  // 🖼️ 智能图片清理 - 移除历史图片，只保留最近的2个
+  // 🖼️ 智能图片清理 - 移除历史图片，保留最近的5个
   const cleanHistoricalImages = useCallback(() => {
     let imageCount = 0;
     const imageIndices: number[] = [];
+    const keepImageCount = 5; // 增加保留的图片数量
     
     // 统计图片数量和位置（从后往前遍历）
     for (let i = messages.length - 1; i >= 0; i--) {
@@ -40,7 +41,7 @@ export function useSmartClean({
               part.toolInvocation?.state === 'result' &&
               part.toolInvocation?.result?.type === 'image') {
             imageCount++;
-            if (imageCount > 2) {
+            if (imageCount > keepImageCount) {
               imageIndices.push(i);
             }
           }
@@ -56,11 +57,11 @@ export function useSmartClean({
     // 清理包含历史图片的消息
     const cleanedMessages = messages.filter((_, index) => !imageIndices.includes(index));
     
-    console.log(`🖼️ 清理了${imageIndices.length}条包含历史图片的消息，保留最近的2张图片`);
+    console.log(`🖼️ 清理了${imageIndices.length}条包含历史图片的消息，保留最近的${keepImageCount}张图片`);
     setMessages(cleanedMessages);
     
     toast.success(`已清理${imageIndices.length}张历史图片`, {
-      description: "保留了最近的2张图片，请重新提交您的请求",
+      description: `保留了最近的${keepImageCount}张图片，请重新提交您的请求`,
       richColors: true,
       position: "top-center",
       duration: 4000,
@@ -182,7 +183,8 @@ export function useSmartClean({
   const checkCleanThreshold = useCallback(() => {
     const messageCount = messages.length;
 
-    if (messageCount > 0 && messageCount % 8 === 0) {
+    // 改为每16条消息检查一次，减少检查频率
+    if (messageCount > 0 && messageCount % 16 === 0) {
       console.log(`📝 对话已达到${messageCount}条消息`);
 
       // 🚨 环境自适应自动清理
@@ -194,35 +196,24 @@ export function useSmartClean({
         return;
       }
 
-      // 🟡 环境自适应强烈建议
-      if (messageCount >= envLimits.warningMessageCount + 10) {
+      // 🟡 只在接近自动清理阈值时才提示
+      if (messageCount >= envLimits.autoCleanThreshold - 10) {
         toast.warning("对话历史较长", {
-          description: `当前${messageCount}条消息，建议清理以适配${envInfo.environment}环境`,
+          description: `当前${messageCount}条消息，接近系统限制`,
           richColors: true,
           position: "top-center",
-          duration: 8000,
+          duration: 5000,
           action: {
             label: "立即清理",
             onClick: () => smartClean(false),
           },
         });
       }
-      // 🟢 环境自适应温和提示
-      else if (messageCount >= envLimits.warningMessageCount) {
-        toast.info("对话历史较长", {
-          description: `当前${messageCount}条消息，建议适时清理`,
-          richColors: true,
-          position: "top-center",
-          action: {
-            label: "智能清理",
-            onClick: () => smartClean(false),
-          },
-        });
-      }
+      // 移除温和提示，减少用户干扰
     }
   }, [messages.length, smartClean, envLimits, envInfo]);
 
-  // 预检查消息大小
+  // 预检查消息大小 - 仅用于日志记录，不再主动触发清理
   const checkMessageSize = useCallback(() => {
     const messageSize = JSON.stringify(messages).length;
     const estimatedSizeMB = messageSize / (1024 * 1024);
@@ -232,39 +223,18 @@ export function useSmartClean({
       `📊 消息历史大小: ${estimatedSizeMB.toFixed(2)}MB (${messageCount}条消息)`
     );
 
-    // 🚨 环境自适应自动清理阈值
+    // 仅记录日志，不再自动清理或显示提示
     if (
       estimatedSizeMB > envLimits.maxSizeMB ||
       messageCount > envLimits.maxMessageCount
     ) {
       console.warn(
-        `🔄 检测到消息历史超过${envInfo.environment}环境限制，执行自动清理`
+        `⚠️ 消息历史超过${envInfo.environment}环境建议限制，但不会自动清理`
       );
-      console.log(`📊 当前环境: ${envInfo.description}`);
-      return smartClean(true); // 自动清理
     }
 
-    // 🟡 环境自适应警告阈值
-    else if (
-      estimatedSizeMB > envLimits.warningSizeMB ||
-      messageCount > envLimits.warningMessageCount
-    ) {
-      console.warn("⚠️ 消息历史可能过大，建议清理");
-      toast.warning("对话历史较长，可能影响响应速度", {
-        description: `当前${messageCount}条消息，${estimatedSizeMB.toFixed(
-          2
-        )}MB (${envInfo.environment}环境)`,
-        richColors: true,
-        position: "top-center",
-        action: {
-          label: "智能清理",
-          onClick: () => smartClean(false),
-        },
-      });
-    }
-
-    return false;
-  }, [messages, envLimits, envInfo, smartClean]);
+    return false; // 始终返回 false，不触发清理
+  }, [messages, envLimits, envInfo]);
 
   return {
     smartClean,

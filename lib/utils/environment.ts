@@ -19,21 +19,14 @@ export interface EnvironmentLimits {
 export const detectEnvironment = () => {
   /* 服务端检测 */
   if (typeof process !== "undefined") {
-    if (
-      process.env.VERCEL_ENV ||
-      process.env.VERCEL_TARGET_ENV ||
-      process.env.VERCEL
-    ) {
+    if (process.env.VERCEL_ENV || process.env.VERCEL_TARGET_ENV || process.env.VERCEL) {
       return "vercel";
     }
   }
 
   /* 浏览器端检测（公开变量） */
   if (typeof process !== "undefined") {
-    if (
-      process.env.NEXT_PUBLIC_VERCEL_ENV ||
-      process.env.NEXT_PUBLIC_VERCEL_TARGET_ENV
-    ) {
+    if (process.env.NEXT_PUBLIC_VERCEL_ENV || process.env.NEXT_PUBLIC_VERCEL_TARGET_ENV) {
       return "vercel";
     }
   }
@@ -71,11 +64,11 @@ export const getEnvironmentLimits = (): EnvironmentLimits => {
   switch (env) {
     case "vercel":
       return {
-        maxMessageCount: 25, // Vercel 严格限制
-        maxSizeMB: 3, // Vercel 请求大小限制
-        warningMessageCount: 12, // 早期警告
-        warningSizeMB: 1.5, // 早期警告
-        autoCleanThreshold: 40, // 自动清理阈值
+        maxMessageCount: 50, // 提高 Vercel 限制，避免过早触发
+        maxSizeMB: 4.5, // 提高请求大小限制，接近 Vercel 实际限制
+        warningMessageCount: 30, // 推迟警告时机
+        warningSizeMB: 3, // 推迟警告时机
+        autoCleanThreshold: 60, // 提高自动清理阈值
         compressionTargetKB: 120, // 图片压缩目标
         compressionMaxKB: 150, // 图片压缩上限
       };
@@ -94,11 +87,11 @@ export const getEnvironmentLimits = (): EnvironmentLimits => {
     default:
       // 未知环境使用保守设置
       return {
-        maxMessageCount: 30,
-        maxSizeMB: 4,
-        warningMessageCount: 20,
-        warningSizeMB: 2,
-        autoCleanThreshold: 50,
+        maxMessageCount: 60,
+        maxSizeMB: 6,
+        warningMessageCount: 40,
+        warningSizeMB: 5,
+        autoCleanThreshold: 80,
         compressionTargetKB: 150,
         compressionMaxKB: 200,
       };

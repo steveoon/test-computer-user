@@ -127,7 +127,6 @@ export function useCustomChat({
     clearMessages,
     handlePayloadTooLargeError,
     checkCleanThreshold,
-    checkMessageSize,
   } = useSmartClean({
     messages,
     setMessages,
@@ -268,15 +267,7 @@ export function useCustomChat({
         return;
       }
 
-      // 预防性检查
-      const shouldClean = checkMessageSize();
-      if (shouldClean) {
-        event.preventDefault();
-        setTimeout(() => {
-          handleSubmit(event);
-        }, 500);
-        return;
-      }
+      // 移除预防性检查，只在真正遇到错误时才清理
 
       if (error != null) {
         console.log("Removing last message due to error before retry");
@@ -294,7 +285,6 @@ export function useCustomChat({
     },
     [
       isAuthenticated,
-      checkMessageSize,
       error,
       handleSubmit,
       messages,
