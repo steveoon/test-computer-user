@@ -48,11 +48,12 @@ export class DulidaySyncService {
   }
 
   /**
-   * 从 Duliday API 获取岗位列表
+   * 从 Duliday API 获取岗位列表（带超时和重试机制）
    */
   async fetchJobList(
     organizationIds: number[],
-    pageSize: number = 100
+    pageSize: number = 100,
+    retryCount: number = 0
   ): Promise<DulidayRaw.ListResponse> {
     const requestBody = {
       organizationIds,
@@ -62,15 +63,24 @@ export class DulidaySyncService {
       supportSupplier: null,
     };
 
+    // 创建 AbortController 用于超时控制
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30秒超时
+
     try {
       const response = await fetch(DULIDAY_LIST_ENDPOINT, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Duliday-Token": this.dulidayToken,
+          // Node.js fetch 会自动处理 keep-alive，不需要手动设置
         },
         body: JSON.stringify(requestBody),
+        signal: controller.signal,
+        // Node.js 18+ 的 fetch 自动处理连接管理，不需要自定义 agent
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         throw new Error(
@@ -88,6 +98,28 @@ export class DulidaySyncService {
         throw new Error("Invalid API response format");
       }
     } catch (error) {
+      clearTimeout(timeoutId);
+      
+      // 处理不同类型的错误
+      if (error instanceof Error) {
+        // 连接被重置或中断的错误
+        if (error.message.includes('ECONNRESET') || 
+            error.message.includes('ETIMEDOUT') ||
+            error.message.includes('EPIPE') ||
+            error.name === 'AbortError') {
+          
+          // 最多重试3次
+          if (retryCount < 3) {
+            console.warn(`连接错误，正在重试 (${retryCount + 1}/3)...`, error.message);
+            // 延迟后重试，避免过快的重试
+            await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
+            return this.fetchJobList(organizationIds, pageSize, retryCount + 1);
+          }
+          
+          throw new Error(`网络连接错误（已重试${retryCount}次）: ${error.message}`);
+        }
+      }
+      
       console.error("Failed to fetch job list from Duliday API:", error);
       throw error;
     }
@@ -223,23 +255,34 @@ export class DulidaySyncService {
    * 验证 Duliday Token 是否有效
    */
   async validateToken(): Promise<boolean> {
+    // 创建 AbortController 用于超时控制
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15秒超时（验证请求可以更短）
+
     try {
       const response = await fetch(DULIDAY_LIST_ENDPOINT, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Duliday-Token": this.dulidayToken,
+          // Node.js fetch 会自动处理 keep-alive，不需要手动设置
         },
         body: JSON.stringify({
           organizationIds: [1], // 使用一个测试的组织ID
           pageNum: 0,
           pageSize: 1,
         }),
+        signal: controller.signal,
+        // Node.js 18+ 的 fetch 自动处理连接管理，不需要自定义 agent
       });
+
+      clearTimeout(timeoutId);
 
       // 如果返回 401 或 403，说明 token 无效
       return ![401, 403].includes(response.status);
-    } catch {
+    } catch (error) {
+      clearTimeout(timeoutId);
+      console.warn("Token validation failed:", error);
       return false;
     }
   }
