@@ -7,6 +7,11 @@ services:
     container_name: ai-computer-use
     ports:
       - "4000:3000"
+    # 添加 Chrome 运行所需的安全配置
+    cap_add:
+      - SYS_ADMIN
+    security_opt:
+      - seccomp:unconfined
     environment:
       # AI Provider Keys (至少需要一个)
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
@@ -44,6 +49,14 @@ services:
     #   # 可选：如果需要持久化配置数据
     #   - ./data:/app/data
     restart: always
+    # 网络性能优化配置
+    sysctls:
+      - net.core.somaxconn=1024
+      - net.ipv4.tcp_keepalive_time=600
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/api/health"]
       interval: 30s

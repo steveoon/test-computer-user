@@ -63,9 +63,20 @@ class MCPClientManager {
    * 初始化客户端配置
    */
   private initializeClientConfigs(): void {
-    // Puppeteer MCP 配置
-    // 注意：puppeteer-mcp-server 通过 npx 运行，会在首次运行时自动下载 Chromium
-    // 不需要在 Docker 容器中预装 Chromium
+    // Playwright MCP 配置 - 更适合 Docker 环境
+    const playwrightConfig = validateMCPClientConfig({
+      name: 'playwright',
+      command: 'npx',
+      args: ['-y', '@playwright/mcp@latest', '--isolated'],
+      env: {
+        NODE_ENV: process.env.NODE_ENV || 'production',
+      },
+      description: 'Playwright 浏览器自动化服务（Docker 友好）',
+      enabled: true,
+    });
+    this.clientConfigs.set('playwright', playwrightConfig);
+
+    // 保留原有的 Puppeteer MCP 配置（用于兼容性）
     const puppeteerConfig = validateMCPClientConfig({
       name: 'puppeteer',
       command: 'npx',
@@ -80,32 +91,6 @@ class MCPClientManager {
       enabled: true,
     });
     this.clientConfigs.set('puppeteer', puppeteerConfig);
-
-    // Google Maps MCP 配置
-    const googleMapsConfig = validateMCPClientConfig({
-      name: 'google-maps',
-      command: 'npx',
-      args: ['-y', '@modelcontextprotocol/server-google-maps'],
-      env: { GOOGLE_MAPS_API_KEY: process.env.GOOGLE_MAP_API_KEY || '' },
-      description: 'Google地图服务',
-      enabled: true,
-    });
-    this.clientConfigs.set('google-maps', googleMapsConfig);
-
-    // Exa MCP 配置
-    const exaConfig = validateMCPClientConfig({
-      name: 'exa',
-      command: 'npx',
-      args: [
-        '-y',
-        'exa-mcp-server',
-        '--tools=web_search_exa,research_paper_search,company_research,crawling,competitor_finder,linkedin_search,wikipedia_search_exa,github_search',
-      ],
-      env: { EXA_API_KEY: process.env.EXA_API_KEY || '' },
-      description: 'Exa搜索服务',
-      enabled: true,
-    });
-    this.clientConfigs.set('exa', exaConfig);
   }
 
   /**
@@ -128,20 +113,21 @@ class MCPClientManager {
     console.log(`🚀 正在初始化 ${config.description} (${clientName})...`);
 
     try {
-      // 验证必需的环境变量
-      if (config.env) {
-        for (const [key, value] of Object.entries(config.env)) {
-          if (!value) {
-            throw new Error(`缺少必需的环境变量: ${key}`);
+      // 过滤掉空的环境变量
+      const filteredEnv = config.env ? 
+        Object.entries(config.env).reduce((acc, [key, value]) => {
+          if (value) {
+            acc[key] = value;
           }
-        }
-      }
+          return acc;
+        }, {} as Record<string, string>) : 
+        {}
 
       // 创建传输层
       const transport = new Experimental_StdioMCPTransport({
         command: config.command,
         args: config.args,
-        env: config.env,
+        env: filteredEnv,
       });
 
       // 创建MCP客户端
@@ -198,31 +184,17 @@ class MCPClientManager {
   }
 
   /**
-   * Google Maps MCP 客户端
+   * Playwright MCP 客户端
    */
-  public async getGoogleMapsMCPClient(): Promise<any> {
-    return this.getMCPClient('google-maps');
+  public async getPlaywrightMCPClient(): Promise<any> {
+    return this.getMCPClient('playwright');
   }
 
   /**
-   * Google Maps MCP 工具
+   * Playwright MCP 工具
    */
-  public async getGoogleMapsMCPTools(schemas?: Record<string, any>): Promise<MCPTools> {
-    return this.getMCPTools('google-maps', schemas);
-  }
-
-  /**
-   * Exa MCP 客户端
-   */
-  public async getExaMCPClient(): Promise<any> {
-    return this.getMCPClient('exa');
-  }
-
-  /**
-   * Exa MCP 工具
-   */
-  public async getExaMCPTools(): Promise<MCPTools> {
-    return this.getMCPTools('exa');
+  public async getPlaywrightMCPTools(): Promise<MCPTools> {
+    return this.getMCPTools('playwright');
   }
 
   /**
@@ -328,12 +300,8 @@ export default mcpClientManager;
 export const getPuppeteerMCPClient = () => mcpClientManager.getPuppeteerMCPClient();
 export const getPuppeteerMCPTools = () => mcpClientManager.getPuppeteerMCPTools();
 
-export const getGoogleMapsMCPClient = () => mcpClientManager.getGoogleMapsMCPClient();
-export const getGoogleMapsMCPTools = (schemas?: Record<string, any>) =>
-  mcpClientManager.getGoogleMapsMCPTools(schemas);
-
-export const getExaMCPClient = () => mcpClientManager.getExaMCPClient();
-export const getExaMCPTools = () => mcpClientManager.getExaMCPTools();
+export const getPlaywrightMCPClient = () => mcpClientManager.getPlaywrightMCPClient();
+export const getPlaywrightMCPTools = () => mcpClientManager.getPlaywrightMCPTools();
 
 // 客户端管理函数
 export const closeMCPClient = (clientName: string) => mcpClientManager.closeMCPClient(clientName);

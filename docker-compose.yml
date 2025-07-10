@@ -15,6 +15,11 @@ services:
     image: ghcr.io/steveoon/ai-computer-use:latest
     ports:
       - "3000:3000"
+    # 添加 Chrome 运行所需的安全配置
+    cap_add:
+      - SYS_ADMIN
+    security_opt:
+      - seccomp:unconfined
     environment:
       # AI Provider Keys (至少需要一个)
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
