@@ -23,7 +23,11 @@ export const updateSession = async (request: NextRequest) => {
     });
 
     if (!SUPABASE_URL || !SUPABASE_PUBLIC_ANON_KEY) {
-      console.error("[MIDDLEWARE] Supabase environment variables not set");
+      console.error("[MIDDLEWARE] Supabase environment variables not set", {
+        hasUrl: !!SUPABASE_URL,
+        hasKey: !!SUPABASE_PUBLIC_ANON_KEY,
+        urlPrefix: SUPABASE_URL ? SUPABASE_URL.substring(0, 20) + "..." : "undefined"
+      });
       return response;
     }
 
@@ -59,16 +63,39 @@ export const updateSession = async (request: NextRequest) => {
 
     // This will refresh session if expired - required for Server Components
     // https://supabase.com/docs/guides/auth/server-side/nextjs
-    const {
-      data: { user },
-      error,
-    } = await supabase.auth.getUser();
+    let user = null;
+    let error = null;
+    
+    try {
+      const result = await supabase.auth.getUser();
+      user = result.data?.user;
+      error = result.error;
+    } catch (fetchError) {
+      console.error("[MIDDLEWARE] Fetch error in getUser:", {
+        error: fetchError instanceof Error ? fetchError.message : String(fetchError),
+        stack: fetchError instanceof Error ? fetchError.stack : undefined,
+        supabaseUrl: SUPABASE_URL ? SUPABASE_URL.substring(0, 30) + "..." : "undefined",
+        errorName: fetchError instanceof Error ? fetchError.name : "Unknown",
+        errorCause: fetchError instanceof Error && 'cause' in fetchError ? fetchError.cause : undefined,
+        nodeVersion: process.version,
+        env: process.env.NODE_ENV
+      });
+      // 针对 fetch failed 错误的特殊处理建议
+      if (fetchError instanceof Error && fetchError.message.includes('fetch failed')) {
+        console.error("[MIDDLEWARE] Fetch failed troubleshooting tips:");
+        console.error("1. Check if NEXT_PUBLIC_SUPABASE_URL is correctly set in .env");
+        console.error("2. Verify the Supabase URL is accessible from your network");
+        console.error("3. Check for proxy settings that might block the request");
+        console.error("4. Ensure the Supabase project is active and not paused");
+      }
+      error = fetchError;
+    }
 
     // 记录认证状态用于调试
     console.log("[MIDDLEWARE] Auth check:", {
       path: request.nextUrl.pathname,
       hasUser: !!user,
-      error: error?.message,
+      error: error instanceof Error ? error.message : error ? String(error) : null,
     });
 
     const pathname = request.nextUrl.pathname;
