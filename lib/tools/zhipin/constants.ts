@@ -121,11 +121,11 @@ export const EXCHANGE_WECHAT_SELECTORS = {
   exchangeButton: '.operate-btn:contains("换微信")',
   exchangeButtonPath: '#container > div:nth-child(1) > div > div.chat-box > div.chat-container > div.chat-conversation > div.conversation-box > div.conversation-operate > div.toolbar-box > div.toolbar-box-right > div.operate-exchange-left > div:nth-child(3) > span.operate-btn',
   
-  // Confirm dialog
+  // Confirm dialog - 更新为基于 DOM 树的正确结构
   confirmDialog: '.exchange-tooltip',
-  confirmButton: '.exchange-tooltip .boss-btn-primary.boss-btn',
+  confirmButton: '.exchange-tooltip .btn-box .boss-btn-primary.boss-btn',
   confirmButtonPath: '#container > div:nth-child(1) > div > div.chat-box > div.chat-container > div.chat-conversation > div.conversation-box > div.conversation-operate > div.toolbar-box > div.toolbar-box-right > div.operate-exchange-left > div:nth-child(3) > div > div > span.boss-btn-primary.boss-btn',
-  cancelButton: '.exchange-tooltip .boss-btn-outline.boss-btn',
+  cancelButton: '.exchange-tooltip .btn-box .boss-btn-outline.boss-btn',
 } as const;
 
 // Timing constants

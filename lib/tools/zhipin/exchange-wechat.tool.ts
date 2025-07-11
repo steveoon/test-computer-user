@@ -128,14 +128,30 @@ export const zhipinExchangeWechatTool = () =>
           };
         }
 
-        // 等待弹窗出现
+        // 等待弹窗出现并确保其完全显示
         await new Promise(resolve => setTimeout(resolve, waitBetweenClicks));
+        
+        // 额外检查弹窗是否真的出现了
+        const checkTooltipScript = `
+          const tooltip = document.querySelector('.exchange-tooltip');
+          const isVisible = tooltip && tooltip.offsetParent !== null;
+          return { exists: !!tooltip, visible: isVisible };
+        `;
+        
+        const tooltipCheck = await tools.puppeteer_evaluate.execute({ script: checkTooltipScript });
+        const tooltipData = parseEvaluateResult(tooltipCheck);
+        
+        if (!tooltipData?.visible) {
+          // 如果弹窗还没出现，再等待一下
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
 
         // 第二步：点击确认对话框中的"确定"按钮
         const confirmButtonSelectors = [
-          EXCHANGE_WECHAT_SELECTORS.confirmButtonPath,
+          ".exchange-tooltip .btn-box .boss-btn-primary.boss-btn",  // 最准确的选择器放在前面
+          ".exchange-tooltip .btn-box span.boss-btn-primary",
           EXCHANGE_WECHAT_SELECTORS.confirmButton,
-          ".exchange-tooltip .btn-box .boss-btn-primary",
+          EXCHANGE_WECHAT_SELECTORS.confirmButtonPath,
           '.btn-box span.boss-btn-primary:contains("确定")',
           'span.boss-btn-primary:contains("确定")',
         ];
