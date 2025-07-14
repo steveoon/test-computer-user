@@ -8,6 +8,8 @@ export const ORGANIZATION_MAPPING: Record<number, string> = {
   5: "肯德基",
   941: "成都你六姐",
   985: "大米先生",
+  1072: "天津肯德基",
+  850: "上海必胜客",
   // TODO: 根据实际的 organizationId 添加更多品牌映射
   // 可以通过调用 Duliday API 获取组织列表来确定具体的 ID
 };

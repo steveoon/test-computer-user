@@ -7,7 +7,8 @@ import {
   Globe,
   Bot,
   Users,
-  Smartphone 
+  Smartphone,
+  UserCheck 
 } from "lucide-react";
 import { ComputerToolMessage } from "./computer-tool";
 import { BashToolMessage } from "./bash-tool";
@@ -20,6 +21,7 @@ import { ZhipinToolMessage } from "./zhipin-tool";
 import { ZhipinSendMessageTool } from "./zhipin-send-message-tool";
 import { ZhipinChatDetailsTool } from "./zhipin-chat-details-tool";
 import { ZhipinExchangeWechatTool } from "./zhipin-exchange-wechat-tool";
+import { ZhipinGetUsernameTool } from "./zhipin-get-username-tool";
 import { themes, type ToolConfig } from "./types";
 
 // 工具注册表
@@ -84,6 +86,11 @@ export const toolRegistry: Record<string, ToolConfig> = {
     icon: Smartphone,
     defaultTheme: themes.green,
     render: ZhipinExchangeWechatTool,
+  },
+  zhipin_get_username: {
+    icon: UserCheck,
+    defaultTheme: themes.green,
+    render: ZhipinGetUsernameTool,
   },
 };
 

@@ -34,7 +34,8 @@ const TOOL_GROUPS = {
     "zhipin_open_candidate_chat_improved",
     "zhipin_send_message",
     "zhipin_get_chat_details",
-    "zhipin_exchange_wechat"
+    "zhipin_exchange_wechat",
+    "zhipin_get_username"
   ]
 } as const;
 

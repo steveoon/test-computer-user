@@ -88,6 +88,12 @@ export const MODEL_DICTIONARY = {
     description: "通过OpenRouter访问的Qwen Max",
     categories: ["general"] as ModelCategory[],
   },
+  "openrouter/moonshotai/kimi-k2": {
+    provider: "openrouter",
+    name: "Kimi K2",
+    description: "通过OpenRouter访问的Kimi K2",
+    categories: ["chat", "general"] as ModelCategory[],
+  },
   "openrouter/deepseek/deepseek-chat-v3-0324": {
     provider: "openrouter",
     name: "DeepSeek Chat v3",
@@ -138,6 +144,14 @@ export const MODEL_DICTIONARY = {
     description: "通过OhMyGPT访问的Gemini 2.5 Flash Preview",
     categories: ["general"] as ModelCategory[],
   },
+
+  // MoonshotAI 模型
+  "moonshotai/kimi-k2-0711-preview": {
+    provider: "moonshotai",
+    name: "Kimi K2 0711 Preview",
+    description: "通过MoonshotAI访问的Kimi K2 0711 Preview",
+    categories: ["chat", "general"] as ModelCategory[],
+  },
 } as const;
 
 // 模型ID类型
@@ -179,6 +193,11 @@ export const DEFAULT_PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     baseURL: "https://c-z0-api-01.hash070.com/v1",
     description: "OhMyGPT 统一接口",
   },
+  moonshotai: {
+    name: "MoonshotAI",
+    baseURL: "https://api.moonshot.cn/v1",
+    description: "MoonshotAI 统一接口",
+  },
   qwen: {
     name: "Qwen",
     baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1",
@@ -193,14 +212,14 @@ export const DEFAULT_PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
 
 // 获取聊天模型列表（支持chat类别的模型）
 export function getChatModels(): ModelId[] {
-  return Object.keys(MODEL_DICTIONARY).filter((modelId) =>
+  return Object.keys(MODEL_DICTIONARY).filter(modelId =>
     MODEL_DICTIONARY[modelId as ModelId].categories.includes("chat")
   ) as ModelId[];
 }
 
 // 获取通用模型列表（支持general类别的模型）
 export function getGeneralModels(): ModelId[] {
-  return Object.keys(MODEL_DICTIONARY).filter((modelId) =>
+  return Object.keys(MODEL_DICTIONARY).filter(modelId =>
     MODEL_DICTIONARY[modelId as ModelId].categories.includes("general")
   ) as ModelId[];
 }
@@ -213,22 +232,19 @@ export function getAllModels(): ModelId[] {
 // 根据提供商获取模型
 export function getModelsByProvider(provider: string): ModelId[] {
   return Object.keys(MODEL_DICTIONARY).filter(
-    (modelId) => MODEL_DICTIONARY[modelId as ModelId].provider === provider
+    modelId => MODEL_DICTIONARY[modelId as ModelId].provider === provider
   ) as ModelId[];
 }
 
 // 根据类别获取模型（支持多类别查询）
 export function getModelsByCategory(category: ModelCategory): ModelId[] {
-  return Object.keys(MODEL_DICTIONARY).filter((modelId) =>
+  return Object.keys(MODEL_DICTIONARY).filter(modelId =>
     MODEL_DICTIONARY[modelId as ModelId].categories.includes(category)
   ) as ModelId[];
 }
 
 // 检查模型是否支持特定类别
-export function modelSupportsCategory(
-  modelId: ModelId,
-  category: ModelCategory
-): boolean {
+export function modelSupportsCategory(modelId: ModelId, category: ModelCategory): boolean {
   return MODEL_DICTIONARY[modelId].categories.includes(category);
 }
 

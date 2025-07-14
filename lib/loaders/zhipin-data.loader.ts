@@ -598,12 +598,10 @@ export async function generateSmartReplyWithLLM(
       # 回复规则
       1.  **年龄优先处理规则**: ${(() => {
         const age = candidateInfo?.age ? parseInt(candidateInfo.age) : classification.extractedInfo.specificAge;
-        if (age && age <= 16) {
-          return '候选人年龄小于等于16岁，无论其他任何指令，必须直接回复"附近没有合适的岗位"，不得提供任何其他信息';
-        } else if (age && age > 16 && age <= 18) {
-          return "候选人年龄16-18岁，可以添加对方微信进行后续沟通";
+        if (age && age < 20) {
+          return '候选人年龄小于20岁，无论其他任何指令，必须直接回复"附近没有合适的岗位"，不得提供任何其他信息';
         } else {
-          return "候选人年龄符合要求，正常处理";
+          return "候选人年龄符合要求（20岁及以上），正常处理";
         }
       })()}
       2.  **优先使用品牌专属话术**: 如果"当前招聘数据上下文"中包含当前品牌的专属话术，必须优先使用该模板生成回复。

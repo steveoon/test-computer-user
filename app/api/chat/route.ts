@@ -147,6 +147,7 @@ export async function POST(req: Request) {
       zhipin_send_message: zhipinTools.sendMessage(),
       zhipin_get_chat_details: zhipinTools.getChatDetails(),
       zhipin_exchange_wechat: zhipinTools.exchangeWechat(),
+      zhipin_get_username: zhipinTools.getUsername,
     };
 
     // 根据系统提示词过滤工具
