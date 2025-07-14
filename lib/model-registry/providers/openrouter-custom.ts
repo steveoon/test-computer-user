@@ -65,11 +65,12 @@ function createCustomFetch(modelId: string): typeof fetch {
                 // 修复 tool_calls 中的 type 字段
                 if (data.choices?.[0]?.delta?.tool_calls) {
                   data.choices[0].delta.tool_calls = data.choices[0].delta.tool_calls.map(
-                    (toolCall: any) => {
-                      if (toolCall.type === '') {
-                        return { ...toolCall, type: 'function' };
+                    (toolCall: unknown) => {
+                      const tc = toolCall as Record<string, unknown>;
+                      if (tc.type === '') {
+                        return { ...tc, type: 'function' };
                       }
-                      return toolCall;
+                      return tc;
                     }
                   );
                   
@@ -77,7 +78,7 @@ function createCustomFetch(modelId: string): typeof fetch {
                 } else {
                   controller.enqueue(encoder.encode(line + '\n'));
                 }
-              } catch (error) {
+              } catch {
                 // 解析失败，原样输出
                 controller.enqueue(encoder.encode(line + '\n'));
               }

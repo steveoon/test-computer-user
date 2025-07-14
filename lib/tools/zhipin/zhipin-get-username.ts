@@ -22,7 +22,7 @@ function parseEvaluateResult(result: unknown): Record<string, unknown> | null {
         if (executionResult !== "undefined" && executionResult !== "") {
           try {
             return JSON.parse(executionResult) as Record<string, unknown>;
-          } catch (e) {
+          } catch {
             console.log("Failed to parse execution result as JSON:", executionResult);
           }
         }
@@ -33,7 +33,7 @@ function parseEvaluateResult(result: unknown): Record<string, unknown> | null {
       if (jsonMatch) {
         try {
           return JSON.parse(jsonMatch[0]) as Record<string, unknown>;
-        } catch (e) {
+        } catch {
           console.log("Failed to parse found JSON object:", jsonMatch[0]);
         }
       }
@@ -48,8 +48,8 @@ function parseEvaluateResult(result: unknown): Record<string, unknown> | null {
         // 忽略错误
       }
     }
-  } catch (e) {
-    console.error("Failed to parse evaluate result:", e);
+  } catch (_e) {
+    console.error("Failed to parse evaluate result:", _e);
   }
   return null;
 }
