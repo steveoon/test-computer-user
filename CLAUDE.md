@@ -10,6 +10,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `pnpm build` - Build production bundle
 - `pnpm lint` - Run ESLint checks
 - `pnpm start` - Start production server
+- `pnpm test` - Run unit tests with Vitest (watch mode)
+- `pnpm test:run` - Run unit tests once
+- `pnpm test:watch` - Run tests in watch mode
+- `pnpm test:ui` - Run tests with interactive UI
+- `pnpm test:coverage` - Generate test coverage report
+- `pnpm test:coverage:ui` - View coverage report in UI
 - `pnpm test:mcp-connection` - Test MCP connection using Puppeteer
 - `pnpm format` - Format code with Prettier
 - `pnpm format:check` - Check code formatting
@@ -169,6 +175,13 @@ The system supports 16 distinct reply scenarios:
 - Web UI testing at `/test-llm-reply` for manual QA
 - API endpoint `/api/test-llm-reply` for automated testing
 - E2B diagnostic tools via `/api/diagnose`
+- Unit tests with Vitest configured for:
+  - 80% code coverage thresholds
+  - Worker threads for parallel test execution
+  - SVG file support via vite-plugin-magical-svg
+  - 10-second timeouts for tests and hooks
+- Test files organized in `__tests__` directories
+- React Testing Library for component testing
 
 ## Environment Configuration
 
