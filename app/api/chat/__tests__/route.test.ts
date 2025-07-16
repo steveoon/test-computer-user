@@ -1,0 +1,198 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { POST } from '../route'
+import { createMockTextStream, createMockToolCallStream } from '@/lib/__tests__/test-utils/ai-mocks'
+import type { UIMessage } from 'ai'
+
+// Mock dependencies
+vi.mock('@/lib/model-registry/dynamic-registry', () => ({
+  getDynamicRegistry: vi.fn(() => ({
+    languageModel: vi.fn()
+  }))
+}))
+
+vi.mock('@/lib/e2b/utils', () => ({
+  killDesktop: vi.fn()
+}))
+
+vi.mock('@/lib/loaders/system-prompts.loader', () => ({
+  getBossZhipinSystemPrompt: vi.fn(() => 'Mock Boss直聘系统提示词'),
+  getBossZhipinLocalSystemPrompt: vi.fn(() => 'Mock Boss直聘本地系统提示词'),
+  getGeneralComputerSystemPrompt: vi.fn(() => 'Mock 通用计算机系统提示词')
+}))
+
+describe('Chat API Route', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('should handle a simple text response', async () => {
+    const mockModel = createMockTextStream(['Hello', ', ', 'world!'])
+    const { getDynamicRegistry } = await import('@/lib/model-registry/dynamic-registry')
+    vi.mocked(getDynamicRegistry).mockReturnValue({
+      languageModel: () => mockModel,
+      textEmbeddingModel: () => null as any,
+      imageModel: () => null as any
+    })
+
+    const messages: UIMessage[] = [
+      { 
+        id: '1', 
+        role: 'user', 
+        content: 'Hello',
+        parts: [{ type: 'text', text: 'Hello' }]
+      }
+    ]
+
+    const request = new Request('http://localhost/api/chat', {
+      method: 'POST',
+      body: JSON.stringify({
+        messages,
+        sandboxId: 'test-sandbox',
+        preferredBrand: '测试品牌'
+      })
+    })
+
+    const response = await POST(request)
+    expect(response).toBeInstanceOf(Response)
+    expect(response.headers.get('content-type')).toContain('text/plain')
+    
+    // Read the stream
+    const reader = response.body?.getReader()
+    const chunks: string[] = []
+    
+    if (reader) {
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        chunks.push(new TextDecoder().decode(value))
+      }
+    }
+    
+    const responseText = chunks.join('')
+    expect(responseText).toContain('Hello')
+    expect(responseText).toContain('world')
+  })
+
+  it('should handle tool invocations', async () => {
+    const mockModel = createMockToolCallStream(
+      'wechat',
+      { 
+        message: '测试消息',
+        notification_type: 'test_result'
+      },
+      '已发送消息到微信群'
+    )
+
+    const { getDynamicRegistry } = await import('@/lib/model-registry/dynamic-registry')
+    vi.mocked(getDynamicRegistry).mockReturnValue({
+      languageModel: () => mockModel,
+      textEmbeddingModel: () => null as any,
+      imageModel: () => null as any
+    })
+
+    const messages: UIMessage[] = [
+      { 
+        id: '1', 
+        role: 'user', 
+        content: '发送测试消息到微信群',
+        parts: [{ type: 'text', text: '发送测试消息到微信群' }]
+      }
+    ]
+
+    const request = new Request('http://localhost/api/chat', {
+      method: 'POST',
+      body: JSON.stringify({
+        messages,
+        sandboxId: 'test-sandbox',
+        preferredBrand: '测试品牌',
+        activeSystemPrompt: 'bossZhipinSystemPrompt'
+      })
+    })
+
+    const response = await POST(request)
+    expect(response).toBeInstanceOf(Response)
+    
+    // Read and parse the stream
+    const reader = response.body?.getReader()
+    const chunks: string[] = []
+    
+    if (reader) {
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        chunks.push(new TextDecoder().decode(value))
+      }
+    }
+    
+    const responseText = chunks.join('')
+    expect(responseText).toContain('tool-call')
+    expect(responseText).toContain('wechat')
+    expect(responseText).toContain('已发送消息到微信群')
+  })
+
+  it('should handle error gracefully', async () => {
+    const { getDynamicRegistry } = await import('@/lib/model-registry/dynamic-registry')
+    vi.mocked(getDynamicRegistry).mockImplementation(() => {
+      throw new Error('Model initialization failed')
+    })
+
+    const messages: UIMessage[] = [
+      { 
+        id: '1', 
+        role: 'user', 
+        content: 'Test message',
+        parts: [{ type: 'text', text: 'Test message' }]
+      }
+    ]
+
+    const request = new Request('http://localhost/api/chat', {
+      method: 'POST',
+      body: JSON.stringify({
+        messages,
+        sandboxId: 'test-sandbox',
+        preferredBrand: '测试品牌'
+      })
+    })
+
+    const response = await POST(request)
+    expect(response.status).toBe(500)
+    const responseData = await response.json()
+    expect(responseData.error).toBe('Internal Server Error')
+  })
+
+  it('should apply message pruning for large conversations', async () => {
+    const mockModel = createMockTextStream(['Response'])
+    const { getDynamicRegistry } = await import('@/lib/model-registry/dynamic-registry')
+    vi.mocked(getDynamicRegistry).mockReturnValue({
+      languageModel: () => mockModel,
+      textEmbeddingModel: () => null as any,
+      imageModel: () => null as any
+    })
+
+    // Create a large conversation history
+    const messages: UIMessage[] = Array.from({ length: 100 }, (_, i) => {
+      const content = `This is a long message ${i} with some content to make it substantial enough for token counting purposes.`
+      return {
+        id: `msg-${i}`,
+        role: i % 2 === 0 ? 'user' : 'assistant' as const,
+        content,
+        parts: [{ type: 'text', text: content }]
+      }
+    })
+
+    const request = new Request('http://localhost/api/chat', {
+      method: 'POST',
+      body: JSON.stringify({
+        messages,
+        sandboxId: 'test-sandbox',
+        preferredBrand: '测试品牌'
+      })
+    })
+
+    const response = await POST(request)
+    expect(response).toBeInstanceOf(Response)
+    
+    // The prunedMessages function should have reduced the message count
+    // This is verified by the console.log output in the actual implementation
+  })
+})

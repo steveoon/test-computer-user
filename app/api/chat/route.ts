@@ -71,18 +71,22 @@ export async function POST(req: Request) {
     if (systemPrompts && systemPrompts[promptType]) {
       console.log(
         `✅ 使用客户端传入的${
-          promptType === "bossZhipinSystemPrompt" ? "Boss直聘" : 
-          promptType === "bossZhipinLocalSystemPrompt" ? "Boss直聘(本地版)" :
-          "通用计算机"
+          promptType === "bossZhipinSystemPrompt"
+            ? "Boss直聘"
+            : promptType === "bossZhipinLocalSystemPrompt"
+              ? "Boss直聘(本地版)"
+              : "通用计算机"
         }系统提示词`
       );
       systemPrompt = systemPrompts[promptType];
     } else {
       console.log(
         `⚠️ 使用默认${
-          promptType === "bossZhipinSystemPrompt" ? "Boss直聘" : 
-          promptType === "bossZhipinLocalSystemPrompt" ? "Boss直聘(本地版)" :
-          "通用计算机"
+          promptType === "bossZhipinSystemPrompt"
+            ? "Boss直聘"
+            : promptType === "bossZhipinLocalSystemPrompt"
+              ? "Boss直聘(本地版)"
+              : "通用计算机"
         }系统提示词（降级模式）`
       );
       // 降级到默认提示词
@@ -161,6 +165,7 @@ export async function POST(req: Request) {
       providerOptions: {
         anthropic: { cacheControl: { type: "ephemeral" } },
       },
+      maxSteps: 30,
       onFinish: async ({ usage, toolResults }) => {
         console.log("📊 usage", usage);
         console.log("🛠️ toolResults", toolResults);

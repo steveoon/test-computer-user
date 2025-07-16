@@ -182,6 +182,22 @@ The system supports 16 distinct reply scenarios:
   - 10-second timeouts for tests and hooks
 - Test files organized in `__tests__` directories
 - React Testing Library for component testing
+- AI SDK test utilities in `lib/__tests__/test-utils/ai-mocks.ts`
+
+### Testing Configuration
+
+**Important**: The project uses separate TypeScript configurations for production and testing:
+
+- `tsconfig.json` - Main configuration that includes all files for proper type inference
+- `tsconfig.test.json` - Test-specific configuration with test type definitions
+- ESLint configured to ignore test files via flat config `ignores` array
+- Test files excluded from production builds via `.dockerignore`
+
+This ensures:
+- ✅ Test files have proper type checking and IDE support
+- ✅ `pnpm lint` ignores test files (allowing `any` types for mocking)
+- ✅ Production builds exclude all test files
+- ✅ Docker images don't include test files
 
 ## Environment Configuration
 

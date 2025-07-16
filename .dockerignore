@@ -29,3 +29,28 @@ logs
 # 临时文件
 *.tmp
 *.temp
+
+# 测试相关文件 - 不应该包含在生产镜像中
+**/__tests__
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+vitest.config.*
+vitest.setup.*
+coverage
+.nyc_output
+jest.config.*
+jest.setup.*
+
+# 开发相关文件
+*.md
+docs
+examples
+.vscode
+.idea
+
+# E2E 测试
+e2e
+playwright-tests
+playwright.config.*

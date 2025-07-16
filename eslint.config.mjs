@@ -10,6 +10,30 @@ const compat = new FlatCompat({
 });
 
 const eslintConfig = [
+  // 首先定义要忽略的文件
+  {
+    ignores: [
+      "node_modules/**",
+      "dist/**",
+      ".next/**",
+      "out/**",
+      "**/__tests__/**",
+      "**/*.test.ts",
+      "**/*.test.tsx",
+      "**/*.spec.ts",
+      "**/*.spec.tsx",
+      "vitest.config.*",
+      "vitest.setup.*",
+      "coverage/**",
+      ".nyc_output/**",
+      "examples/**",
+      "e2e/**",
+      "playwright-tests/**",
+      "docs/**",
+      "*.md",
+    ],
+  },
+  // 然后应用规则到其他文件
   ...compat.extends("next/core-web-vitals", "next/typescript"),
   ...compat.extends("plugin:@typescript-eslint/recommended"),
   {
@@ -41,7 +65,6 @@ const eslintConfig = [
       // 禁用一些可能产生噪音的规则
       "react/no-unescaped-entities": "off",
     },
-    ignores: ["node_modules", "dist", ".next", "out"],
   },
 ];
 
