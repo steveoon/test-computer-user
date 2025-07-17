@@ -1,6 +1,7 @@
 import { tool } from "ai";
 import { z } from "zod";
 import { getOrgIdByBrandName, getAvailableBrands } from "@/lib/constants/organization-mapping";
+import { jobListResponseSchema, type JobItem } from "./types";
 
 /**
  * Duliday获取品牌在招岗位列表工具
@@ -98,7 +99,19 @@ export const dulidayJobListTool = (customToken?: string, defaultBrand?: string) 
           throw new Error(`API请求失败: ${response.status} ${response.statusText}`);
         }
 
-        const data = await response.json();
+        const rawData = await response.json();
+        
+        // 使用 zod 验证响应数据
+        const parseResult = jobListResponseSchema.safeParse(rawData);
+        if (!parseResult.success) {
+          console.error("响应数据格式错误:", parseResult.error);
+          return {
+            type: "text" as const,
+            text: `❌ API响应格式错误，请联系管理员`,
+          };
+        }
+        
+        const data = parseResult.data;
 
         // 检查响应状态
         if (data.code !== 0) {
@@ -109,7 +122,7 @@ export const dulidayJobListTool = (customToken?: string, defaultBrand?: string) 
         }
 
         // 格式化返回结果
-        let jobs = data.data?.result || [];
+        let jobs: JobItem[] = data.data?.result || [];
 
         if (jobs.length === 0) {
           return {
@@ -120,13 +133,13 @@ export const dulidayJobListTool = (customToken?: string, defaultBrand?: string) 
 
         // 过滤结果
         if (storeName) {
-          jobs = jobs.filter((job: any) => 
+          jobs = jobs.filter((job) => 
             job.storeName?.includes(storeName) || job.jobName?.includes(storeName)
           );
         }
 
         if (regionName) {
-          jobs = jobs.filter((job: any) => 
+          jobs = jobs.filter((job) => 
             job.storeRegionName?.includes(regionName) || 
             job.storeAddress?.includes(regionName) ||
             job.jobAddress?.includes(regionName)
@@ -135,7 +148,7 @@ export const dulidayJobListTool = (customToken?: string, defaultBrand?: string) 
 
         if (laborForm) {
           const laborFormName = laborForm === "全职" ? "全职" : "兼职";
-          jobs = jobs.filter((job: any) => job.laborFormName === laborFormName);
+          jobs = jobs.filter((job) => job.laborFormName === laborFormName);
         }
 
         if (jobs.length === 0) {
@@ -156,7 +169,7 @@ export const dulidayJobListTool = (customToken?: string, defaultBrand?: string) 
         }
         message += `：共 ${jobs.length} 个\n\n`;
 
-        jobs.forEach((job: any, index: number) => {
+        jobs.forEach((job, index) => {
           message += `${index + 1}. ${job.jobName}\n`;
           message += `   📍 门店：${job.storeName} (${job.storeCityName} ${job.storeRegionName})\n`;
           message += `   💰 薪资：${job.salary} ${job.salaryUnitName}`;

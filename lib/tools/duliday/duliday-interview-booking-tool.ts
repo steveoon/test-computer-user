@@ -1,6 +1,7 @@
 import { tool } from "ai";
 import { z } from "zod";
 import { getEducationIdByName, EDUCATION_MAPPING } from "@/lib/constants/organization-mapping";
+import { interviewBookingResponseSchema } from "./types";
 
 /**
  * Duliday预约面试工具
@@ -127,7 +128,19 @@ export const dulidayInterviewBookingTool = (customToken?: string) =>
           throw new Error(`API请求失败: ${response.status} ${response.statusText}`);
         }
 
-        const data = await response.json();
+        const rawData = await response.json();
+        
+        // 使用 zod 验证响应数据
+        const parseResult = interviewBookingResponseSchema.safeParse(rawData);
+        if (!parseResult.success) {
+          console.error("响应数据格式错误:", parseResult.error);
+          return {
+            type: "text" as const,
+            text: `❌ API响应格式错误，请联系管理员`,
+          };
+        }
+        
+        const data = parseResult.data;
 
         // 处理响应
         if (data.code === 0) {

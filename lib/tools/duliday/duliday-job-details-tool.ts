@@ -1,5 +1,6 @@
 import { tool } from "ai";
 import { z } from "zod";
+import { jobDetailsResponseSchema, type InterviewTime } from "./types";
 
 /**
  * Duliday获取岗位详情工具
@@ -44,7 +45,19 @@ export const dulidayJobDetailsTool = (customToken?: string) =>
           throw new Error(`API请求失败: ${response.status} ${response.statusText}`);
         }
 
-        const data = await response.json();
+        const rawData = await response.json();
+        
+        // 使用 zod 验证响应数据
+        const parseResult = jobDetailsResponseSchema.safeParse(rawData);
+        if (!parseResult.success) {
+          console.error("响应数据格式错误:", parseResult.error);
+          return {
+            type: "text" as const,
+            text: `❌ API响应格式错误，请联系管理员`,
+          };
+        }
+        
+        const data = parseResult.data;
 
         // 检查响应状态
         if (data.code !== 0) {
@@ -74,7 +87,7 @@ export const dulidayJobDetailsTool = (customToken?: string) =>
           message += `⏰ 面试时间安排：\n`;
           const weekdayNames = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
           
-          jobDetails.interviewTimes.forEach((timeSlot: any) => {
+          jobDetails.interviewTimes.forEach((timeSlot: InterviewTime) => {
             if (timeSlot.weekdays && timeSlot.weekdays.length > 0) {
               const weekday = weekdayNames[timeSlot.weekdays[0]];
               if (timeSlot.times && timeSlot.times.length > 0) {
