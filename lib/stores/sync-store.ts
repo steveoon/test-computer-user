@@ -297,7 +297,7 @@ export function getSyncStatusColor(isSuccess: boolean): string {
 /**
  * 合并并保存同步数据到本地配置
  */
-async function mergeAndSaveSyncData(syncResults: SyncResult[]): Promise<void> {
+export async function mergeAndSaveSyncData(syncResults: SyncResult[]): Promise<void> {
   // 获取现有配置
   const existingData = await getBrandData();
 

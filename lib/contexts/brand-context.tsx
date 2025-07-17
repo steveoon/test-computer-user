@@ -13,6 +13,7 @@ import {
   loadBrandPreference,
 } from "../utils/brand-storage";
 import type { ZhipinData } from "@/types";
+import { getAvailableBrands as getAvailableBrandsFromMapping } from "@/lib/constants/organization-mapping";
 
 // 🔧 品牌上下文类型定义
 interface BrandContextType {
@@ -99,7 +100,8 @@ export function BrandProvider({ children }: BrandProviderProps) {
     }
   };
 
-  const availableBrands = brandData ? Object.keys(brandData.brands) : [];
+  // 从 ORGANIZATION_MAPPING 获取所有映射的品牌作为可用品牌
+  const availableBrands = getAvailableBrandsFromMapping().map(brand => brand.name);
 
   const value: BrandContextType = {
     currentBrand,

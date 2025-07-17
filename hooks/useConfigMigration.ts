@@ -4,6 +4,7 @@ import {
   migrateFromHardcodedData,
   configService,
 } from "@/lib/services/config.service";
+import { BrandSyncManager } from "@/lib/services/brand-sync-manager";
 
 export interface ConfigMigrationState {
   isLoading: boolean;
@@ -52,21 +53,41 @@ export function useConfigMigration() {
           if (!isMounted) return;
 
           console.log("✅ 浏览器端配置迁移完成");
-          setState({
-            isLoading: false,
-            isSuccess: true,
-            isError: false,
-            needsMigration: false,
-          });
-        } else {
-          console.log("ℹ️ 配置已存在，无需迁移");
-          setState({
-            isLoading: false,
-            isSuccess: true,
-            isError: false,
-            needsMigration: false,
-          });
         }
+        
+        // 检查并同步缺失的品牌（无论是否执行了迁移）
+        console.log("🔍 检查缺失的品牌...");
+        const syncStatus = await BrandSyncManager.getBrandSyncStatus();
+        
+        if (syncStatus.missingBrands.length > 0) {
+          console.log(`🔄 发现 ${syncStatus.missingBrands.length} 个缺失的品牌: ${syncStatus.missingBrands.join(", ")}`);
+          
+          // 尝试自动同步缺失的品牌
+          try {
+            const syncResult = await BrandSyncManager.syncMissingBrands();
+            
+            if (syncResult.syncedBrands.length > 0) {
+              console.log(`✅ 成功同步品牌: ${syncResult.syncedBrands.join(", ")}`);
+            }
+            
+            if (syncResult.failedBrands.length > 0) {
+              console.warn(`⚠️ 部分品牌同步失败: ${syncResult.failedBrands.join(", ")}`);
+              console.warn("失败详情:", syncResult.errors);
+            }
+          } catch (syncError) {
+            console.error("❌ 品牌同步失败:", syncError);
+            // 品牌同步失败不应该阻止应用启动
+          }
+        } else {
+          console.log("✅ 所有映射的品牌都已存在");
+        }
+        
+        setState({
+          isLoading: false,
+          isSuccess: true,
+          isError: false,
+          needsMigration: false,
+        });
       } catch (error) {
         console.error("❌ 配置迁移失败:", error);
         console.error("错误详情:", {
