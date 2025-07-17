@@ -23,7 +23,13 @@ const TOOL_GROUPS = {
   e2b: ["computer"],
   
   // Boss直聘业务工具
-  zhipinBusiness: ["job_posting_generator", "zhipin_reply_generator"],
+  zhipinBusiness: [
+    "job_posting_generator", 
+    "zhipin_reply_generator",
+    "duliday_job_list",
+    "duliday_job_details",
+    "duliday_interview_booking"
+  ],
   
   // Puppeteer本地自动化工具
   puppeteer: ["puppeteer"],

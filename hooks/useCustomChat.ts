@@ -89,6 +89,15 @@ export function useCustomChat({
     );
   };
 
+  // 从 localStorage 获取 dulidayToken
+  const [dulidayToken, setDulidayToken] = useState<string | null>(null);
+  
+  useEffect(() => {
+    // 在客户端获取 token
+    const token = localStorage.getItem("duliday_token");
+    setDulidayToken(token);
+  }, []);
+
   const {
     messages,
     input,
@@ -117,6 +126,7 @@ export function useCustomChat({
       systemPrompts,
       replyPrompts,
       activeSystemPrompt,
+      dulidayToken,
     },
     maxSteps: 30,
   });

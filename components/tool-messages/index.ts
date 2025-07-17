@@ -8,7 +8,10 @@ import {
   Bot,
   Users,
   Smartphone,
-  UserCheck 
+  UserCheck,
+  Building2,
+  FileText,
+  Calendar
 } from "lucide-react";
 import { ComputerToolMessage } from "./computer-tool";
 import { BashToolMessage } from "./bash-tool";
@@ -22,6 +25,9 @@ import { ZhipinSendMessageTool } from "./zhipin-send-message-tool";
 import { ZhipinChatDetailsTool } from "./zhipin-chat-details-tool";
 import { ZhipinExchangeWechatTool } from "./zhipin-exchange-wechat-tool";
 import { ZhipinGetUsernameTool } from "./zhipin-get-username-tool";
+import { DulidayJobListToolMessage } from "./duliday-job-list-tool";
+import { DulidayJobDetailsToolMessage } from "./duliday-job-details-tool";
+import { DulidayInterviewBookingToolMessage } from "./duliday-interview-booking-tool";
 import { themes, type ToolConfig } from "./types";
 
 // 工具注册表
@@ -91,6 +97,22 @@ export const toolRegistry: Record<string, ToolConfig> = {
     icon: UserCheck,
     defaultTheme: themes.green,
     render: ZhipinGetUsernameTool,
+  },
+  // Duliday interview booking tools
+  duliday_job_list: {
+    icon: Building2,
+    defaultTheme: themes.blue,
+    render: DulidayJobListToolMessage,
+  },
+  duliday_job_details: {
+    icon: FileText,
+    defaultTheme: themes.purple,
+    render: DulidayJobDetailsToolMessage,
+  },
+  duliday_interview_booking: {
+    icon: Calendar,
+    defaultTheme: themes.green,
+    render: DulidayInterviewBookingToolMessage,
   },
 };
 

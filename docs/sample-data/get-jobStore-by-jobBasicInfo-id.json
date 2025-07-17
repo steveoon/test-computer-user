@@ -1,0 +1,128 @@
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": {
+    "id": 30971,
+    "jobBasicInfoId": 31605,
+    "jobName": "奥乐齐- 1011世茂-社会兼职-兼职",
+    "storeId": 303539,
+    "storeName": " 1011世茂",
+    "storeAddress": null,
+    "storeExactAddress": null,
+    "newStore": null,
+    "requirementNum": 1,
+    "thresholdNum": 30,
+    "interviewTimeMode": 2,
+    "interviewAddressMode": 1,
+    "secondInterviewAddressMode": null,
+    "thirdInterviewAddressMode": null,
+    "firstInterviewWay": null,
+    "secondInterviewWay": null,
+    "thirdInterviewWay": null,
+    "interviewTimes": [
+      {
+        "id": null,
+        "interviewDate": null,
+        "interviewTime": null,
+        "interviewDateTime": null,
+        "weekdays": [0],
+        "start": null,
+        "end": null,
+        "times": [
+          {
+            "start": 46800,
+            "end": 46800,
+            "fixedDeadline": null,
+            "cycleDeadlineDay": 0,
+            "cycleDeadlineEnd": 37800
+          }
+        ]
+      },
+      {
+        "id": null,
+        "interviewDate": null,
+        "interviewTime": null,
+        "interviewDateTime": null,
+        "weekdays": [1],
+        "start": null,
+        "end": null,
+        "times": [
+          {
+            "start": 46800,
+            "end": 46800,
+            "fixedDeadline": null,
+            "cycleDeadlineDay": 0,
+            "cycleDeadlineEnd": 37800
+          }
+        ]
+      },
+      {
+        "id": null,
+        "interviewDate": null,
+        "interviewTime": null,
+        "interviewDateTime": null,
+        "weekdays": [2],
+        "start": null,
+        "end": null,
+        "times": [
+          {
+            "start": 46800,
+            "end": 46800,
+            "fixedDeadline": null,
+            "cycleDeadlineDay": 0,
+            "cycleDeadlineEnd": 37800
+          }
+        ]
+      },
+      {
+        "id": null,
+        "interviewDate": null,
+        "interviewTime": null,
+        "interviewDateTime": null,
+        "weekdays": [3],
+        "start": null,
+        "end": null,
+        "times": [
+          {
+            "start": 46800,
+            "end": 46800,
+            "fixedDeadline": null,
+            "cycleDeadlineDay": 0,
+            "cycleDeadlineEnd": 37800
+          }
+        ]
+      },
+      {
+        "id": null,
+        "interviewDate": null,
+        "interviewTime": null,
+        "interviewDateTime": null,
+        "weekdays": [4],
+        "start": null,
+        "end": null,
+        "times": [
+          {
+            "start": 46800,
+            "end": 46800,
+            "fixedDeadline": null,
+            "cycleDeadlineDay": 0,
+            "cycleDeadlineEnd": 37800
+          }
+        ]
+      }
+    ],
+    "interviewAddressRegionId": null,
+    "interviewAddressRegionStr": null,
+    "interviewAddressCityStr": null,
+    "interviewAddressText": null,
+    "secondInterviewAddressText": null,
+    "thirdInterviewAddressText": null,
+    "probationWorkAddressMode": null,
+    "probationWorkAddressRegionId": null,
+    "probationWorkAddressRegionStr": null,
+    "probationWorkAddressCityStr": null,
+    "probationWorkAddressText": null,
+    "trainAddressMode": null,
+    "trainAddress": null
+  }
+}

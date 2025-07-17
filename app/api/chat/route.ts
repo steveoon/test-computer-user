@@ -7,6 +7,9 @@ import { weChatBotTool } from "@/lib/tools/wechat-bot-tool";
 import { jobPostingGeneratorTool } from "@/lib/tools/job-posting-generator-tool";
 import { zhipinReplyTool } from "@/lib/tools/zhipin-reply-tool";
 import { zhipinTools } from "@/lib/tools/zhipin";
+import { dulidayJobListTool } from "@/lib/tools/duliday/duliday-job-list-tool";
+import { dulidayJobDetailsTool } from "@/lib/tools/duliday/duliday-job-details-tool";
+import { dulidayInterviewBookingTool } from "@/lib/tools/duliday/duliday-interview-booking-tool";
 import { filterToolsBySystemPrompt } from "@/lib/tools/tool-filter";
 import { prunedMessages, shouldCleanupSandbox } from "@/lib/utils";
 import { getDynamicRegistry } from "@/lib/model-registry/dynamic-registry";
@@ -43,6 +46,7 @@ export async function POST(req: Request) {
     systemPrompts,
     replyPrompts,
     activeSystemPrompt,
+    dulidayToken,
   }: {
     messages: UIMessage[];
     sandboxId: string;
@@ -52,6 +56,7 @@ export async function POST(req: Request) {
     systemPrompts?: SystemPromptsConfig; // 系统提示词配置
     replyPrompts?: ReplyPromptsConfig; // 回复指令配置
     activeSystemPrompt?: keyof SystemPromptsConfig; // 活动系统提示词类型
+    dulidayToken?: string; // Duliday API token
   } = await req.json();
 
   try {
@@ -152,6 +157,10 @@ export async function POST(req: Request) {
       zhipin_get_chat_details: zhipinTools.getChatDetails(),
       zhipin_exchange_wechat: zhipinTools.exchangeWechat(),
       zhipin_get_username: zhipinTools.getUsername,
+      // Duliday interview booking tools
+      duliday_job_list: dulidayJobListTool(dulidayToken, preferredBrand),
+      duliday_job_details: dulidayJobDetailsTool(dulidayToken),
+      duliday_interview_booking: dulidayInterviewBookingTool(dulidayToken),
     };
 
     // 根据系统提示词过滤工具
@@ -168,7 +177,10 @@ export async function POST(req: Request) {
       maxSteps: 30,
       onFinish: async ({ usage, toolResults }) => {
         console.log("📊 usage", usage);
-        console.log("🛠️ toolResults", toolResults);
+        // Note: toolResults is typically empty in streaming mode as results are sent immediately
+        if (toolResults && toolResults.length > 0) {
+          console.log("🛠️ toolResults", toolResults);
+        }
       },
       onError: async error => {
         console.error("Stream generation error:", error);
