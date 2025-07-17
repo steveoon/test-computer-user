@@ -31,11 +31,18 @@ export class BrandSyncManager {
 
       // 获取所有映射的品牌
       const mappedBrands = getAvailableBrands();
+      const mappedBrandNames = mappedBrands.map(b => b.name);
 
-      // 找出缺失的品牌
+      // 找出缺失的映射品牌（只同步 ORGANIZATION_MAPPING 中定义的品牌）
       const missingBrands = forceSync
         ? mappedBrands
         : mappedBrands.filter((brand) => !existingBrands.includes(brand.name));
+      
+      // 记录非映射品牌（用户导入的额外品牌）
+      const customBrands = existingBrands.filter(brand => !mappedBrandNames.includes(brand));
+      if (customBrands.length > 0) {
+        console.log(`🛡️ 检测到用户自定义品牌（不会被同步影响）: ${customBrands.join("、")}`);
+      }
 
       if (missingBrands.length === 0) {
         console.log("✅ 所有映射的品牌都已存在，无需同步");

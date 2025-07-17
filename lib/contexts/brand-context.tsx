@@ -100,8 +100,12 @@ export function BrandProvider({ children }: BrandProviderProps) {
     }
   };
 
-  // 从 ORGANIZATION_MAPPING 获取所有映射的品牌作为可用品牌
-  const availableBrands = getAvailableBrandsFromMapping().map(brand => brand.name);
+  // 合并两个来源的品牌：ORGANIZATION_MAPPING 中的映射品牌 + 实际数据中的额外品牌
+  const mappedBrands = getAvailableBrandsFromMapping().map(brand => brand.name);
+  const dataBrands = brandData ? Object.keys(brandData.brands) : [];
+  
+  // 使用 Set 去重，确保所有品牌都能显示（映射的 + 导入的额外品牌）
+  const availableBrands = Array.from(new Set([...mappedBrands, ...dataBrands])).sort();
 
   const value: BrandContextType = {
     currentBrand,
