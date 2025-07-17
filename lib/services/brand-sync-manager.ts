@@ -1,8 +1,5 @@
 import { getAvailableBrands } from "@/lib/constants/organization-mapping";
 import { configService } from "@/lib/services/config.service";
-import { DulidaySyncService } from "@/lib/services/duliday-sync.service";
-import { mergeAndSaveSyncData } from "@/lib/stores/sync-store";
-import type { SyncResult } from "@/lib/services/duliday-sync.service";
 
 /**
  * 品牌同步管理器
@@ -56,37 +53,49 @@ export class BrandSyncManager {
         throw new Error("未找到 Duliday Token，请先配置 Token");
       }
 
-      // 创建同步服务
-      const syncService = new DulidaySyncService(token);
+      // 通过 API 路由同步品牌（避免 CSP 问题）
+      try {
+        const response = await fetch("/api/sync", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            organizationIds: missingBrands.map(brand => brand.id),
+            token,
+          }),
+        });
 
-      // 同步每个缺失的品牌
-      const syncResults: SyncResult[] = [];
-      for (const brand of missingBrands) {
-        try {
-          console.log(`📥 正在同步品牌: ${brand.name} (ID: ${brand.id})`);
-          const result = await syncService.syncOrganization(brand.id);
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "同步请求失败");
+        }
 
-          if (result.success && result.convertedData) {
-            syncResults.push(result);
-            syncedBrands.push(brand.name);
-            console.log(`✅ 成功同步品牌: ${brand.name}`);
-          } else {
-            failedBrands.push(brand.name);
-            errors[brand.name] = result.errors.join(", ") || "同步失败";
-            console.error(`❌ 同步品牌失败: ${brand.name}`, result.errors);
+        const { data: syncRecord } = await response.json();
+
+        // 处理同步结果
+        if (syncRecord && syncRecord.results) {
+          for (const result of syncRecord.results) {
+            const brand = missingBrands.find(b => b.name === result.brandName);
+            if (brand) {
+              if (result.success) {
+                syncedBrands.push(brand.name);
+                console.log(`✅ 成功同步品牌: ${brand.name}`);
+              } else {
+                failedBrands.push(brand.name);
+                errors[brand.name] = result.errors.join(", ") || "同步失败";
+                console.error(`❌ 同步品牌失败: ${brand.name}`, result.errors);
+              }
+            }
           }
-        } catch (error) {
+        }
+      } catch (error) {
+        // 所有品牌都失败
+        for (const brand of missingBrands) {
           failedBrands.push(brand.name);
           errors[brand.name] = error instanceof Error ? error.message : "未知错误";
-          console.error(`❌ 同步品牌异常: ${brand.name}`, error);
         }
-      }
-
-      // 保存同步的数据
-      if (syncResults.length > 0) {
-        console.log(`💾 保存 ${syncResults.length} 个品牌的数据...`);
-        await mergeAndSaveSyncData(syncResults);
-        console.log("✅ 品牌数据保存成功");
+        console.error("❌ 品牌同步请求失败:", error);
       }
 
       return { syncedBrands, failedBrands, errors };
