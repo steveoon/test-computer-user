@@ -115,11 +115,13 @@ export const zhipinReplyTool = (
         console.log(`✅ 回复生成成功`);
         console.log(`📝 回复内容: ${replyResult.text}`);
         console.log(`🎯 回复类型: ${replyResult.replyType}`);
+        console.log(`📊 分类依据: ${replyResult.reasoning}`);
 
         // 构建响应
         const response: {
           reply: string;
           replyType: string;
+          reasoning: string;
           candidateMessage: string;
           historyCount: number;
           stats?: {
@@ -130,6 +132,7 @@ export const zhipinReplyTool = (
         } = {
           reply: replyResult.text,
           replyType: replyResult.replyType,
+          reasoning: replyResult.reasoning || "未提供分类依据",
           candidateMessage: candidate_message,
           historyCount: processedHistory.length,
         };

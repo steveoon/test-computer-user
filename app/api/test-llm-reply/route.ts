@@ -3,7 +3,7 @@ import { generateSmartReplyWithLLM } from "../../../lib/loaders/zhipin-data.load
 
 export async function POST(request: NextRequest) {
   try {
-    const { message, brand, modelConfig, configData, replyPrompts } =
+    const { message, brand, modelConfig, configData, replyPrompts, conversationHistory } =
       await request.json();
 
     if (!message || typeof message !== "string") {
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     // 调用LLM智能回复生成函数（使用客户端传递的配置数据）
     const reply = await generateSmartReplyWithLLM(
       message.trim(),
-      [], // 对话历史
+      conversationHistory || [], // 对话历史
       brand, // 品牌参数
       modelConfig, // 模型配置参数
       configData, // 🔧 使用客户端传递的配置数据
@@ -46,7 +46,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      reply,
+      reply: reply.text,
+      replyType: reply.replyType,
+      reasoning: reply.reasoning,
       timestamp: new Date().toISOString(),
     });
   } catch (error) {

@@ -9,8 +9,9 @@ import {
 } from "@/lib/utils/brand-storage";
 import { useModelConfig } from "@/lib/stores/model-config-store";
 import { useConfigDataForChat } from "@/hooks/useConfigDataForChat";
-import { Settings } from "lucide-react";
+import { Settings, MessageSquare, X, Plus } from "lucide-react";
 import Link from "next/link";
+import { REPLY_TYPE_NAMES, type ReplyContext } from "@/types/zhipin";
 
 export default function TestLLMReplyPage() {
   const { currentBrand } = useBrand();
@@ -23,6 +24,8 @@ export default function TestLLMReplyPage() {
   } = useConfigDataForChat();
   const [message, setMessage] = useState("");
   const [reply, setReply] = useState("");
+  const [replyType, setReplyType] = useState("");
+  const [reasoning, setReasoning] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [currentTestMessage, setCurrentTestMessage] = useState("");
@@ -31,6 +34,10 @@ export default function TestLLMReplyPage() {
     historyCount: number;
     currentBrand: string | null;
   } | null>(null);
+  const [conversationHistory, setConversationHistory] = useState<string[]>([]);
+  const [historyInput, setHistoryInput] = useState("");
+  const [showHistoryEditor, setShowHistoryEditor] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<"我" | "求职者">("求职者");
 
   // 🗑️ 清除品牌偏好
   const handleClearPreferences = async () => {
@@ -96,6 +103,8 @@ export default function TestLLMReplyPage() {
     setLoading(true);
     setError("");
     setReply("");
+    setReplyType("");
+    setReasoning("");
     setCurrentTestMessage(messageToTest);
 
     try {
@@ -114,6 +123,7 @@ export default function TestLLMReplyPage() {
           },
           configData, // 🔧 传递配置数据
           replyPrompts, // 🔧 传递回复指令
+          conversationHistory, // 传递对话历史
         }),
       });
 
@@ -125,6 +135,8 @@ export default function TestLLMReplyPage() {
       // 确保只存储文本内容，避免渲染对象
       const replyText = typeof data.reply === 'string' ? data.reply : data.reply?.text || '';
       setReply(replyText);
+      setReplyType(data.replyType || '');
+      setReasoning(data.reasoning || '');
     } catch (error) {
       console.error("测试失败:", error);
       setError(error instanceof Error ? error.message : "未知错误");
@@ -169,6 +181,187 @@ export default function TestLLMReplyPage() {
         <p className="text-xs text-blue-600 mt-2">
           💡 点击右上角"模型配置"按钮可以修改使用的AI模型
         </p>
+      </div>
+
+      {/* 对话历史编辑器 */}
+      <div className="mb-6 p-4 bg-gray-50 border border-gray-200 rounded">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <MessageSquare className="w-5 h-5" />
+            对话历史上下文
+          </h2>
+          <button
+            onClick={() => setShowHistoryEditor(!showHistoryEditor)}
+            className="text-sm text-blue-600 hover:text-blue-800"
+          >
+            {showHistoryEditor ? "收起" : "展开编辑"}
+          </button>
+        </div>
+        
+        {conversationHistory.length > 0 && (
+          <div className="mb-3 space-y-1">
+            <div className="text-sm text-gray-600">当前历史记录：</div>
+            {conversationHistory.map((msg, index) => {
+              const [role, ...contentParts] = msg.split(': ');
+              const content = contentParts.join(': ');
+              const isCandidate = role === "求职者";
+              
+              return (
+                <div key={index} className="flex items-start gap-2 text-sm">
+                  <div className={`flex-1 flex items-center gap-2 p-2 rounded border ${
+                    isCandidate ? "bg-blue-50 border-blue-200" : "bg-green-50 border-green-200"
+                  }`}>
+                    <span className={`font-medium shrink-0 ${
+                      isCandidate ? "text-blue-700" : "text-green-700"
+                    }`}>
+                      {role}:
+                    </span>
+                    <span className="flex-1">{content}</span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      const newHistory = conversationHistory.filter((_, i) => i !== index);
+                      setConversationHistory(newHistory);
+                    }}
+                    className="p-1 text-red-500 hover:text-red-700 shrink-0"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        
+        {showHistoryEditor && (
+          <div className="space-y-3">
+            <div className="flex gap-2">
+              {/* 角色选择器 */}
+              <div className="flex rounded-md shadow-sm">
+                <button
+                  type="button"
+                  onClick={() => setSelectedRole("求职者")}
+                  className={`px-3 py-2 text-sm font-medium border ${
+                    selectedRole === "求职者"
+                      ? "bg-blue-500 text-white border-blue-500 z-10"
+                      : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                  } rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                >
+                  求职者
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedRole("我")}
+                  className={`px-3 py-2 text-sm font-medium border ${
+                    selectedRole === "我"
+                      ? "bg-blue-500 text-white border-blue-500 z-10"
+                      : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                  } rounded-r-md -ml-px focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                >
+                  我
+                </button>
+              </div>
+              
+              {/* 消息输入框 */}
+              <input
+                type="text"
+                value={historyInput}
+                onChange={(e) => setHistoryInput(e.target.value)}
+                placeholder={`输入${selectedRole}的消息内容`}
+                className="flex-1 p-2 border rounded"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && historyInput.trim()) {
+                    const formattedMessage = `${selectedRole}: ${historyInput.trim()}`;
+                    setConversationHistory([...conversationHistory, formattedMessage]);
+                    setHistoryInput("");
+                  }
+                }}
+              />
+              <button
+                onClick={() => {
+                  if (historyInput.trim()) {
+                    const formattedMessage = `${selectedRole}: ${historyInput.trim()}`;
+                    setConversationHistory([...conversationHistory, formattedMessage]);
+                    setHistoryInput("");
+                  }
+                }}
+                className="px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 flex items-center gap-1"
+              >
+                <Plus className="w-4 h-4" />
+                添加
+              </button>
+            </div>
+            
+            <div className="flex items-center justify-between text-sm text-gray-600">
+              <span>预设对话历史场景：</span>
+              <span className="text-xs">按 Enter 快速添加</span>
+            </div>
+            <div className="grid grid-cols-1 gap-2">
+              <button
+                onClick={() => {
+                  setConversationHistory([
+                    "求职者: 你好，我想找工作",
+                    "我: 您好！我们正在招聘前厅服务员，请问您在上海哪个区呢？",
+                    "求职者: 我在杨浦区"
+                  ]);
+                }}
+                className="p-2 text-left border rounded hover:bg-gray-50 text-sm"
+              >
+                📦 地区询问场景
+              </button>
+              <button
+                onClick={() => {
+                  setConversationHistory([
+                    "求职者: 你们还招人吗？",
+                    "我: 是的，我们正在招聘。请问您想找什么岗位呢？",
+                    "求职者: 前厅服务员，薪资多少？"
+                  ]);
+                }}
+                className="p-2 text-left border rounded hover:bg-gray-50 text-sm"
+              >
+                💰 薪资询问场景
+              </button>
+              <button
+                onClick={() => {
+                  setConversationHistory([
+                    "求职者: 这个工作需要上夜班吗？",
+                    "我: 我们有白班和晚班，可以根据您的情况安排。",
+                    "求职者: 那排班时间是怎么安排的？"
+                  ]);
+                }}
+                className="p-2 text-left border rounded hover:bg-gray-50 text-sm"
+              >
+                🕰️ 排班时间场景
+              </button>
+              <button
+                onClick={() => {
+                  setConversationHistory([
+                    "求职者: 我之前没做过餐饮",
+                    "我: 没关系，我们会提供带薪培训。",
+                    "求职者: 培训多久？培训期间有工资吗？"
+                  ]);
+                }}
+                className="p-2 text-left border rounded hover:bg-gray-50 text-sm"
+              >
+                🎓 培训相关场景
+              </button>
+              <button
+                onClick={() => {
+                  setConversationHistory([]);
+                }}
+                className="p-2 text-center border border-red-300 text-red-600 rounded hover:bg-red-50 text-sm"
+              >
+                🗑️ 清空历史
+              </button>
+            </div>
+          </div>
+        )}
+        
+        {!showHistoryEditor && conversationHistory.length === 0 && (
+          <p className="text-sm text-gray-500">
+            点击"展开编辑"添加对话历史，模拟真实的聊天场景
+          </p>
+        )}
       </div>
 
       {/* 预设测试消息 */}
@@ -254,11 +447,36 @@ export default function TestLLMReplyPage() {
       )}
 
       {reply && !loading && (
-        <div className="p-4 bg-green-100 border border-green-400 rounded">
-          <h3 className="font-semibold text-green-800 mb-2">
-            智能回复：
-          </h3>
-          <p className="text-green-700">{reply}</p>
+        <div className="space-y-3">
+          <div className="p-4 bg-green-100 border border-green-400 rounded">
+            <h3 className="font-semibold text-green-800 mb-2">
+              智能回复：
+            </h3>
+            <p className="text-green-700">{reply}</p>
+          </div>
+          
+          {(replyType || reasoning) && (
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded">
+              <h3 className="font-semibold text-blue-800 mb-2">
+                📊 分类分析
+              </h3>
+              {replyType && (
+                <div className="mb-2">
+                  <span className="font-medium text-blue-700">分类类型：</span>
+                  <span className="text-blue-600 ml-1">
+                    {REPLY_TYPE_NAMES[replyType as ReplyContext] || replyType}
+                    {replyType && ` (${replyType})`}
+                  </span>
+                </div>
+              )}
+              {reasoning && (
+                <div>
+                  <span className="font-medium text-blue-700">分类依据：</span>
+                  <span className="text-blue-600 ml-1">{reasoning}</span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 

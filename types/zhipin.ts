@@ -421,3 +421,30 @@ export type ReplyArgsMap = {
 
 // 联合类型，用于 LLM 工具的参数
 export type LLMToolArgs = ReplyArgsMap[keyof ReplyArgsMap];
+
+// 回复类型的中文名称映射
+export const REPLY_TYPE_NAMES: Record<ReplyContext, string> = {
+  // 基础咨询类
+  initial_inquiry: "初次咨询",
+  location_inquiry: "位置询问",
+  no_location_match: "无匹配位置",
+  schedule_inquiry: "时间安排",
+  interview_request: "面试请求",
+  general_chat: "一般对话",
+  
+  // 敏感信息类
+  salary_inquiry: "薪资询问",
+  age_concern: "年龄问题",
+  insurance_inquiry: "保险询问",
+  
+  // 跟进沟通类
+  followup_chat: "跟进对话",
+  
+  // 考勤排班类
+  attendance_inquiry: "出勤要求",
+  flexibility_inquiry: "排班灵活性",
+  attendance_policy_inquiry: "考勤政策",
+  work_hours_inquiry: "工时要求",
+  availability_inquiry: "时段可用性",
+  part_time_support: "兼职支持",
+};
