@@ -142,60 +142,27 @@ export const dulidayInterviewBookingTool = (customToken?: string) =>
         
         const data = parseResult.data;
 
-        // 处理响应
-        if (data.code === 0) {
-          // 成功
-          let successMessage = `✅ 面试预约成功！\n\n`;
-          successMessage += `👤 求职者：${name}\n`;
-          successMessage += `📞 联系方式：${phone}\n`;
-          successMessage += `🎓 学历：${education}\n`;
-          successMessage += `⏰ 面试时间：${interviewTime}\n`;
-          successMessage += `📋 岗位ID：${jobId}\n`;
-
-          if (data.data?.notice) {
-            successMessage += `\n📢 ${data.data.notice}`;
-          }
-
-          return {
-            type: "text" as const,
-            text: successMessage,
-          };
-        } else {
-          // 失败 - 处理各种错误码
-          let errorMessage = `❌ 预约失败：${data.message}\n\n`;
-
-          // 根据错误码提供具体建议
-          switch (data.code) {
-            case 30003:
-              errorMessage += "该求职者已经报名过此岗位，无需重复报名。";
-              break;
-            case 10000:
-              if (data.message.includes("姓名")) {
-                errorMessage += "请提供求职者的姓名。";
-              } else if (data.message.includes("联系电话")) {
-                errorMessage += "请提供求职者的联系电话。";
-              } else if (data.message.includes("岗位")) {
-                if (data.message.includes("不存在")) {
-                  errorMessage += "岗位不存在或已下架，请重新选择其他岗位。";
-                } else {
-                  errorMessage += "请提供有效的岗位ID。";
-                }
-              }
-              break;
-            case 50000:
-              errorMessage += "服务器错误，可能是数据格式问题。请检查：\n";
-              errorMessage += "- 性别ID必须是数字（1=男，2=女）\n";
-              errorMessage += "- 面试时间格式必须是：YYYY-MM-DD HH:mm:ss";
-              break;
-            default:
-              errorMessage += "请检查输入信息是否完整正确。";
-          }
-
-          return {
-            type: "text" as const,
-            text: errorMessage,
-          };
-        }
+        // 返回原始API响应数据，让组件处理展示
+        return {
+          type: "object" as const,
+          object: {
+            success: data.code === 0,
+            code: data.code,
+            message: data.message,
+            notice: data.data?.notice || null,
+            errorList: data.data?.errorList || null,
+            // 包含原始请求信息供组件使用
+            requestInfo: {
+              name,
+              phone,
+              age,
+              genderId,
+              education,
+              jobId,
+              interviewTime,
+            },
+          },
+        };
       } catch (error) {
         console.error("预约面试失败:", error);
         return {

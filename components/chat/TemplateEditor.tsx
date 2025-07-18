@@ -16,6 +16,7 @@ interface TemplateField {
   value: string;
   start: number;
   end: number;
+  id: string; // 添加唯一标识
 }
 
 export function TemplateEditor({ template, editableFields, onSubmit, onClose }: TemplateEditorProps) {
@@ -49,12 +50,20 @@ export function TemplateEditor({ template, editableFields, onSubmit, onClose }: 
               let end: number;
               
               if (match[1] !== undefined) {
-                // Pattern has capture group (e.g., /姓名：([^，\n]+)/g)
+                // Pattern has capture group
                 value = match[1];
-                // Find the start of the captured value
-                const keyMatch = match[0].match(/^[^：]+：/);
-                start = match.index + (keyMatch ? keyMatch[0].length : 0);
-                end = start + value.length;
+                // Find where the captured value starts within the full match
+                const fullMatch = match[0];
+                const captureIndex = fullMatch.indexOf(value);
+                
+                if (captureIndex !== -1) {
+                  start = match.index + captureIndex;
+                  end = start + value.length;
+                } else {
+                  // Fallback: if can't find exact position, use the match position
+                  start = match.index;
+                  end = match.index + match[0].length;
+                }
               } else {
                 // Pattern matches entire value (e.g., /前厅/g)
                 value = match[0];
@@ -67,6 +76,7 @@ export function TemplateEditor({ template, editableFields, onSubmit, onClose }: 
                 value: value,
                 start: start,
                 end: end,
+                id: `${fieldConfig.key}-${start}`, // 使用key和位置生成唯一ID
               });
             }
           });
@@ -88,11 +98,13 @@ export function TemplateEditor({ template, editableFields, onSubmit, onClose }: 
           matches.forEach(match => {
             if (match.index !== undefined) {
               const value = match[1];
+              const start = match.index + key.length + 1;
               foundFields.push({
                 key,
                 value,
-                start: match.index + key.length + 1,
+                start: start,
                 end: match.index + match[0].length,
+                id: `${key}-${start}`,
               });
             }
           });
@@ -108,33 +120,12 @@ export function TemplateEditor({ template, editableFields, onSubmit, onClose }: 
   }, [editedContent, editableFields]);
 
   const handleFieldEdit = (field: TemplateField, newValue: string) => {
-    // For configured fields, we need to handle replacement differently
-    if (editableFields && editableFields.length > 0) {
-      // Find the field configuration
-      const fieldConfig = editableFields.find(f => f.key === field.key);
-      if (fieldConfig) {
-        // Replace all occurrences if pattern has global flag
-        let newContent = editedContent;
-        const pattern = new RegExp(fieldConfig.pattern.source, fieldConfig.pattern.flags);
-        
-        if (fieldConfig.pattern.flags?.includes('g')) {
-          // Global replacement
-          newContent = editedContent.replace(pattern, newValue);
-        } else {
-          // Single replacement at specific position
-          const before = editedContent.substring(0, field.start);
-          const after = editedContent.substring(field.end);
-          newContent = before + newValue + after;
-        }
-        
-        setEditedContent(newContent);
-      }
-    } else {
-      // Original behavior for auto-detected fields
-      const before = editedContent.substring(0, field.start);
-      const after = editedContent.substring(field.end);
-      setEditedContent(before + newValue + after);
-    }
+    // Always use position-based replacement to avoid issues
+    const before = editedContent.substring(0, field.start);
+    const after = editedContent.substring(field.end);
+    const newContent = before + newValue + after;
+    
+    setEditedContent(newContent);
     setEditingField(null);
   };
 
@@ -185,25 +176,40 @@ export function TemplateEditor({ template, editableFields, onSubmit, onClose }: 
           {/* Quick Edit Fields */}
           {fields.length > 0 && (
             <div className="grid grid-cols-2 gap-2 p-3 bg-blue-50 rounded-md">
-              {fields.map((field, index) => (
-                <div key={index} className="flex items-center gap-2">
+              {fields.map((field) => (
+                <div key={field.id} className="flex items-center gap-2">
                   <span className="text-sm text-gray-600">{field.key}：</span>
-                  {editingField === field.key ? (
+                  {editingField === field.id ? (
                     <input
                       type="text"
                       defaultValue={field.value}
                       autoFocus
-                      onBlur={(e) => handleFieldEdit(field, e.target.value)}
+                      onBlur={(e) => {
+                        const newValue = e.target.value;
+                        if (newValue !== field.value) {
+                          handleFieldEdit(field, newValue);
+                        } else {
+                          setEditingField(null);
+                        }
+                      }}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
-                          handleFieldEdit(field, e.currentTarget.value);
+                          const newValue = e.currentTarget.value;
+                          if (newValue !== field.value) {
+                            handleFieldEdit(field, newValue);
+                          } else {
+                            setEditingField(null);
+                          }
+                        }
+                        if (e.key === 'Escape') {
+                          setEditingField(null);
                         }
                       }}
                       className="flex-1 px-2 py-1 text-sm border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                   ) : (
                     <button
-                      onClick={() => setEditingField(field.key)}
+                      onClick={() => setEditingField(field.id)}
                       className="flex-1 px-2 py-1 text-sm text-left bg-white border border-gray-200 rounded hover:border-blue-300 transition-colors"
                     >
                       {field.value}
@@ -220,6 +226,12 @@ export function TemplateEditor({ template, editableFields, onSubmit, onClose }: 
             contentEditable
             suppressContentEditableWarning
             onInput={(e) => setEditedContent(e.currentTarget.textContent || '')}
+            onBlur={() => {
+              // Sync content on blur to ensure consistency
+              if (editorRef.current) {
+                setEditedContent(editorRef.current.textContent || '');
+              }
+            }}
             className="min-h-[120px] max-h-[300px] overflow-y-auto p-3 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 whitespace-pre-wrap"
             style={{ wordBreak: 'break-word' }}
           >

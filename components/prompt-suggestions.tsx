@@ -34,16 +34,21 @@ const suggestions: PromptSuggestion[] = [
   {
     text: "预约面试",
     prompt: `帮我为求职者预约面试，以下是信息：
-    姓名：李青，电话：13585516989，性别：男，年龄：39，
-    想应聘奥乐齐世茂店的岗位，面试时间：2025年7月22日下午13点`,
+姓名：李青，电话：13585516989，性别：男，年龄：39，
+门店：奥乐齐世茂店，面试时间：2025-07-22 13:00:00
+
+请按以下步骤操作：
+1) 使用 duliday_job_list 工具查找指定门店的岗位
+2) 从返回结果中获取 jobId
+3) 使用 duliday_interview_booking 工具预约面试`,
     editable: true,
     editableFields: [
       { key: "姓名", pattern: /姓名：([^，\n]+)/g },
       { key: "电话", pattern: /电话：(\d+)/g },
       { key: "性别", pattern: /性别：([男女])/g },
       { key: "年龄", pattern: /年龄：(\d+)/g },
-      { key: "门店", pattern: /奥乐齐世茂店/g, defaultValue: "奥乐齐世茂店" },
-      { key: "面试时间", pattern: /面试时间：([^，\n]+)/g },
+      { key: "门店", pattern: /门店：([^，\n]+)/g },
+      { key: "面试时间", pattern: /面试时间：([\d\-\s:]+)/g },
     ],
   },
   {
@@ -54,12 +59,12 @@ const suggestions: PromptSuggestion[] = [
   },
   {
     text: "发送岗位通知到飞书",
-    prompt: "生成后厨岗位空缺的通知消息，门店是静安大悦城店，需要3人，并发送到飞书群",
+    prompt:
+      "生成后厨岗位空缺的通知消息，门店是静安大悦城店，并发送到飞书群，你需要先获取品牌下门店和岗位详情",
     editable: true,
     editableFields: [
       { key: "岗位", pattern: /后厨/g, defaultValue: "后厨" },
       { key: "门店", pattern: /静安大悦城店/g, defaultValue: "静安大悦城店" },
-      { key: "人数", pattern: /需要(\d+)人/g },
       { key: "平台", pattern: /飞书/g, defaultValue: "飞书" },
     ],
   },
