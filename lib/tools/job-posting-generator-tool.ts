@@ -5,8 +5,22 @@ import { getDynamicRegistry } from "@/lib/model-registry/dynamic-registry";
 import { DEFAULT_PROVIDER_CONFIGS } from "@/lib/config/models";
 import type { Store, Position, ZhipinData } from "@/types/zhipin";
 
-// 岗位类型枚举
-const positionTypeSchema = z.enum(["前厅", "后厨", "洗碗", "早班"]).describe("岗位类型");
+// 岗位类型枚举 - 包含常见的零售和餐饮岗位
+const positionTypeSchema = z.enum([
+  "前厅", 
+  "后厨", 
+  "洗碗", 
+  "早班",
+  "分拣",      // 零售超市常见岗位
+  "收银",      // 收银员
+  "理货",      // 理货员
+  "打包",      // 打包员
+  "配送",      // 配送员
+  "仓库",      // 仓库管理
+  "客服",      // 客服
+  "全职",      // 通用全职
+  "兼职"       // 通用兼职
+]).describe("岗位类型");
 
 // 阶梯薪资解析 schema
 const stepSalarySchema = z.object({
@@ -26,7 +40,7 @@ const stepSalarySchema = z.object({
 export const jobPostingGeneratorTool = (configData?: ZhipinData) =>
   tool({
     description:
-      "生成岗位空缺推送消息。根据指定的岗位类型（前厅/后厨/洗碗/早班），从品牌数据中筛选匹配的门店和岗位信息，生成格式化的微信群推送消息。",
+      "生成岗位空缺推送消息。根据指定的岗位类型（如：前厅/后厨/洗碗/早班/分拣/收银/理货等），从品牌数据中筛选匹配的门店和岗位信息，生成格式化的微信群推送消息。",
     parameters: z.object({
       positionType: positionTypeSchema,
       brand: z.string().optional().describe("品牌名称，如果不指定则使用当前默认品牌"),
