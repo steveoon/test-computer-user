@@ -76,9 +76,7 @@ export const updateSession = async (request: NextRequest) => {
         stack: fetchError instanceof Error ? fetchError.stack : undefined,
         supabaseUrl: SUPABASE_URL ? SUPABASE_URL.substring(0, 30) + "..." : "undefined",
         errorName: fetchError instanceof Error ? fetchError.name : "Unknown",
-        errorCause: fetchError instanceof Error && 'cause' in fetchError ? fetchError.cause : undefined,
-        nodeVersion: process.version,
-        env: process.env.NODE_ENV
+        errorCause: fetchError instanceof Error && 'cause' in fetchError ? fetchError.cause : undefined
       });
       // 针对 fetch failed 错误的特殊处理建议
       if (fetchError instanceof Error && fetchError.message.includes('fetch failed')) {
