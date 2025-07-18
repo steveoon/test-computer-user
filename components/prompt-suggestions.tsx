@@ -1,53 +1,75 @@
 import { ArrowUpRight } from "lucide-react";
 import { Button } from "./ui/button";
 
-const suggestions = [
+export interface PromptSuggestion {
+  text: string;
+  prompt: string;
+  editable?: boolean;
+  editableFields?: Array<{
+    key: string;
+    pattern: RegExp;
+    defaultValue?: string;
+  }>;
+}
+
+const suggestions: PromptSuggestion[] = [
   {
     text: "发送前厅岗位空缺通知",
     prompt: "生成前厅岗位空缺的通知消息，并用Wechat发送",
+    editable: true,
+    editableFields: [
+      {
+        key: "岗位",
+        pattern: /前厅/g,
+        defaultValue: "前厅",
+      },
+    ],
   },
   {
     text: "测试中文逐字符编码输入",
     prompt:
       "测试中文逐字符Unicode编码输入功能：输入一段中文文本 '您好，这是Unicode编码测试。我正在寻找工作机会，希望能够了解贵公司的职位详情。谢谢！' 来验证逐字符Unicode编码输入是否正常工作，系统会使用Ctrl+Shift+U快捷键逐个输入Unicode字符。",
+    editable: false,
   },
   {
-    text: "打开Boss直聘并登录",
-    prompt: `先打开浏览器并访问"https://www.zhipin.com/web/user/"
-    1) 点击"APP扫码登录"；
-    2) 等待用户扫码成功；
-    3) 截图查看登录状态；
-    4) 如果登录成功，点击"消息"按钮；
-    5) 截图查看消息页面状态；
-    6) 如果消息页面打开成功，返回消息页面打开成功信息；
-    7) 如果消息页面打开失败，让我手动操作。
-    `,
+    text: "预约面试",
+    prompt: `帮我为求职者预约面试，以下是信息：
+    姓名：李青，电话：13585516989，性别：男，年龄：39，
+    想应聘奥乐齐世茂店的岗位，面试时间：2025年7月22日下午13点`,
+    editable: true,
+    editableFields: [
+      { key: "姓名", pattern: /姓名：([^，\n]+)/g },
+      { key: "电话", pattern: /电话：(\d+)/g },
+      { key: "性别", pattern: /性别：([男女])/g },
+      { key: "年龄", pattern: /年龄：(\d+)/g },
+      { key: "门店", pattern: /奥乐齐世茂店/g, defaultValue: "奥乐齐世茂店" },
+      { key: "面试时间", pattern: /面试时间：([^，\n]+)/g },
+    ],
   },
   {
     text: "处理直聘未读消息",
     prompt:
       "我正在BOSS直聘的消息页面，请开始处理未读消息。分析页面，找到未读对话并开始按流程沟通。",
+    editable: false,
   },
-  // {
-  //   text: "Check system memory usage",
-  //   prompt: "Run the top command to show system resource usage",
-  // },
   {
-    text: "安装中文字体",
-    prompt: "安装少数可用的中文字体，确认按照好即可结束，无需执行其他验证",
+    text: "发送岗位通知到飞书",
+    prompt: "生成后厨岗位空缺的通知消息，门店是静安大悦城店，需要3人，并发送到飞书群",
+    editable: true,
+    editableFields: [
+      { key: "岗位", pattern: /后厨/g, defaultValue: "后厨" },
+      { key: "门店", pattern: /静安大悦城店/g, defaultValue: "静安大悦城店" },
+      { key: "人数", pattern: /需要(\d+)人/g },
+      { key: "平台", pattern: /飞书/g, defaultValue: "飞书" },
+    ],
   },
-  // {
-  //   text: "What do you see",
-  //   prompt:
-  //     "Capture a screenshot of the current screen and tell me what you see",
-  // },
 ];
 
 export const PromptSuggestions = ({
   submitPrompt,
   disabled,
 }: {
-  submitPrompt: (prompt: string) => void;
+  submitPrompt: (suggestion: PromptSuggestion) => void;
   disabled: boolean;
 }) => {
   return (
@@ -57,7 +79,7 @@ export const PromptSuggestions = ({
           key={index}
           variant="pill"
           size="pill"
-          onClick={() => submitPrompt(suggestion.prompt)}
+          onClick={() => submitPrompt(suggestion)}
           disabled={disabled}
         >
           <span>

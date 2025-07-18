@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { Input } from "@/components/input";
-import { PromptSuggestions } from "@/components/prompt-suggestions";
+import { PromptSuggestions, type PromptSuggestion } from "@/components/prompt-suggestions";
+import { TemplateEditor } from "./TemplateEditor";
 import { toast } from "sonner";
 import { useInputHistoryStore } from "@/lib/stores/input-history-store";
 
@@ -18,6 +20,11 @@ interface ChatInputFormProps {
   append: (message: { role: "user"; content: string }) => void;
 }
 
+interface TemplateState {
+  template: string;
+  editableFields?: PromptSuggestion['editableFields'];
+}
+
 export function ChatInputForm({
   input,
   handleInputChange,
@@ -31,8 +38,9 @@ export function ChatInputForm({
   append,
 }: ChatInputFormProps) {
   const { addToHistory } = useInputHistoryStore();
+  const [templateState, setTemplateState] = useState<TemplateState | null>(null);
   
-  const submitPrompt = (prompt: string) => {
+  const handlePromptClick = (suggestion: PromptSuggestion) => {
     if (!isAuthenticated) {
       toast.error("请先登录", {
         description: "您需要登录后才能使用AI助手功能",
@@ -41,8 +49,25 @@ export function ChatInputForm({
       });
       return;
     }
-    addToHistory(prompt);
-    append({ role: "user", content: prompt });
+
+    // Check if the suggestion is marked as editable
+    if (suggestion.editable) {
+      // Open template editor with configured fields
+      setTemplateState({
+        template: suggestion.prompt,
+        editableFields: suggestion.editableFields,
+      });
+    } else {
+      // Direct submit for non-editable prompts
+      addToHistory(suggestion.prompt);
+      append({ role: "user", content: suggestion.prompt });
+    }
+  };
+
+  const handleTemplateSubmit = (editedContent: string) => {
+    addToHistory(editedContent);
+    append({ role: "user", content: editedContent });
+    setTemplateState(null);
   };
 
   return (
@@ -50,10 +75,20 @@ export function ChatInputForm({
       {/* PromptSuggestions 始终显示在输入框上方 */}
       <PromptSuggestions
         disabled={isInitializing || !isAuthenticated}
-        submitPrompt={submitPrompt}
+        submitPrompt={handlePromptClick}
       />
 
-      <div className="bg-white">
+      <div className="bg-white relative">
+        {/* Template Editor */}
+        {templateState && (
+          <TemplateEditor
+            template={templateState.template}
+            editableFields={templateState.editableFields}
+            onSubmit={handleTemplateSubmit}
+            onClose={() => setTemplateState(null)}
+          />
+        )}
+
         <form onSubmit={(e) => {
           e.preventDefault();
           if (input.trim()) {
