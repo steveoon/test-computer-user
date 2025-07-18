@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { X, Send, Edit3 } from "lucide-react";
 import type { PromptSuggestion } from "@/components/prompt-suggestions";
 
@@ -129,14 +129,14 @@ export function TemplateEditor({ template, editableFields, onSubmit, onClose }: 
     setEditingField(null);
   };
 
+  const handleClose = useCallback(() => {
+    setIsVisible(false);
+    setTimeout(onClose, 150); // Wait for animation
+  }, [onClose]);
+
   const handleSubmit = () => {
     onSubmit(editedContent);
     handleClose();
-  };
-
-  const handleClose = () => {
-    setIsVisible(false);
-    setTimeout(onClose, 150); // Wait for animation
   };
 
   // Handle escape key
@@ -148,7 +148,7 @@ export function TemplateEditor({ template, editableFields, onSubmit, onClose }: 
     };
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
-  }, []);
+  }, [handleClose]);
 
   return (
     <div 

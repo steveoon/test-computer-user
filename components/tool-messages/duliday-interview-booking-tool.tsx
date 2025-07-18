@@ -10,7 +10,7 @@ interface InterviewBookingResult {
   code: number;
   message: string;
   notice: string | null;
-  errorList: any[] | null;
+  errorList: unknown[] | null;
   requestInfo: {
     name: string;
     phone: string;
@@ -35,8 +35,8 @@ export function DulidayInterviewBookingToolMessage(props: ToolMessageProps) {
       // Handle both direct object and wrapped object format
       if ('type' in result && result.type === 'object' && 'object' in result) {
         // Wrapped format: { type: "object", object: {...} }
-        const wrappedResult = result as { type: string; object: any };
-        if (wrappedResult.object && 'success' in wrappedResult.object) {
+        const wrappedResult = result as { type: string; object: unknown };
+        if (wrappedResult.object && typeof wrappedResult.object === 'object' && wrappedResult.object !== null && 'success' in wrappedResult.object) {
           return wrappedResult.object as InterviewBookingResult;
         }
       } else if ('success' in result) {
