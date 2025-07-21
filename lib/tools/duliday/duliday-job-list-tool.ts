@@ -5,7 +5,7 @@ import { jobListResponseSchema, type JobItem } from "./types";
 
 /**
  * Duliday获取品牌在招岗位列表工具
- * 
+ *
  * @description 调用Duliday API获取指定品牌的在招岗位列表
  * @param customToken 自定义的Duliday token，优先使用此token
  * @param defaultBrand 默认品牌名称，当用户未指定品牌时使用
@@ -20,31 +20,32 @@ export const dulidayJobListTool = (customToken?: string, defaultBrand?: string) 
         .string()
         .optional()
         .describe("品牌名称，如：肯德基、必胜客、奥乐齐等。如不指定则使用当前默认品牌"),
-      storeName: z
-        .string()
-        .optional()
-        .describe("门店名称关键词，用于筛选特定门店"),
-      regionName: z
-        .string()
-        .optional()
-        .describe("地理位置/区域名称，如：浦东新区、静安区等"),
-      laborForm: z
-        .enum(["全职", "兼职"])
-        .optional()
-        .describe("工作类型：全职或兼职"),
-      pageNum: z
-        .number()
-        .optional()
-        .default(0)
-        .describe("页码，从0开始"),
+      storeName: z.string().optional().describe("门店名称关键词，用于筛选特定门店"),
+      regionName: z.string().optional().describe("地理位置/区域名称，如：浦东新区、静安区等"),
+      laborForm: z.enum(["全职", "兼职"]).optional().describe("工作类型：全职或兼职"),
+      pageNum: z.number().optional().default(0).describe("页码，从0开始"),
       pageSize: z
         .number()
         .optional()
-        .default(20)
-        .describe("每页数量，默认20条"),
+        .default(80)
+        .describe("每页数量，默认80条,如果没有找到用户要求的门店,则提高这个值"),
     }),
-    execute: async ({ brandName, storeName, regionName, laborForm, pageNum = 0, pageSize = 20 }) => {
-      console.log("🔍 duliday_job_list tool called with:", { brandName, storeName, regionName, laborForm, pageNum, pageSize });
+    execute: async ({
+      brandName,
+      storeName,
+      regionName,
+      laborForm,
+      pageNum = 0,
+      pageSize = 80,
+    }) => {
+      console.log("🔍 duliday_job_list tool called with:", {
+        brandName,
+        storeName,
+        regionName,
+        laborForm,
+        pageNum,
+        pageSize,
+      });
       try {
         // 优先使用自定义token，否则使用环境变量
         const dulidayToken = customToken || process.env.DULIDAY_TOKEN;
@@ -100,7 +101,7 @@ export const dulidayJobListTool = (customToken?: string, defaultBrand?: string) 
         }
 
         const rawData = await response.json();
-        
+
         // 使用 zod 验证响应数据
         const parseResult = jobListResponseSchema.safeParse(rawData);
         if (!parseResult.success) {
@@ -110,7 +111,7 @@ export const dulidayJobListTool = (customToken?: string, defaultBrand?: string) 
             text: `❌ API响应格式错误，请联系管理员`,
           };
         }
-        
+
         const data = parseResult.data;
 
         // 检查响应状态
@@ -133,22 +134,23 @@ export const dulidayJobListTool = (customToken?: string, defaultBrand?: string) 
 
         // 过滤结果
         if (storeName) {
-          jobs = jobs.filter((job) => 
-            job.storeName?.includes(storeName) || job.jobName?.includes(storeName)
+          jobs = jobs.filter(
+            job => job.storeName?.includes(storeName) || job.jobName?.includes(storeName)
           );
         }
 
         if (regionName) {
-          jobs = jobs.filter((job) => 
-            job.storeRegionName?.includes(regionName) || 
-            job.storeAddress?.includes(regionName) ||
-            job.jobAddress?.includes(regionName)
+          jobs = jobs.filter(
+            job =>
+              job.storeRegionName?.includes(regionName) ||
+              job.storeAddress?.includes(regionName) ||
+              job.jobAddress?.includes(regionName)
           );
         }
 
         if (laborForm) {
           const laborFormName = laborForm === "全职" ? "全职" : "兼职";
-          jobs = jobs.filter((job) => job.laborFormName === laborFormName);
+          jobs = jobs.filter(job => job.laborFormName === laborFormName);
         }
 
         if (jobs.length === 0) {
@@ -202,9 +204,7 @@ export const dulidayJobListTool = (customToken?: string, defaultBrand?: string) 
         console.error("获取岗位列表失败:", error);
         return {
           type: "text" as const,
-          text: `❌ 获取岗位列表失败: ${
-            error instanceof Error ? error.message : "未知错误"
-          }`,
+          text: `❌ 获取岗位列表失败: ${error instanceof Error ? error.message : "未知错误"}`,
         };
       }
     },
