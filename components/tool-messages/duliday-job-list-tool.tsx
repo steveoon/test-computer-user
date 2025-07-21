@@ -10,12 +10,14 @@ export function DulidayJobListToolMessage(props: ToolMessageProps) {
   const storeName = args.storeName as string | undefined;
   const regionName = args.regionName as string | undefined;
   const laborForm = args.laborForm as string | undefined;
+  const jobNickName = args.jobNickName as string | undefined;
 
   const details: string[] = [];
   if (brandName) details.push(brandName);
   if (storeName) details.push(`门店：${storeName}`);
   if (regionName) details.push(regionName);
   if (laborForm) details.push(laborForm);
+  if (jobNickName) details.push(`岗位：${jobNickName}`);
 
   const detail = details.length > 0 ? details.join(" · ") : "查询在招岗位";
 

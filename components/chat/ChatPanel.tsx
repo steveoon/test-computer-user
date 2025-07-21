@@ -73,6 +73,40 @@ export function ChatPanel({
     );
   };
 
+  // 🎯 检查是否为服务过载错误
+  const isOverloadedError = (error: Error | undefined) => {
+    if (!error) return false;
+    return error.message.includes("AI服务当前负载过高");
+  };
+
+  // 🎯 检查是否为频率限制错误
+  const isRateLimitError = (error: Error | undefined) => {
+    if (!error) return false;
+    return error.message.includes("请求频率过高");
+  };
+
+  // 🎯 获取错误标题
+  const getErrorTitle = (error: Error | undefined) => {
+    if (isPayloadTooLargeError(error)) return "请求内容过大";
+    if (isOverloadedError(error)) return "服务繁忙";
+    if (isRateLimitError(error)) return "请求过于频繁";
+    return "Something went wrong";
+  };
+
+  // 🎯 获取错误描述
+  const getErrorDescription = (error: Error | undefined) => {
+    if (isPayloadTooLargeError(error)) {
+      return "对话历史过长，请清理部分消息后重试";
+    }
+    if (isOverloadedError(error)) {
+      return "AI服务当前负载较高，请稍后重试";
+    }
+    if (isRateLimitError(error)) {
+      return "您的请求过于频繁，请稍后再试";
+    }
+    return "Please try again. If the problem persists, refresh the page.";
+  };
+
   return (
     <div className="flex flex-col border-l border-zinc-200 h-full">
       <ChatHeader
@@ -99,14 +133,24 @@ export function ChatPanel({
       {/* 错误状态显示 */}
       {error && (
         <div className="mx-4 mb-4">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+          <div className={`border rounded-lg p-3 ${
+            isOverloadedError(error) || isRateLimitError(error) 
+              ? "bg-yellow-50 border-yellow-200" 
+              : "bg-red-50 border-red-200"
+          }`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                <span className="text-sm text-red-700 font-medium">
-                  {isPayloadTooLargeError(error)
-                    ? "请求内容过大"
-                    : "Something went wrong"}
+                <div className={`w-2 h-2 rounded-full ${
+                  isOverloadedError(error) || isRateLimitError(error)
+                    ? "bg-yellow-500"
+                    : "bg-red-500"
+                }`}></div>
+                <span className={`text-sm font-medium ${
+                  isOverloadedError(error) || isRateLimitError(error)
+                    ? "text-yellow-700"
+                    : "text-red-700"
+                }`}>
+                  {getErrorTitle(error)}
                 </span>
               </div>
               <div className="flex gap-2">
@@ -124,16 +168,22 @@ export function ChatPanel({
                   size="sm"
                   variant="outline"
                   onClick={() => reload()}
-                  className="text-xs h-7 px-2 border-red-200 text-red-700 hover:bg-red-50"
+                  className={`text-xs h-7 px-2 ${
+                    isOverloadedError(error) || isRateLimitError(error)
+                      ? "border-yellow-200 text-yellow-700 hover:bg-yellow-50"
+                      : "border-red-200 text-red-700 hover:bg-red-50"
+                  }`}
                 >
-                  Retry
+                  {isOverloadedError(error) || isRateLimitError(error) ? "稍后重试" : "Retry"}
                 </Button>
               </div>
             </div>
-            <p className="text-xs text-red-600 mt-1">
-              {isPayloadTooLargeError(error)
-                ? "对话历史过长，请清理部分消息后重试"
-                : "Please try again. If the problem persists, refresh the page."}
+            <p className={`text-xs mt-1 ${
+              isOverloadedError(error) || isRateLimitError(error)
+                ? "text-yellow-600"
+                : "text-red-600"
+            }`}>
+              {getErrorDescription(error)}
             </p>
           </div>
         </div>

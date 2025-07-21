@@ -89,6 +89,16 @@ export function useCustomChat({
     );
   };
 
+  // 🎯 检查是否为服务过载错误
+  const isOverloadedError = (error: Error) => {
+    return error.message.includes("AI服务当前负载过高");
+  };
+
+  // 🎯 检查是否为频率限制错误
+  const isRateLimitError = (error: Error) => {
+    return error.message.includes("请求频率过高");
+  };
+
   // 从 localStorage 获取 dulidayToken
   const [dulidayToken, setDulidayToken] = useState<string | null>(null);
   
@@ -215,10 +225,33 @@ export function useCustomChat({
           },
         });
       }
+    } else if (isOverloadedError(error)) {
+      // 处理服务过载错误
+      console.warn("🔄 AI服务过载，建议稍后重试");
+      toast.warning("服务繁忙", {
+        description: "AI服务当前负载较高，建议稍后重试",
+        richColors: true,
+        position: "top-center",
+        duration: 5000,
+      });
+      
+      // 发送飞书通知
+      sendFeishuNotification("system_warning", {
+        additional_info: `AI服务过载，错误信息：${error.message}`,
+      });
+    } else if (isRateLimitError(error)) {
+      // 处理频率限制错误
+      console.warn("⏱️ 请求频率过高");
+      toast.warning("请求过于频繁", {
+        description: "您的请求频率过高，请稍后再试",
+        richColors: true,
+        position: "top-center",
+        duration: 5000,
+      });
     } else {
       // 其他类型错误的通用处理
       toast.error("请求失败", {
-        description: "请检查网络连接或稍后重试",
+        description: error.message || "请检查网络连接或稍后重试",
         richColors: true,
         position: "top-center",
       });
@@ -282,9 +315,30 @@ export function useCustomChat({
       if (error != null) {
         console.log("Removing last message due to error before retry");
 
+        // 对于某些错误类型，不应该立即重试
         if (isPayloadTooLargeError(error)) {
           console.log("🚫 载荷过大错误，跳过重试以避免重复错误");
           event.preventDefault();
+          return;
+        }
+        
+        if (isOverloadedError(error)) {
+          console.log("🚫 服务过载错误，请稍后重试");
+          event.preventDefault();
+          toast.info("请稍等片刻", {
+            description: "AI服务正在恢复中，请稍后再试",
+            position: "top-center",
+          });
+          return;
+        }
+        
+        if (isRateLimitError(error)) {
+          console.log("🚫 频率限制错误，请稍后重试");
+          event.preventDefault();
+          toast.info("请慢一点", {
+            description: "请求过于频繁，请稍后再试",
+            position: "top-center",
+          });
           return;
         }
 

@@ -101,7 +101,7 @@ export const jobDetailsSchema = z.object({
   requirementNum: z.number(),
   thresholdNum: z.number(),
   interviewTimeMode: z.number(),
-  interviewAddressMode: z.number(),
+  interviewAddressMode: z.number().nullable(),
   secondInterviewAddressMode: z.number().nullable(),
   thirdInterviewAddressMode: z.number().nullable(),
   firstInterviewWay: z.string().nullable(),

@@ -184,6 +184,19 @@ export async function POST(req: Request) {
       },
       onError: async error => {
         console.error("Stream generation error:", error);
+        
+        // 记录详细错误信息
+        if (error && typeof error === "object") {
+          const errorObj = error as Record<string, unknown>;
+          console.error("Error details:", {
+            name: errorObj.name,
+            message: errorObj.message,
+            type: errorObj.type,
+            statusCode: errorObj.statusCode,
+            cause: errorObj.cause,
+            stack: errorObj.stack,
+          });
+        }
 
         // 清理沙箱
         await cleanupSandboxIfNeeded(sandboxId, error, "Stream generation");
@@ -220,12 +233,49 @@ export async function POST(req: Request) {
           return error.message;
         }
 
+        // 处理结构化错误对象（如 overloaded_error）
+        if (error && typeof error === "object") {
+          const errorObj = error as Record<string, unknown>;
+          
+          // 记录完整的错误对象
+          console.error("Structured error object:", {
+            type: errorObj.type,
+            message: errorObj.message,
+            statusCode: errorObj.statusCode,
+            error: errorObj.error,
+            cause: errorObj.cause,
+          });
+          
+          const nestedError = errorObj.error as Record<string, unknown> | undefined;
+          
+          // 处理 overloaded_error
+          if (nestedError?.type === "overloaded_error") {
+            return "AI服务当前负载过高，请稍后重试";
+          }
+          
+          // 处理其他已知错误类型
+          if (nestedError?.type === "rate_limit_error") {
+            return "请求频率过高，请稍后重试";
+          }
+          
+          if (nestedError?.type === "authentication_error") {
+            return "认证失败，请检查API密钥配置";
+          }
+          
+          // 返回错误消息
+          if (errorObj.message) {
+            return String(errorObj.message);
+          }
+          
+          if (nestedError?.message) {
+            return String(nestedError.message);
+          }
+        }
+
         if (typeof error === "string") {
           return error;
         }
-        if (error && typeof error === "object" && "message" in error) {
-          return String((error as { message: unknown }).message);
-        }
+        
         return "发生未知错误，请重试";
       },
     });

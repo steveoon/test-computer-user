@@ -35,10 +35,10 @@ const suggestions: PromptSuggestion[] = [
     text: "预约面试",
     prompt: `帮我为求职者预约面试，以下是信息：
 姓名：李青，电话：13585516989，性别：男，年龄：39，
-门店：奥乐齐世茂店，面试时间：2025-07-22 13:00:00
+门店：奥乐齐世茂店，岗位：兼职，面试时间：2025-07-22 13:00:00
 
 请按以下步骤操作：
-1) 使用 duliday_job_list 工具查找指定门店的岗位
+1) 使用 duliday_job_list 工具查找指定门店的岗位（如指定了岗位关键词，使用 jobNickName 或 laborForm 参数过滤）
 2) 从返回结果中获取 jobId
 3) 使用 duliday_interview_booking 工具预约面试`,
     editable: true,
@@ -48,6 +48,7 @@ const suggestions: PromptSuggestion[] = [
       { key: "性别", pattern: /性别：([男女])/g },
       { key: "年龄", pattern: /年龄：(\d+)/g },
       { key: "门店", pattern: /门店：([^，\n]+)/g },
+      { key: "岗位", pattern: /岗位：([^，\n]+)/g },
       { key: "面试时间", pattern: /面试时间：([\d\-\s:]+)/g },
     ],
   },

@@ -14,7 +14,7 @@ import { jobListResponseSchema, type JobItem } from "./types";
 export const dulidayJobListTool = (customToken?: string, defaultBrand?: string) =>
   tool({
     description:
-      "获取品牌在招岗位列表。根据品牌名称、门店名称、地理位置、工作类型等条件查询在招岗位。返回的岗位信息包含jobId（用于预约面试）和jobBasicInfoId（用于查询岗位详情）。",
+      "获取品牌在招岗位列表。根据品牌名称、门店名称、地理位置、工作类型、岗位速记名等条件查询在招岗位。返回的岗位信息包含jobId（用于预约面试）和jobBasicInfoId（用于查询岗位详情）。",
     parameters: z.object({
       brandName: z
         .string()
@@ -22,7 +22,11 @@ export const dulidayJobListTool = (customToken?: string, defaultBrand?: string) 
         .describe("品牌名称，如：肯德基、必胜客、奥乐齐等。如不指定则使用当前默认品牌"),
       storeName: z.string().optional().describe("门店名称关键词，用于筛选特定门店"),
       regionName: z.string().optional().describe("地理位置/区域名称，如：浦东新区、静安区等"),
-      laborForm: z.enum(["全职", "兼职"]).optional().describe("工作类型：全职或兼职"),
+      laborForm: z
+        .enum(["全职", "兼职", "小时工"])
+        .optional()
+        .describe("工作类型：全职、兼职、小时工"),
+      jobNickName: z.string().optional().describe("岗位速记名称，如：日结、兼职+、洗碗工、后厨等"),
       pageNum: z.number().optional().default(0).describe("页码，从0开始"),
       pageSize: z
         .number()
@@ -35,6 +39,7 @@ export const dulidayJobListTool = (customToken?: string, defaultBrand?: string) 
       storeName,
       regionName,
       laborForm,
+      jobNickName,
       pageNum = 0,
       pageSize = 80,
     }) => {
@@ -43,6 +48,7 @@ export const dulidayJobListTool = (customToken?: string, defaultBrand?: string) 
         storeName,
         regionName,
         laborForm,
+        jobNickName,
         pageNum,
         pageSize,
       });
@@ -149,8 +155,24 @@ export const dulidayJobListTool = (customToken?: string, defaultBrand?: string) 
         }
 
         if (laborForm) {
-          const laborFormName = laborForm === "全职" ? "全职" : "兼职";
-          jobs = jobs.filter(job => job.laborFormName === laborFormName);
+          jobs = jobs.filter(job => job.laborFormName === laborForm);
+        }
+
+        if (jobNickName) {
+          // 使用宽松的匹配逻辑，支持部分匹配
+          const normalizedSearch = jobNickName.toLowerCase().trim();
+          jobs = jobs.filter(job => {
+            const normalizedJobNickName = (job.jobNickName || "").toLowerCase();
+            const normalizedJobName = (job.jobName || "").toLowerCase();
+            
+            // 支持多种匹配方式：
+            // 1. jobNickName 包含搜索关键词
+            // 2. 搜索关键词包含 jobNickName
+            // 3. jobName 中包含搜索关键词（作为后备）
+            return normalizedJobNickName.includes(normalizedSearch) ||
+                   normalizedSearch.includes(normalizedJobNickName) ||
+                   normalizedJobName.includes(normalizedSearch);
+          });
         }
 
         if (jobs.length === 0) {
@@ -158,6 +180,7 @@ export const dulidayJobListTool = (customToken?: string, defaultBrand?: string) 
           if (storeName) filterMsg += `\n- 门店：包含"${storeName}"`;
           if (regionName) filterMsg += `\n- 地区：${regionName}`;
           if (laborForm) filterMsg += `\n- 类型：${laborForm}`;
+          if (jobNickName) filterMsg += `\n- 岗位速记：${jobNickName}`;
           return {
             type: "text" as const,
             text: filterMsg,
@@ -166,13 +189,16 @@ export const dulidayJobListTool = (customToken?: string, defaultBrand?: string) 
 
         // 构建岗位列表信息
         let message = `✅ ${targetBrand} 在招岗位`;
-        if (storeName || regionName || laborForm) {
+        if (storeName || regionName || laborForm || jobNickName) {
           message += "（已筛选）";
         }
         message += `：共 ${jobs.length} 个\n\n`;
 
         jobs.forEach((job, index) => {
           message += `${index + 1}. ${job.jobName}\n`;
+          if (job.jobNickName) {
+            message += `   📝 岗位速记：${job.jobNickName}\n`;
+          }
           message += `   📍 门店：${job.storeName} (${job.storeCityName} ${job.storeRegionName})\n`;
           message += `   💰 薪资：${job.salary} ${job.salaryUnitName}`;
           if (job.minComprehensiveSalary && job.maxComprehensiveSalary) {
