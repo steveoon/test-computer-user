@@ -142,7 +142,7 @@ export async function POST(req: Request) {
       bash: bashTool(sandboxId),
       feishu: feishuBotTool(),
       wechat: weChatBotTool(),
-      job_posting_generator: jobPostingGeneratorTool(configData),
+      job_posting_generator: jobPostingGeneratorTool(preferredBrand, configData),
       zhipin_reply_generator: zhipinReplyTool(
         preferredBrand,
         modelConfig || DEFAULT_MODEL_CONFIG,

@@ -6,21 +6,19 @@ import { DEFAULT_PROVIDER_CONFIGS } from "@/lib/config/models";
 import type { Store, Position, ZhipinData } from "@/types/zhipin";
 
 // 岗位类型枚举 - 包含常见的零售和餐饮岗位
-const positionTypeSchema = z.enum([
-  "前厅", 
-  "后厨", 
-  "洗碗", 
-  "早班",
-  "分拣",      // 零售超市常见岗位
-  "收银",      // 收银员
-  "理货",      // 理货员
-  "打包",      // 打包员
-  "配送",      // 配送员
-  "仓库",      // 仓库管理
-  "客服",      // 客服
-  "全职",      // 通用全职
-  "兼职"       // 通用兼职
-]).describe("岗位类型");
+const positionTypeSchema = z
+  .enum([
+    "前厅",
+    "后厨",
+    "洗碗",
+    "早班",
+    "日结", // 零售超市常见岗位
+    "收银", // 收银员
+    "理货", // 理货员
+    "全职", // 通用全职
+    "兼职", // 通用兼职
+  ])
+  .describe("岗位类型");
 
 // 阶梯薪资解析 schema
 const stepSalarySchema = z.object({
@@ -34,13 +32,14 @@ const stepSalarySchema = z.object({
  * 岗位推送消息生成工具
  *
  * @description 根据岗位类型生成格式化的微信推送消息
+ * @param preferredBrand 用户选择的首选品牌
  * @param configData 配置数据，包含品牌和门店信息
  * @returns AI SDK tool instance
  */
-export const jobPostingGeneratorTool = (configData?: ZhipinData) =>
+export const jobPostingGeneratorTool = (preferredBrand?: string, configData?: ZhipinData) =>
   tool({
     description:
-      "生成岗位空缺推送消息。根据指定的岗位类型（如：前厅/后厨/洗碗/早班/分拣/收银/理货等），从品牌数据中筛选匹配的门店和岗位信息，生成格式化的微信群推送消息。",
+      "生成岗位空缺推送消息。根据指定的岗位类型，从品牌数据中筛选匹配的门店和岗位信息，生成格式化的微信群推送消息。",
     parameters: z.object({
       positionType: positionTypeSchema,
       brand: z.string().optional().describe("品牌名称，如果不指定则使用当前默认品牌"),
@@ -56,8 +55,8 @@ export const jobPostingGeneratorTool = (configData?: ZhipinData) =>
           };
         }
 
-        // 确定使用的品牌
-        const targetBrand = brand || configData.defaultBrand;
+        // 确定使用的品牌 - 优先级：工具参数 > 用户选择的品牌 > 默认品牌
+        const targetBrand = brand || preferredBrand || configData.defaultBrand;
         if (!targetBrand) {
           return {
             type: "text" as const,
