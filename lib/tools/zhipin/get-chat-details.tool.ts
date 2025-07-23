@@ -2,6 +2,7 @@ import { tool } from "ai";
 import { z } from "zod";
 import { getPuppeteerMCPClient } from "@/lib/mcp/client-manager";
 import { CHAT_DETAILS_SELECTORS } from "./constants";
+import { wrapAntiDetectionScript, generateBatchProcessingScript } from "./anti-detection-utils";
 
 /**
  * 获取聊天详情工具
@@ -40,7 +41,7 @@ export const zhipinGetChatDetailsTool = () =>
         }
 
         // 创建获取聊天详情的脚本
-        const script = `
+        const script = wrapAntiDetectionScript(`
           // 获取候选人基本信息
           const candidateInfoElement = document.querySelector('${CHAT_DETAILS_SELECTORS.candidateInfoContainer}');
           
@@ -90,58 +91,64 @@ export const zhipinGetChatDetailsTool = () =>
           let chatMessages = [];
           if (chatContainer) {
             // 使用多种选择器尝试获取消息
-            const messageElements = chatContainer.querySelectorAll('${CHAT_DETAILS_SELECTORS.messageItem}');
+            const messageElements = Array.from(chatContainer.querySelectorAll('${CHAT_DETAILS_SELECTORS.messageItem}'));
             
-            chatMessages = Array.from(messageElements).map((msgEl, index) => {
-              // 获取时间戳
-              const timeElement = msgEl.querySelector('${CHAT_DETAILS_SELECTORS.messageTime}');
-              const time = timeElement ? timeElement.textContent.trim() : '';
+            // 生成批处理代码（每批10条消息）
+            ${generateBatchProcessingScript(`
+              const msgEl = element;
+              // 一次性获取所有文本内容和类名，减少DOM访问
+              const msgText = msgEl.textContent || '';
+              const classes = msgEl.className || '';
+              const innerHTML = msgEl.innerHTML || '';
               
-              // 判断消息类型和发送者
+              // 从文本中提取时间（避免额外的querySelector）
+              const timeMatch = msgText.match(/\\d{1,2}:\\d{2}(?::\\d{2})?|\\d{4}-\\d{2}-\\d{2}/);
+              const time = timeMatch ? timeMatch[0] : '';
+              
+              // 基于类名快速判断消息类型
               let sender = 'unknown';
               let content = '';
               let messageType = 'text';
               
-              // 系统消息
-              if (msgEl.querySelector('${CHAT_DETAILS_SELECTORS.systemMessage}')) {
+              // 使用类名判断，避免querySelector
+              if (classes.includes('message-system') || innerHTML.includes('system-msg')) {
                 sender = 'system';
                 messageType = 'system';
-                content = msgEl.textContent.trim().replace(time, '').trim();
+                content = msgText.replace(time, '').trim();
               }
-              // 候选人消息（左侧）
-              else if (msgEl.querySelector('${CHAT_DETAILS_SELECTORS.friendMessage}')) {
+              // 候选人消息（左侧） - 通过类名判断
+              else if (classes.includes('message-friend') || classes.includes('chat-friend') || innerHTML.includes('friend')) {
                 sender = 'candidate';
-                const textEl = msgEl.querySelector('${CHAT_DETAILS_SELECTORS.friendMessage} ${CHAT_DETAILS_SELECTORS.messageTextSpan}');
-                content = textEl ? textEl.textContent.trim() : msgEl.querySelector('${CHAT_DETAILS_SELECTORS.friendMessage}').textContent.trim();
+                // 尝试提取纯文本内容，移除时间戳
+                content = msgText.replace(time, '').replace('已读', '').trim();
               }
-              // 招聘者消息（右侧）
-              else if (msgEl.querySelector('${CHAT_DETAILS_SELECTORS.myMessage}')) {
+              // 招聘者消息（右侧） - 通过类名判断
+              else if (classes.includes('message-myself') || classes.includes('chat-myself') || innerHTML.includes('myself')) {
                 sender = 'recruiter';
-                const textEl = msgEl.querySelector('${CHAT_DETAILS_SELECTORS.myMessage} ${CHAT_DETAILS_SELECTORS.messageTextSpan}');
-                content = textEl ? textEl.textContent.trim() : msgEl.querySelector('${CHAT_DETAILS_SELECTORS.myMessage}').textContent.trim();
-                
-                // 检查是否已读
-                const isRead = msgEl.querySelector('${CHAT_DETAILS_SELECTORS.readStatus}') !== null;
-                if (isRead) {
-                  content = content.replace('已读', '').trim();
-                }
+                // 移除时间和已读标记
+                content = msgText.replace(time, '').replace('已读', '').trim();
               }
               // 简历卡片
-              else if (msgEl.querySelector('${CHAT_DETAILS_SELECTORS.resumeMessage}')) {
+              else if (classes.includes('resume-card') || innerHTML.includes('resume')) {
                 sender = 'system';
                 messageType = 'resume';
-                content = msgEl.textContent.trim().replace(time, '').trim();
+                content = msgText.replace(time, '').trim();
               }
               
-              return {
-                index: index,
-                sender: sender,
-                messageType: messageType,
-                content: content,
-                time: time,
-                hasTime: !!time
-              };
-            }).filter(msg => msg.content && msg.content.length > 0);
+              if (content && content.length > 0) {
+                results.push({
+                  index: i,
+                  sender: sender,
+                  messageType: messageType,
+                  content: content,
+                  time: time,
+                  hasTime: !!time
+                });
+              }
+            `, 10)}
+            
+            // 执行批处理
+            chatMessages = await processAllBatches(messageElements);
           }
           
           // 统计信息
@@ -170,7 +177,7 @@ export const zhipinGetChatDetailsTool = () =>
             chatContainerFound: !!chatContainer,
             extractedAt: new Date().toISOString()
           };
-        `;
+        `);
 
         // 执行脚本
         const result = await tools.puppeteer_evaluate.execute({ script });
@@ -212,8 +219,8 @@ export const zhipinGetChatDetailsTool = () =>
                 };
               }
             }
-          } catch (e) {
-            console.error("Failed to parse result:", e);
+          } catch {
+            // 静默处理解析错误
           }
 
           return {
@@ -229,7 +236,7 @@ export const zhipinGetChatDetailsTool = () =>
           message: "获取聊天详情时出现未知错误",
         };
       } catch (error) {
-        console.error("Failed to get chat details:", error);
+        // 静默处理错误
 
         return {
           success: false,
