@@ -1,6 +1,7 @@
 import { tool } from "ai";
 import { z } from "zod";
 import { getPuppeteerMCPClient } from "@/lib/mcp/client-manager";
+import { wrapAntiDetectionScript, randomDelay } from "./anti-detection-utils";
 
 /**
  * 解析 puppeteer_evaluate 的结果
@@ -23,7 +24,7 @@ function parseEvaluateResult(result: unknown): Record<string, unknown> | null {
           try {
             return JSON.parse(executionResult) as Record<string, unknown>;
           } catch {
-            console.log("Failed to parse execution result as JSON:", executionResult);
+            // 静默处理错误
           }
         }
       }
@@ -34,7 +35,7 @@ function parseEvaluateResult(result: unknown): Record<string, unknown> | null {
         try {
           return JSON.parse(jsonMatch[0]) as Record<string, unknown>;
         } catch {
-          console.log("Failed to parse found JSON object:", jsonMatch[0]);
+          // 静默处理错误
         }
       }
       
@@ -49,7 +50,7 @@ function parseEvaluateResult(result: unknown): Record<string, unknown> | null {
       }
     }
   } catch (_e) {
-    console.error("Failed to parse evaluate result:", _e);
+    // 静默处理错误
   }
   return null;
 }
@@ -69,75 +70,49 @@ export const zhipinGetUsername = tool({
         throw new Error("MCP tool puppeteer_evaluate not available");
       }
       
+      // 添加初始延迟
+      await randomDelay(100, 300);
+      
       // 执行获取用户名的脚本
-      const script = `
-        // 尝试获取用户名
-        const userNameElement = document.querySelector(
-          '#header > div > div > div.nav-item.nav-logout > div.top-profile-logout.ui-dropmenu.ui-dropmenu-drop-arrow > div.ui-dropmenu-label > div > span.user-name'
-        );
-
-        if (userNameElement) {
-          return {
-            success: true,
-            userName: userNameElement.textContent?.trim() || "",
-            elementFound: true,
-          };
-        }
-        
-        // 如果找不到，尝试查找其他可能的用户名元素
-        const alternativeSelectors = [
-          ".user-name",
+      const script = wrapAntiDetectionScript(`
+        // 批量定义所有选择器
+        const selectors = [
+          '#header > div > div > div.nav-item.nav-logout > div.top-profile-logout.ui-dropmenu.ui-dropmenu-drop-arrow > div.ui-dropmenu-label > div > span.user-name',
+          '.user-name',
           '[class*="user-name"]',
           '[class*="username"]',
-          ".nav-logout .user-name",
-          "#header .user-name",
-          // 添加更多可能的选择器
-          ".nav-user .user-name",
-          ".top-profile .user-name",
+          '.nav-logout .user-name',
+          '#header .user-name',
+          '.nav-user .user-name',
+          '.top-profile .user-name',
           '[data-qa="user-name"]',
-          ".header-user-name",
+          '.header-user-name',
+          '.nav-item.nav-logout .user-name',
+          '.ui-dropmenu-label .user-name'
         ];
-
-        for (let selector of alternativeSelectors) {
-          const element = document.querySelector(selector);
-          if (element && element.textContent) {
-            return {
-              success: true,
-              userName: element.textContent.trim(),
-              elementFound: true,
-              usedSelector: selector,
-            };
+        
+        // 批量查询选择器
+        for (const selector of selectors) {
+          try {
+            const element = document.querySelector(selector);
+            if (element && element.textContent && element.textContent.trim()) {
+              const userName = element.textContent.trim();
+              // 基本验证：用户名长度合理
+              if (userName.length > 0 && userName.length < 30) {
+                return {
+                  success: true,
+                  userName: userName,
+                  elementFound: true,
+                  usedSelector: selector
+                };
+              }
+            }
+          } catch (e) {
+            // 忽略无效选择器
           }
         }
 
-        // 如果还是找不到，尝试获取页面上任何包含用户信息的元素
-        const userInfoPatterns = [
-          /^[\u4e00-\u9fa5]{2,4}$/, // 2-4个中文字符（常见中文名）
-          /^[A-Za-z\s]+$/, // 英文名
-        ];
-
-        const allElements = document.querySelectorAll("*");
-        for (let element of allElements) {
-          const text = element.textContent?.trim();
-          if (
-            text &&
-            text.length > 0 &&
-            text.length < 20 &&
-            userInfoPatterns.some((pattern) => pattern.test(text)) &&
-            element.childElementCount === 0 && // 确保是叶子节点
-            (element.className?.includes("user") ||
-              element.className?.includes("name") ||
-              element.id?.includes("user") ||
-              element.id?.includes("name"))
-          ) {
-            return {
-              success: true,
-              userName: text,
-              elementFound: true,
-              foundByPattern: true,
-            };
-          }
-        }
+        // 不再扫描所有元素，避免DOM扫频检测
 
         return {
           success: false,
@@ -145,7 +120,7 @@ export const zhipinGetUsername = tool({
           elementFound: false,
           message: "未找到用户名元素",
         };
-      `;
+      `);
       
       // 执行脚本
       const scriptResult = await tools.puppeteer_evaluate.execute({ script });
@@ -154,8 +129,6 @@ export const zhipinGetUsername = tool({
       const result = parseEvaluateResult(scriptResult);
       
       if (!result) {
-        // 如果解析失败，打印原始结果用于调试
-        console.error("Failed to parse result. Raw scriptResult:", JSON.stringify(scriptResult, null, 2));
         throw new Error("未能解析执行结果");
       }
 
@@ -164,10 +137,6 @@ export const zhipinGetUsername = tool({
         
         if (result.usedSelector) {
           successMessage += `\n🔍 使用选择器：${result.usedSelector}`;
-        }
-        
-        if (result.foundByPattern) {
-          successMessage += `\n⚠️ 通过模式匹配找到，可能需要确认`;
         }
 
         return {
@@ -181,7 +150,7 @@ export const zhipinGetUsername = tool({
         };
       }
     } catch (error) {
-      console.error("获取BOSS直聘用户名失败:", error);
+      // 静默处理错误
       
       let errorMessage = "❌ 获取用户名时发生错误";
       if (error instanceof Error) {

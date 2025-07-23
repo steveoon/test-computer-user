@@ -2,6 +2,7 @@ import { tool } from "ai";
 import { z } from "zod";
 import { getPuppeteerMCPClient } from "@/lib/mcp/client-manager";
 import { CHAT_SELECTORS } from "./constants";
+import { randomDelay, wrapAntiDetectionScript } from "./anti-detection-utils";
 
 /**
  * 解析 puppeteer_evaluate 的结果
@@ -69,52 +70,41 @@ export const zhipinSendMessageTool = () =>
           }
         }
 
-        // 输入框选择器列表
+        // 输入框选择器列表 - 优化为最常用的几个
         const inputSelectors = [
           CHAT_SELECTORS.inputEditorId, // 优先使用ID选择器
           CHAT_SELECTORS.inputTextarea,
           CHAT_SELECTORS.inputBox,
-          'textarea[placeholder*="输入"]',
-          ".conversation-editor textarea",
-          "textarea",
         ];
 
-        // 发送按钮选择器列表
+        // 发送按钮选择器列表 - 减少选择器数量避免DOM扫频
         const sendButtonSelectors = [
           CHAT_SELECTORS.submitContent,
           CHAT_SELECTORS.sendButtonAlt,
           CHAT_SELECTORS.sendButton,
-          CHAT_SELECTORS.sendIcon,
-          ".submit-content",
-          ".btn-send",
-          'button[type="submit"]',
-          ".conversation-editor .submit-content",
-          '[class*="send"]',
-          CHAT_SELECTORS.sendButtonPath, // 完整路径作为最后的备选
         ];
 
-        // 步骤1: 查找输入框
-        let inputFound = false;
-        let usedInputSelector = "";
-
-        for (const selector of inputSelectors) {
-          const checkScript = `
-            const element = document.querySelector('${selector}');
-            return element ? { exists: true, tagName: element.tagName, id: element.id } : { exists: false };
-          `;
-
-          const checkResult = await tools.puppeteer_evaluate.execute({ script: checkScript });
-          const checkData = parseEvaluateResult(checkResult);
-
-          if (checkData?.exists) {
-            inputFound = true;
-            usedInputSelector = selector;
-            console.log(`Found input element with selector: ${selector}`);
-            break;
+        // 步骤1: 批量查找输入框（减少DOM查询）
+        const findInputScript = wrapAntiDetectionScript(`
+          const selectors = ${JSON.stringify(inputSelectors)};
+          for (const selector of selectors) {
+            const element = document.querySelector(selector);
+            if (element) {
+              return { 
+                exists: true, 
+                selector: selector,
+                tagName: element.tagName, 
+                id: element.id 
+              };
+            }
           }
-        }
+          return { exists: false };
+        `);
 
-        if (!inputFound) {
+        const inputResult = await tools.puppeteer_evaluate.execute({ script: findInputScript });
+        const inputData = parseEvaluateResult(inputResult);
+        
+        if (!inputData?.exists) {
           return {
             success: false,
             error: "Input element not found",
@@ -122,30 +112,44 @@ export const zhipinSendMessageTool = () =>
             message: "未找到输入框",
           };
         }
+        
+        const usedInputSelector = inputData.selector as string;
 
-        // 步骤2: 点击输入框获取焦点
+        // 步骤2: 点击输入框获取焦点（添加随机延迟）
+        await randomDelay(100, 300);
         try {
           await tools.puppeteer_click.execute({ selector: usedInputSelector });
-          console.log("Clicked on input element");
         } catch {
-          console.log("Failed to click input, continuing anyway");
+          // 静默处理错误
         }
 
-        // 步骤3: 清空输入框（如果需要）
+        // 步骤3: 清空输入框（使用Ctrl+A + Backspace更自然）
         if (clearBefore) {
-          // 先尝试清空
           try {
-            await tools.puppeteer_fill.execute({ selector: usedInputSelector, value: "" });
-            console.log("Cleared input field");
+            // 先聚焦
+            await tools.puppeteer_click.execute({ selector: usedInputSelector });
+            await randomDelay(50, 150);
+            
+            // Ctrl+A 全选
+            if (tools.puppeteer_key) {
+              await tools.puppeteer_key.execute({ key: "Control+a" });
+              await randomDelay(50, 100);
+              
+              // Backspace 删除
+              await tools.puppeteer_key.execute({ key: "Backspace" });
+            } else {
+              // 降级方案：直接清空
+              await tools.puppeteer_fill.execute({ selector: usedInputSelector, value: "" });
+            }
           } catch {
-            console.log("Failed to clear input, continuing anyway");
+            // 静默处理错误
           }
         }
 
-        // 步骤4: 填充消息
+        // 步骤4: 填充消息（添加随机延迟）
+        await randomDelay(100, 200);
         try {
           await tools.puppeteer_fill.execute({ selector: usedInputSelector, value: message });
-          console.log(`Filled message: ${message}`);
         } catch (error) {
           return {
             success: false,
@@ -154,65 +158,83 @@ export const zhipinSendMessageTool = () =>
           };
         }
 
-        // 等待一下确保文本已填充
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // 随机等待300-800ms确保文本已填充
+        await randomDelay(300, 800);
 
-        // 步骤5: 查找并点击发送按钮
-        let sendButtonClicked = false;
-        let usedSendSelector = "";
-        let lastError = "";
-
-        for (const selector of sendButtonSelectors) {
-          try {
-            // 先检查按钮是否存在
-            const checkScript = `
-              const element = document.querySelector('${selector}');
-              return element ? { exists: true, visible: element.offsetParent !== null } : { exists: false };
-            `;
-
-            const checkResult = await tools.puppeteer_evaluate.execute({ script: checkScript });
-            const checkData = parseEvaluateResult(checkResult);
-
-            if (checkData?.exists) {
-              // 尝试点击
-              await tools.puppeteer_click.execute({ selector });
-              sendButtonClicked = true;
-              usedSendSelector = selector;
-              console.log(`Successfully clicked send button with selector: ${selector}`);
-              break;
+        // 步骤5: 批量查找发送按钮（减少DOM查询）
+        const findSendButtonScript = wrapAntiDetectionScript(`
+          const selectors = ${JSON.stringify(sendButtonSelectors)};
+          for (const selector of selectors) {
+            const element = document.querySelector(selector);
+            if (element && element.offsetParent !== null) {
+              return { 
+                exists: true, 
+                selector: selector 
+              };
             }
-          } catch (error) {
-            lastError = error instanceof Error ? error.message : "Unknown error";
-            console.log(`Failed to click with selector ${selector}: ${lastError}`);
           }
-        }
+          // 如果前面的都没找到，尝试更宽泛的选择器
+          const fallbackSelectors = [
+            '.btn-send',
+            'button[type="submit"]',
+            '[class*="send"]'
+          ];
+          for (const selector of fallbackSelectors) {
+            const element = document.querySelector(selector);
+            if (element && element.offsetParent !== null) {
+              return { 
+                exists: true, 
+                selector: selector 
+              };
+            }
+          }
+          return { exists: false };
+        `);
 
-        if (!sendButtonClicked) {
+        const sendButtonResult = await tools.puppeteer_evaluate.execute({ script: findSendButtonScript });
+        const sendButtonData = parseEvaluateResult(sendButtonResult);
+        
+        if (!sendButtonData?.exists) {
           return {
             success: false,
-            error: `Send button not found or click failed. Last error: ${lastError}`,
+            error: "Send button not found",
             triedSelectors: sendButtonSelectors,
             inputSelector: usedInputSelector,
-            message: "未找到发送按钮或点击失败",
+            message: "未找到发送按钮",
+          };
+        }
+        
+        // 点击发送按钮前添加随机延迟
+        await randomDelay(200, 400);
+        
+        try {
+          const sendSelector = sendButtonData.selector as string;
+          await tools.puppeteer_click.execute({ selector: sendSelector });
+          
+          // 等待消息发送完成
+          if (waitAfterSend > 0) {
+            await randomDelay(waitAfterSend * 0.8, waitAfterSend * 1.2);
+          }
+          
+          return {
+            success: true,
+            message: `成功发送消息: "${message}"`,
+            details: {
+              sentText: message,
+              inputSelector: usedInputSelector,
+              sendButtonSelector: sendSelector,
+            },
+          };
+        } catch (error) {
+          return {
+            success: false,
+            error: `Failed to click send button: ${error instanceof Error ? error.message : "Unknown error"}`,
+            message: "点击发送按钮失败",
           };
         }
 
-        // 等待消息发送完成
-        if (waitAfterSend > 0) {
-          await new Promise(resolve => setTimeout(resolve, waitAfterSend));
-        }
-
-        return {
-          success: true,
-          message: `成功发送消息: "${message}"`,
-          details: {
-            sentText: message,
-            inputSelector: usedInputSelector,
-            sendButtonSelector: usedSendSelector,
-          },
-        };
       } catch (error) {
-        console.error("Failed to send message:", error);
+        // 静默处理错误，避免暴露
 
         return {
           success: false,

@@ -2,6 +2,7 @@ import { tool } from "ai";
 import { z } from "zod";
 import { UNREAD_SELECTORS } from "./constants";
 import { getPuppeteerMCPClient } from "@/lib/mcp/client-manager";
+import { wrapAntiDetectionScript } from "./anti-detection-utils";
 
 export const openCandidateChatImprovedTool = tool({
   description: `打开指定候选人的聊天窗口（改进版）
@@ -28,7 +29,7 @@ export const openCandidateChatImprovedTool = tool({
     try {
       const client = await getPuppeteerMCPClient();
 
-      // 创建脚本 - 需要包含 return 语句
+      // 创建脚本
       const script = `
           const candidateName = ${candidateName ? `'${candidateName}'` : "null"};
           const targetIndex = ${index !== undefined ? index : "null"};
@@ -39,34 +40,31 @@ export const openCandidateChatImprovedTool = tool({
           const chatItems = document.querySelectorAll('${UNREAD_SELECTORS.unreadCandidates}');
           const candidates = [];
           
-          console.log('Found ' + chatItems.length + ' chat items');
-          
           // 处理每个聊天项
           chatItems.forEach((item, idx) => {
             try {
-              // 查找名字元素 - 使用多个可能的选择器
+              // 查找名字元素
               const nameElement = item.querySelector('${UNREAD_SELECTORS.candidateNameSelectors}');
               const name = nameElement ? nameElement.textContent.trim() : '';
               
-              // 检查未读状态 - 根据实际 HTML 结构更新
+              if (!name) return;
+              
+              // 检查未读状态
               const hasUnreadBadge = !!(
-                item.querySelector('${UNREAD_SELECTORS.unreadBadge}') ||  // .badge-count
-                item.querySelector('${UNREAD_SELECTORS.unreadBadgeNew}') ||  // .badge-count.badge-count-common-less
-                item.querySelector('${UNREAD_SELECTORS.unreadBadgeWithData}') ||  // [data-v-ddb4f62c].badge-count
-                item.querySelector('${UNREAD_SELECTORS.unreadBadgeSpan}') ||  // .badge-count span
-                item.querySelector('${UNREAD_SELECTORS.unreadDot}')  // .red-dot
+                item.querySelector('${UNREAD_SELECTORS.unreadBadge}') ||
+                item.querySelector('${UNREAD_SELECTORS.unreadBadgeNew}') ||
+                item.querySelector('${UNREAD_SELECTORS.unreadBadgeWithData}') ||
+                item.querySelector('${UNREAD_SELECTORS.unreadBadgeSpan}') ||
+                item.querySelector('${UNREAD_SELECTORS.unreadDot}')
               );
               
               // 获取未读数量
               let unreadCount = 0;
-              const badgeElements = [
-                item.querySelector('${UNREAD_SELECTORS.unreadBadgeSpan}'),  // .badge-count span (优先查找 span 内的数字)
-                item.querySelector('${UNREAD_SELECTORS.unreadBadgeNew}'),  // .badge-count.badge-count-common-less
-                item.querySelector('${UNREAD_SELECTORS.unreadBadgeWithData}'),  // [data-v-ddb4f62c].badge-count
-                item.querySelector('${UNREAD_SELECTORS.unreadBadge}')  // .badge-count
-              ].filter(Boolean);
+              const badgeElement = item.querySelector('${UNREAD_SELECTORS.unreadBadgeSpan}') ||
+                                 item.querySelector('${UNREAD_SELECTORS.unreadBadgeNew}') ||
+                                 item.querySelector('${UNREAD_SELECTORS.unreadBadgeWithData}') ||
+                                 item.querySelector('${UNREAD_SELECTORS.unreadBadge}');
               
-              const badgeElement = badgeElements[0];
               if (badgeElement) {
                 const badgeText = badgeElement.textContent?.trim();
                 if (badgeText) {
@@ -77,34 +75,29 @@ export const openCandidateChatImprovedTool = tool({
                 }
               }
               
-              // 获取最后消息时间
-              const timeMatch = item.textContent?.match(/\\d{1,2}:\\d{2}/);
+              // 获取时间和预览
+              const itemText = item.textContent || '';
+              const timeMatch = itemText.match(/\\d{1,2}:\\d{2}/);
               const lastMessageTime = timeMatch ? timeMatch[0] : '';
               
-              // 获取消息预览
-              const messagePreview = item.textContent
-                ?.replace(name, '')
-                ?.replace(/\\d{1,2}:\\d{2}/, '')
-                ?.trim()
-                ?.substring(0, 50) || '';
+              const messagePreview = itemText
+                .replace(name, '')
+                .replace(/\\d{1,2}:\\d{2}/, '')
+                .trim()
+                .substring(0, 50) || '';
               
-              if (name) {
-                candidates.push({
-                  name: name,
-                  index: idx,
-                  hasUnread: hasUnreadBadge,
-                  unreadCount: unreadCount,
-                  lastMessageTime: lastMessageTime,
-                  messagePreview: messagePreview,
-                  element: item
-                });
-              }
+              candidates.push({
+                name: name,
+                index: idx,
+                hasUnread: hasUnreadBadge,
+                unreadCount: unreadCount,
+                lastMessageTime: lastMessageTime,
+                messagePreview: messagePreview
+              });
             } catch (err) {
-              console.error('Error processing chat item:', err);
+              // 静默处理错误
             }
           });
-          
-          console.log('Processed ' + candidates.length + ' valid candidates');
           
           // 如果只是列出候选人
           if (listOnly) {
@@ -155,21 +148,63 @@ export const openCandidateChatImprovedTool = tool({
           
           // 执行点击
           if (targetCandidate) {
-            targetCandidate.element.click();
+            // 方案1：直接通过候选人名称查找并点击
+            const clickSuccess = (() => {
+              const items = document.querySelectorAll('${UNREAD_SELECTORS.unreadCandidates}');
+              for (let i = 0; i < items.length; i++) {
+                const item = items[i];
+                const nameEl = item.querySelector('${UNREAD_SELECTORS.candidateNameSelectors}');
+                if (nameEl && nameEl.textContent.trim() === targetCandidate.name) {
+                  // 添加小延迟模拟人类行为
+                  const delay = 50 + Math.random() * 100;
+                  setTimeout(() => item.click(), delay);
+                  return true;
+                }
+              }
+              return false;
+            })();
+            
+            if (clickSuccess) {
+              return {
+                success: true,
+                action: 'clicked',
+                clickedCandidate: {
+                  name: targetCandidate.name,
+                  index: targetCandidate.index,
+                  hasUnread: targetCandidate.hasUnread,
+                  unreadCount: targetCandidate.unreadCount,
+                  lastMessageTime: targetCandidate.lastMessageTime,
+                  messagePreview: targetCandidate.messagePreview
+                },
+                totalCandidates: candidates.length,
+                message: '成功点击候选人: ' + targetCandidate.name
+              };
+            } else {
+              // 方案2：如果精确匹配失败，尝试通过索引点击
+              const items = document.querySelectorAll('${UNREAD_SELECTORS.unreadCandidates}');
+              if (items[targetCandidate.index]) {
+                items[targetCandidate.index].click();
+                return {
+                  success: true,
+                  action: 'clicked',
+                  clickedCandidate: {
+                    name: targetCandidate.name,
+                    index: targetCandidate.index,
+                    hasUnread: targetCandidate.hasUnread,
+                    unreadCount: targetCandidate.unreadCount,
+                    lastMessageTime: targetCandidate.lastMessageTime,
+                    messagePreview: targetCandidate.messagePreview
+                  },
+                  totalCandidates: candidates.length,
+                  message: '成功点击候选人（通过索引）: ' + targetCandidate.name
+                };
+              }
+            }
             
             return {
-              success: true,
-              action: 'clicked',
-              clickedCandidate: {
-                name: targetCandidate.name,
-                index: targetCandidate.index,
-                hasUnread: targetCandidate.hasUnread,
-                unreadCount: targetCandidate.unreadCount,
-                lastMessageTime: targetCandidate.lastMessageTime,
-                messagePreview: targetCandidate.messagePreview
-              },
-              totalCandidates: candidates.length,
-              message: '成功点击候选人: ' + targetCandidate.name
+              success: false,
+              error: 'Failed to click on candidate',
+              targetCandidate: targetCandidate
             };
           } else {
             // 没找到目标，返回候选人列表供参考
@@ -190,6 +225,9 @@ export const openCandidateChatImprovedTool = tool({
           }
       `;
 
+      // 使用防检测包装
+      const wrappedScript = wrapAntiDetectionScript(script);
+
       // 执行脚本
       const tools = await client.tools();
       const toolName = "puppeteer_evaluate";
@@ -199,7 +237,7 @@ export const openCandidateChatImprovedTool = tool({
       }
 
       const tool = tools[toolName];
-      const result = await tool.execute({ script });
+      const result = await tool.execute({ script: wrappedScript });
 
       // 解析结果
       const mcpResult = result as { content?: Array<{ text?: string }> };

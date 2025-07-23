@@ -2,6 +2,10 @@ import { tool } from "ai";
 import { z } from "zod";
 import { UNREAD_SELECTORS } from "./constants";
 import { getPuppeteerMCPClient } from "@/lib/mcp/client-manager";
+import { 
+  generateBatchProcessingScript,
+  wrapAntiDetectionScript 
+} from "./anti-detection-utils";
 
 export const getUnreadCandidatesImprovedTool = tool({
   description: `获取当前聊天列表中所有未读候选人的改进版
@@ -36,94 +40,85 @@ export const getUnreadCandidatesImprovedTool = tool({
     try {
       const client = await getPuppeteerMCPClient();
 
-      // 创建脚本 - 需要包含 return 语句
-      const script = `
+      // 创建分批处理的脚本
+      const processingLogic = `
+        // 使用改进的选择器查找名字
+        const nameElement = element.querySelector('${UNREAD_SELECTORS.candidateNameSelectors}');
+        const name = nameElement ? nameElement.textContent.trim() : '';
+        
+        // 如果找不到名字，尝试从文本中提取
+        let extractedName = name;
+        if (!extractedName) {
+          const textContent = element.textContent || '';
+          const nameMatch = textContent.match(/[\\u4e00-\\u9fa5]{2,4}/);
+          extractedName = nameMatch ? nameMatch[0] : '';
+        }
+        
+        if (!extractedName) return; // 跳过没有名字的元素
+        
+        // 检查未读状态 - 减少querySelector调用
+        const hasUnread = !!(
+          element.querySelector('${UNREAD_SELECTORS.unreadBadge}') ||
+          element.querySelector('${UNREAD_SELECTORS.unreadDot}')
+        );
+        
+        // 获取未读数量 - 只在有未读时查询
+        let unreadCount = 0;
+        if (hasUnread) {
+          const badgeElement = element.querySelector('${UNREAD_SELECTORS.unreadBadgeSpan}') ||
+                               element.querySelector('${UNREAD_SELECTORS.unreadBadge}');
+          
+          if (badgeElement) {
+            const badgeText = badgeElement.textContent?.trim();
+            if (badgeText) {
+              const countMatch = badgeText.match(/\\d+/);
+              unreadCount = countMatch ? parseInt(countMatch[0], 10) : 1;
+            } else {
+              unreadCount = 1;
+            }
+          }
+        }
+        
+        // 获取时间和预览 - 简化文本处理
+        const textContent = element.textContent || '';
+        const timeMatch = textContent.match(/\\d{1,2}:\\d{2}/);
+        const time = timeMatch ? timeMatch[0] : '';
+        
+        const preview = textContent
+          .replace(extractedName, '')
+          .replace(/\\d{1,2}:\\d{2}/, '')
+          .replace(/\\d+/, '')
+          .trim()
+          .substring(0, 100);
+        
+        // 根据条件添加候选人
+        const shouldAdd = onlyUnread ? hasUnread : true;
+        
+        if (shouldAdd) {
+          results.push({
+            name: extractedName,
+            time: time,
+            preview: preview,
+            hasUnread: hasUnread,
+            unreadCount: unreadCount,
+            index: i
+          });
+        }
+      `;
+
+      const script = wrapAntiDetectionScript(`
         const selector = '${selector}';
         const max = ${max || "null"};
         const onlyUnread = ${onlyUnread};
         const sortBy = '${sortBy}';
         
         // 获取所有候选人项
-        const elements = document.querySelectorAll(selector);
-        const candidates = [];
+        const elements = Array.from(document.querySelectorAll(selector));
         
-        console.log('Found ' + elements.length + ' candidate elements');
+        ${generateBatchProcessingScript(processingLogic, 5)}
         
-        // 处理每个元素
-        elements.forEach((element, index) => {
-          try {
-            // 使用改进的选择器查找名字
-            const nameElement = element.querySelector('${UNREAD_SELECTORS.candidateNameSelectors}');
-            const name = nameElement ? nameElement.textContent.trim() : '';
-            
-            // 如果找不到名字，尝试从文本中提取
-            let extractedName = name;
-            if (!extractedName) {
-              const textContent = element.textContent || '';
-              const nameMatch = textContent.match(/[\\u4e00-\\u9fa5]{2,4}/);
-              extractedName = nameMatch ? nameMatch[0] : '';
-            }
-            
-            // 检查未读状态 - 根据实际 HTML 结构，badge-count 类表示有未读消息
-            const hasUnread = !!(
-              element.querySelector('${UNREAD_SELECTORS.unreadBadge}') ||  // .badge-count
-              element.querySelector('${UNREAD_SELECTORS.unreadBadgeNew}') ||  // .badge-count.badge-count-common-less
-              element.querySelector('${UNREAD_SELECTORS.unreadBadgeWithData}') ||  // [data-v-ddb4f62c].badge-count
-              element.querySelector('${UNREAD_SELECTORS.unreadBadgeSpan}') ||  // .badge-count span
-              element.querySelector('${UNREAD_SELECTORS.unreadDot}')  // .red-dot
-            );
-            
-            // 获取未读数量
-            let unreadCount = 0;
-            const badgeElements = [
-              element.querySelector('${UNREAD_SELECTORS.unreadBadgeSpan}'),  // .badge-count span (优先查找 span 内的数字)
-              element.querySelector('${UNREAD_SELECTORS.unreadBadgeNew}'),  // .badge-count.badge-count-common-less
-              element.querySelector('${UNREAD_SELECTORS.unreadBadgeWithData}'),  // [data-v-ddb4f62c].badge-count
-              element.querySelector('${UNREAD_SELECTORS.unreadBadge}')  // .badge-count
-            ].filter(Boolean);
-            
-            if (badgeElements.length > 0) {
-              const badgeElement = badgeElements[0];
-              const badgeText = badgeElement.textContent?.trim();
-              if (badgeText) {
-                const countMatch = badgeText.match(/\\d+/);
-                unreadCount = countMatch ? parseInt(countMatch[0], 10) : 1;
-              } else {
-                unreadCount = 1;
-              }
-            }
-            
-            // 获取时间
-            const timeMatch = element.textContent?.match(/\\d{1,2}:\\d{2}/);
-            const time = timeMatch ? timeMatch[0] : '';
-            
-            // 获取消息预览
-            let preview = '';
-            const textContent = element.textContent || '';
-            preview = textContent
-              .replace(extractedName, '')
-              .replace(/\\d{1,2}:\\d{2}/, '')
-              .replace(/\\d+/, '')
-              .trim()
-              .substring(0, 100);
-            
-            // 根据条件添加候选人
-            const shouldAdd = onlyUnread ? hasUnread : true;
-            
-            if (extractedName && shouldAdd) {
-              candidates.push({
-                name: extractedName,
-                time: time,
-                preview: preview,
-                hasUnread: hasUnread,
-                unreadCount: unreadCount,
-                index: index
-              });
-            }
-          } catch (err) {
-            console.error('Error processing candidate element at index ' + index + ':', err);
-          }
-        });
+        // 执行分批处理
+        const candidates = await processAllBatches(elements);
         
         // 排序
         if (sortBy === 'unreadCount') {
@@ -134,8 +129,6 @@ export const getUnreadCandidatesImprovedTool = tool({
         
         // 限制数量
         const finalCandidates = max ? candidates.slice(0, max) : candidates;
-        
-        console.log('Successfully processed ' + finalCandidates.length + ' candidates');
         
         // 统计信息
         const stats = {
@@ -158,7 +151,7 @@ export const getUnreadCandidatesImprovedTool = tool({
             max: max
           }
         };
-      `;
+      `);
 
       // 执行脚本
       const tools = await client.tools();
