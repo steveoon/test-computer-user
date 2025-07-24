@@ -63,12 +63,17 @@ export const zhipinSendMessageTool = () =>
         const tools = await client.tools();
 
         // 检查必需的工具是否可用
-        const requiredTools = ["puppeteer_click", "puppeteer_fill", "puppeteer_evaluate"];
+        const requiredTools = ["puppeteer_click", "puppeteer_fill", "puppeteer_evaluate"] as const;
         for (const toolName of requiredTools) {
           if (!tools[toolName]) {
             throw new Error(`MCP tool ${toolName} not available`);
           }
         }
+        
+        // 类型断言：在检查后这些工具一定存在
+        const puppeteerEvaluate = tools.puppeteer_evaluate as NonNullable<typeof tools.puppeteer_evaluate>;
+        const puppeteerClick = tools.puppeteer_click as NonNullable<typeof tools.puppeteer_click>;
+        const puppeteerFill = tools.puppeteer_fill as NonNullable<typeof tools.puppeteer_fill>;
 
         // 输入框选择器列表 - 优化为最常用的几个
         const inputSelectors = [
@@ -101,7 +106,7 @@ export const zhipinSendMessageTool = () =>
           return { exists: false };
         `);
 
-        const inputResult = await tools.puppeteer_evaluate.execute({ script: findInputScript });
+        const inputResult = await puppeteerEvaluate.execute({ script: findInputScript });
         const inputData = parseEvaluateResult(inputResult);
         
         if (!inputData?.exists) {
@@ -118,7 +123,7 @@ export const zhipinSendMessageTool = () =>
         // 步骤2: 点击输入框获取焦点（添加随机延迟）
         await randomDelay(100, 300);
         try {
-          await tools.puppeteer_click.execute({ selector: usedInputSelector });
+          await puppeteerClick.execute({ selector: usedInputSelector });
         } catch {
           // 静默处理错误
         }
@@ -127,7 +132,7 @@ export const zhipinSendMessageTool = () =>
         if (clearBefore) {
           try {
             // 先聚焦
-            await tools.puppeteer_click.execute({ selector: usedInputSelector });
+            await puppeteerClick.execute({ selector: usedInputSelector });
             await randomDelay(50, 150);
             
             // Ctrl+A 全选
@@ -139,7 +144,7 @@ export const zhipinSendMessageTool = () =>
               await tools.puppeteer_key.execute({ key: "Backspace" });
             } else {
               // 降级方案：直接清空
-              await tools.puppeteer_fill.execute({ selector: usedInputSelector, value: "" });
+              await puppeteerFill.execute({ selector: usedInputSelector, value: "" });
             }
           } catch {
             // 静默处理错误
@@ -149,7 +154,7 @@ export const zhipinSendMessageTool = () =>
         // 步骤4: 填充消息（添加随机延迟）
         await randomDelay(100, 200);
         try {
-          await tools.puppeteer_fill.execute({ selector: usedInputSelector, value: message });
+          await puppeteerFill.execute({ selector: usedInputSelector, value: message });
         } catch (error) {
           return {
             success: false,
@@ -191,7 +196,7 @@ export const zhipinSendMessageTool = () =>
           return { exists: false };
         `);
 
-        const sendButtonResult = await tools.puppeteer_evaluate.execute({ script: findSendButtonScript });
+        const sendButtonResult = await puppeteerEvaluate.execute({ script: findSendButtonScript });
         const sendButtonData = parseEvaluateResult(sendButtonResult);
         
         if (!sendButtonData?.exists) {
@@ -209,7 +214,7 @@ export const zhipinSendMessageTool = () =>
         
         try {
           const sendSelector = sendButtonData.selector as string;
-          await tools.puppeteer_click.execute({ selector: sendSelector });
+          await puppeteerClick.execute({ selector: sendSelector });
           
           // 等待消息发送完成
           if (waitAfterSend > 0) {

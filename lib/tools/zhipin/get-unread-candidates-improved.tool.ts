@@ -4,7 +4,9 @@ import { UNREAD_SELECTORS } from "./constants";
 import { getPuppeteerMCPClient } from "@/lib/mcp/client-manager";
 import { 
   generateBatchProcessingScript,
-  wrapAntiDetectionScript 
+  wrapAntiDetectionScript,
+  performInitialScrollPattern,
+  performRandomScroll 
 } from "./anti-detection-utils";
 
 export const getUnreadCandidatesImprovedTool = tool({
@@ -39,6 +41,9 @@ export const getUnreadCandidatesImprovedTool = tool({
   }) => {
     try {
       const client = await getPuppeteerMCPClient();
+      
+      // 在获取候选人列表前执行初始滚动模式
+      await performInitialScrollPattern(client);
 
       // 创建分批处理的脚本
       const processingLogic = `
@@ -165,6 +170,14 @@ export const getUnreadCandidatesImprovedTool = tool({
 
       // 执行脚本
       const result = await tool.execute({ script });
+      
+      // 在获取结果后再执行一次随机滚动
+      await performRandomScroll(client, {
+        minDistance: 30,
+        maxDistance: 100,
+        probability: 0.4,
+        direction: 'both'
+      });
 
       // 解析结果
       const mcpResult = result as { content?: Array<{ text?: string }> };

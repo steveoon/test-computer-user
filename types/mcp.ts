@@ -160,6 +160,32 @@ export const MCPToolsSchema = z.record(MCPToolSchema);
 
 export type MCPTools = z.infer<typeof MCPToolsSchema>;
 
+/**
+ * MCP客户端接口定义
+ * 用于与MCP服务交互的客户端类型
+ */
+export interface MCPClient {
+  /**
+   * 获取客户端可用的工具集合
+   * @returns 包含工具名称和执行方法的对象
+   */
+  tools(): Promise<{
+    puppeteer_evaluate?: {
+      execute(params: { script: string }): Promise<unknown>;
+    };
+    puppeteer_click?: {
+      execute(params: { selector: string }): Promise<unknown>;
+    };
+    puppeteer_fill?: {
+      execute(params: { selector: string; value: string }): Promise<unknown>;
+    };
+    puppeteer_key?: {
+      execute(params: { key: string }): Promise<unknown>;
+    };
+    [key: string]: unknown;
+  }>;
+}
+
 // ========== Puppeteer MCP 服务接口类型 ==========
 
 /**

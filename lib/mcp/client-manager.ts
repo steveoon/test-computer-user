@@ -7,6 +7,7 @@ import {
   MCPManagerStatus,
   MCPClientStatus,
   MCPTools,
+  MCPClient,
   validateMCPClientConfig,
 } from '@/types/mcp';
 
@@ -172,8 +173,8 @@ class MCPClientManager {
   /**
    * Puppeteer MCP 客户端
    */
-  public async getPuppeteerMCPClient(): Promise<any> {
-    return this.getMCPClient('puppeteer');
+  public async getPuppeteerMCPClient(): Promise<MCPClient> {
+    return this.getMCPClient('puppeteer') as Promise<MCPClient>;
   }
 
   /**

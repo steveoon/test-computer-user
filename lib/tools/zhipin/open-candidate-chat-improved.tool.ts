@@ -2,7 +2,7 @@ import { tool } from "ai";
 import { z } from "zod";
 import { UNREAD_SELECTORS } from "./constants";
 import { getPuppeteerMCPClient } from "@/lib/mcp/client-manager";
-import { wrapAntiDetectionScript } from "./anti-detection-utils";
+import { wrapAntiDetectionScript, clickWithMouseTrajectory, performRandomScroll } from "./anti-detection-utils";
 
 export const openCandidateChatImprovedTool = tool({
   description: `打开指定候选人的聊天窗口（改进版）
@@ -146,29 +146,48 @@ export const openCandidateChatImprovedTool = tool({
             targetCandidate = candidates.find(c => c.hasUnread);
           }
           
-          // 执行点击
+          // 执行点击 - 返回选择器信息而不是直接点击
           if (targetCandidate) {
-            // 方案1：直接通过候选人名称查找并点击
-            const clickSuccess = (() => {
-              const items = document.querySelectorAll('${UNREAD_SELECTORS.unreadCandidates}');
-              for (let i = 0; i < items.length; i++) {
-                const item = items[i];
-                const nameEl = item.querySelector('${UNREAD_SELECTORS.candidateNameSelectors}');
-                if (nameEl && nameEl.textContent.trim() === targetCandidate.name) {
-                  // 添加小延迟模拟人类行为
-                  const delay = 50 + Math.random() * 100;
-                  setTimeout(() => item.click(), delay);
-                  return true;
-                }
-              }
-              return false;
-            })();
+            // 查找目标元素并返回选择器
+            const items = document.querySelectorAll('${UNREAD_SELECTORS.unreadCandidates}');
             
-            if (clickSuccess) {
+            // 方案1：通过名称匹配
+            for (let i = 0; i < items.length; i++) {
+              const item = items[i];
+              const nameEl = item.querySelector('${UNREAD_SELECTORS.candidateNameSelectors}');
+              if (nameEl && nameEl.textContent.trim() === targetCandidate.name) {
+                return {
+                  success: true,
+                  action: 'found',
+                  clickTarget: {
+                    selector: '${UNREAD_SELECTORS.unreadCandidates}',
+                    index: i,
+                    name: targetCandidate.name
+                  },
+                  candidateInfo: {
+                    name: targetCandidate.name,
+                    index: targetCandidate.index,
+                    hasUnread: targetCandidate.hasUnread,
+                    unreadCount: targetCandidate.unreadCount,
+                    lastMessageTime: targetCandidate.lastMessageTime,
+                    messagePreview: targetCandidate.messagePreview
+                  },
+                  totalCandidates: candidates.length
+                };
+              }
+            }
+            
+            // 方案2：如果名称匹配失败，使用索引
+            if (items[targetCandidate.index]) {
               return {
                 success: true,
-                action: 'clicked',
-                clickedCandidate: {
+                action: 'found',
+                clickTarget: {
+                  selector: '${UNREAD_SELECTORS.unreadCandidates}',
+                  index: targetCandidate.index,
+                  name: targetCandidate.name
+                },
+                candidateInfo: {
                   name: targetCandidate.name,
                   index: targetCandidate.index,
                   hasUnread: targetCandidate.hasUnread,
@@ -177,28 +196,8 @@ export const openCandidateChatImprovedTool = tool({
                   messagePreview: targetCandidate.messagePreview
                 },
                 totalCandidates: candidates.length,
-                message: '成功点击候选人: ' + targetCandidate.name
+                byIndex: true
               };
-            } else {
-              // 方案2：如果精确匹配失败，尝试通过索引点击
-              const items = document.querySelectorAll('${UNREAD_SELECTORS.unreadCandidates}');
-              if (items[targetCandidate.index]) {
-                items[targetCandidate.index].click();
-                return {
-                  success: true,
-                  action: 'clicked',
-                  clickedCandidate: {
-                    name: targetCandidate.name,
-                    index: targetCandidate.index,
-                    hasUnread: targetCandidate.hasUnread,
-                    unreadCount: targetCandidate.unreadCount,
-                    lastMessageTime: targetCandidate.lastMessageTime,
-                    messagePreview: targetCandidate.messagePreview
-                  },
-                  totalCandidates: candidates.length,
-                  message: '成功点击候选人（通过索引）: ' + targetCandidate.name
-                };
-              }
             }
             
             return {
@@ -253,6 +252,96 @@ export const openCandidateChatImprovedTool = tool({
           if (executionMatch && executionMatch[1].trim() !== "undefined") {
             const jsonResult = executionMatch[1].trim();
             const parsedResult = JSON.parse(jsonResult);
+            
+            // 如果找到了点击目标，使用更可靠的方法执行点击
+            if (parsedResult.success && parsedResult.action === 'found' && parsedResult.clickTarget) {
+              const { selector, index, name } = parsedResult.clickTarget;
+              
+              try {
+                // 添加随机延迟模拟人类行为
+                const delay = 50 + Math.random() * 100;
+                await new Promise(resolve => setTimeout(resolve, delay));
+                
+                // 在点击前执行随机滚动
+                await performRandomScroll(client, {
+                  minDistance: 20,
+                  maxDistance: 80,
+                  probability: 0.3,
+                  direction: 'both'
+                });
+                
+                // 使用临时属性标记目标元素，避免选择器问题
+                const markScript = wrapAntiDetectionScript(`
+                  const items = document.querySelectorAll('${selector}');
+                  if (items[${index}]) {
+                    // 先清理可能存在的旧标记
+                    document.querySelectorAll('[data-temp-click-target]').forEach(el => {
+                      el.removeAttribute('data-temp-click-target');
+                    });
+                    
+                    // 标记目标元素
+                    items[${index}].setAttribute('data-temp-click-target', 'true');
+                    
+                    // 验证标记的元素确实是我们要的候选人
+                    const nameEl = items[${index}].querySelector('${UNREAD_SELECTORS.candidateNameSelectors}');
+                    const actualName = nameEl ? nameEl.textContent.trim() : '';
+                    
+                    return { 
+                      success: true, 
+                      marked: true,
+                      actualName: actualName,
+                      expectedName: '${name}',
+                      nameMatch: actualName === '${name}'
+                    };
+                  }
+                  return { success: false, error: '无法找到目标元素' };
+                `);
+                
+                const markResult = await tools.puppeteer_evaluate.execute({ script: markScript });
+                const markData = parseEvaluateResult(markResult);
+                
+                if (markData && typeof markData === 'object' && 'success' in markData && markData.success) {
+                  // 使用临时属性选择器点击
+                  const tempSelector = `${selector}[data-temp-click-target="true"]`;
+                  
+                  // 使用带鼠标轨迹的点击
+                  await clickWithMouseTrajectory(client, tempSelector, {
+                    preClickDelay: 200,
+                    moveSteps: 18
+                  });
+                  
+                  // 清理临时属性
+                  const cleanupScript = wrapAntiDetectionScript(`
+                    const el = document.querySelector('[data-temp-click-target]');
+                    if (el) el.removeAttribute('data-temp-click-target');
+                  `);
+                  await tools.puppeteer_evaluate.execute({ script: cleanupScript });
+                  
+                  return {
+                    success: true,
+                    action: 'clicked',
+                    clickedCandidate: parsedResult.candidateInfo,
+                    totalCandidates: parsedResult.totalCandidates,
+                    message: '成功点击候选人' + (parsedResult.byIndex ? '（通过索引）' : '') + ': ' + parsedResult.candidateInfo.name
+                  };
+                } else {
+                  return {
+                    success: false,
+                    error: '无法标记目标元素',
+                    details: markData,
+                    candidateInfo: parsedResult.candidateInfo
+                  };
+                }
+              } catch (clickError) {
+                return {
+                  success: false,
+                  error: '点击操作失败',
+                  details: clickError instanceof Error ? clickError.message : '未知错误',
+                  candidateInfo: parsedResult.candidateInfo
+                };
+              }
+            }
+            
             return parsedResult;
           }
 
@@ -288,6 +377,29 @@ export const openCandidateChatImprovedTool = tool({
     }
   },
 });
+
+/**
+ * 解析 puppeteer_evaluate 的结果
+ */
+function parseEvaluateResult(result: unknown): Record<string, unknown> | null {
+  try {
+    const mcpResult = result as { content?: Array<{ text?: string }> };
+    if (mcpResult?.content?.[0]?.text) {
+      const resultText = mcpResult.content[0].text;
+      const executionMatch = resultText.match(
+        /Execution result:\s*\n([\s\S]*?)(\n\nConsole output|$)/
+      );
+
+      if (executionMatch && executionMatch[1].trim() !== "undefined") {
+        const jsonResult = executionMatch[1].trim();
+        return JSON.parse(jsonResult) as Record<string, unknown>;
+      }
+    }
+  } catch (e) {
+    console.error("Failed to parse evaluate result:", e);
+  }
+  return null;
+}
 
 // 导出工具
 export const OPEN_CANDIDATE_CHAT_IMPROVED_ACTION = "open_candidate_chat_improved";

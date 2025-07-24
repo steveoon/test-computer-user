@@ -2,7 +2,7 @@ import { tool } from "ai";
 import { z } from "zod";
 import { getPuppeteerMCPClient } from "@/lib/mcp/client-manager";
 import { EXCHANGE_WECHAT_SELECTORS } from "./constants";
-import { wrapAntiDetectionScript, randomDelay } from "./anti-detection-utils";
+import { wrapAntiDetectionScript, randomDelay, clickWithMouseTrajectory } from "./anti-detection-utils";
 
 /**
  * 交换微信工具
@@ -55,12 +55,15 @@ export const zhipinExchangeWechatTool = () =>
         const tools = await client.tools();
 
         // 检查必需的工具是否可用
-        const requiredTools = ["puppeteer_click", "puppeteer_evaluate"];
+        const requiredTools = ["puppeteer_click", "puppeteer_evaluate"] as const;
         for (const toolName of requiredTools) {
           if (!tools[toolName]) {
             throw new Error(`MCP tool ${toolName} not available`);
           }
         }
+        
+        // 类型断言：在检查后这些工具一定存在
+        const puppeteerEvaluate = tools.puppeteer_evaluate as NonNullable<typeof tools.puppeteer_evaluate>;
 
         // 添加初始延迟
         await randomDelay(100, 300);
@@ -105,7 +108,7 @@ export const zhipinExchangeWechatTool = () =>
           return { exists: false };
         `);
 
-        const exchangeResult = await tools.puppeteer_evaluate.execute({ script: findExchangeButtonScript });
+        const exchangeResult = await puppeteerEvaluate.execute({ script: findExchangeButtonScript });
         const exchangeData = parseEvaluateResult(exchangeResult);
 
         if (!exchangeData?.exists) {
@@ -117,35 +120,79 @@ export const zhipinExchangeWechatTool = () =>
           };
         }
 
-        // 点击交换按钮
+        // 点击交换按钮 - 使用带鼠标轨迹的点击
         let exchangeClicked = false;
         try {
           if (exchangeData.index !== undefined && typeof exchangeData.index === 'number') {
             // 如果是通过索引找到的，使用nth-child
             const selector = `span.operate-btn:nth-child(${exchangeData.index + 1})`;
-            await tools.puppeteer_click.execute({ selector });
+            await clickWithMouseTrajectory(client, selector, {
+              preClickDelay: 100,
+              moveSteps: 20
+            });
             exchangeClicked = true;
           } else if (exchangeData.selector && typeof exchangeData.selector === 'string') {
             // 直接使用选择器
-            await tools.puppeteer_click.execute({ selector: exchangeData.selector });
+            await clickWithMouseTrajectory(client, exchangeData.selector, {
+              preClickDelay: 100,
+              moveSteps: 20
+            });
             exchangeClicked = true;
           }
         } catch (_error) {
-          // 如果点击失败，尝试备用方案
+          // 如果点击失败，尝试备用方案 - 返回选择器让外部使用 puppeteer_click
           const fallbackScript = wrapAntiDetectionScript(`
             const spans = document.querySelectorAll('span.operate-btn');
-            for (const span of spans) {
+            for (let i = 0; i < spans.length; i++) {
+              const span = spans[i];
               if (span.textContent && span.textContent.includes('换微信')) {
-                span.click();
-                return { success: true };
+                return { success: true, selector: 'span.operate-btn', index: i };
               }
             }
             return { success: false };
           `);
           
-          const fallbackResult = await tools.puppeteer_evaluate.execute({ script: fallbackScript });
+          const fallbackResult = await puppeteerEvaluate.execute({ script: fallbackScript });
           const fallbackData = parseEvaluateResult(fallbackResult);
-          exchangeClicked = fallbackData?.success === true;
+          
+          if (fallbackData?.success && typeof fallbackData.index === 'number') {
+            // 使用带鼠标轨迹的点击而不是直接 click()
+            // 注意：使用更精确的选择器来避免问题
+            const allOperateBtns = await puppeteerEvaluate.execute({ 
+              script: wrapAntiDetectionScript(`
+                const btns = Array.from(document.querySelectorAll('span.operate-btn'));
+                const targetBtn = btns.find(btn => btn.textContent && btn.textContent.includes('换微信'));
+                if (targetBtn) {
+                  // 为目标按钮添加一个临时的 data 属性
+                  targetBtn.setAttribute('data-exchange-btn-temp', 'true');
+                  return { success: true };
+                }
+                return { success: false };
+              `)
+            });
+            
+            const markResult = parseEvaluateResult(allOperateBtns);
+            if (markResult && typeof markResult === 'object' && 'success' in markResult && markResult.success) {
+              try {
+                // 使用临时属性选择器
+                await clickWithMouseTrajectory(client, 'span.operate-btn[data-exchange-btn-temp="true"]', {
+                  preClickDelay: 100,
+                  moveSteps: 20
+                });
+                exchangeClicked = true;
+                
+                // 清理临时属性
+                await puppeteerEvaluate.execute({ 
+                  script: wrapAntiDetectionScript(`
+                    const btn = document.querySelector('span.operate-btn[data-exchange-btn-temp="true"]');
+                    if (btn) btn.removeAttribute('data-exchange-btn-temp');
+                  `)
+                });
+              } catch (_err) {
+                exchangeClicked = false;
+              }
+            }
+          }
         }
 
         if (!exchangeClicked) {
@@ -172,7 +219,7 @@ export const zhipinExchangeWechatTool = () =>
           };
         `);
         
-        const tooltipCheck = await tools.puppeteer_evaluate.execute({ script: checkTooltipScript });
+        const tooltipCheck = await puppeteerEvaluate.execute({ script: checkTooltipScript });
         const tooltipData = parseEvaluateResult(tooltipCheck);
         
         if (!tooltipData?.visible || !tooltipData?.hasConfirmButton) {
@@ -240,7 +287,7 @@ export const zhipinExchangeWechatTool = () =>
           return { exists: false };
         `);
 
-        const confirmResult = await tools.puppeteer_evaluate.execute({ script: findConfirmButtonScript });
+        const confirmResult = await puppeteerEvaluate.execute({ script: findConfirmButtonScript });
         const confirmData = parseEvaluateResult(confirmResult);
 
         if (!confirmData?.exists) {
@@ -260,31 +307,73 @@ export const zhipinExchangeWechatTool = () =>
         let confirmClicked = false;
         try {
           if (confirmData.index !== undefined && typeof confirmData.index === 'number') {
-            // 使用nth-of-type避免nth-child问题
+            // 使用nth-of-type避免nth-child问题 - 使用带鼠标轨迹的点击
             const selector = `.exchange-tooltip span.boss-btn-primary:nth-of-type(${confirmData.index + 1})`;
-            await tools.puppeteer_click.execute({ selector });
+            await clickWithMouseTrajectory(client, selector, {
+              preClickDelay: 150,
+              moveSteps: 15
+            });
             confirmClicked = true;
           } else if (confirmData.selector && typeof confirmData.selector === 'string') {
-            // 直接使用选择器
-            await tools.puppeteer_click.execute({ selector: confirmData.selector });
+            // 直接使用选择器 - 使用带鼠标轨迹的点击
+            await clickWithMouseTrajectory(client, confirmData.selector, {
+              preClickDelay: 150,
+              moveSteps: 15
+            });
             confirmClicked = true;
           }
         } catch (_error) {
-          // 如果点击失败，尝试备用方案
+          // 如果点击失败，尝试备用方案 - 返回选择器让外部使用 puppeteer_click
           const fallbackScript = wrapAntiDetectionScript(`
             const buttons = document.querySelectorAll('.exchange-tooltip span.boss-btn-primary');
-            for (const btn of buttons) {
+            for (let i = 0; i < buttons.length; i++) {
+              const btn = buttons[i];
               if (btn.textContent && btn.textContent.includes('确定')) {
-                btn.click();
-                return { success: true };
+                return { success: true, selector: '.exchange-tooltip span.boss-btn-primary', index: i };
               }
             }
             return { success: false };
           `);
           
-          const fallbackResult = await tools.puppeteer_evaluate.execute({ script: fallbackScript });
+          const fallbackResult = await puppeteerEvaluate.execute({ script: fallbackScript });
           const fallbackData = parseEvaluateResult(fallbackResult);
-          confirmClicked = fallbackData?.success === true;
+          
+          if (fallbackData?.success && typeof fallbackData.index === 'number') {
+            // 使用带鼠标轨迹的点击而不是直接 click()
+            // 使用更可靠的方法来选择确认按钮
+            const markConfirmBtn = await puppeteerEvaluate.execute({ 
+              script: wrapAntiDetectionScript(`
+                const btns = Array.from(document.querySelectorAll('.exchange-tooltip span.boss-btn-primary'));
+                const targetBtn = btns.find(btn => btn.textContent && btn.textContent.includes('确定'));
+                if (targetBtn) {
+                  targetBtn.setAttribute('data-confirm-btn-temp', 'true');
+                  return { success: true };
+                }
+                return { success: false };
+              `)
+            });
+            
+            const markResult = parseEvaluateResult(markConfirmBtn);
+            if (markResult && typeof markResult === 'object' && 'success' in markResult && markResult.success) {
+              try {
+                await clickWithMouseTrajectory(client, '.exchange-tooltip span.boss-btn-primary[data-confirm-btn-temp="true"]', {
+                  preClickDelay: 150,
+                  moveSteps: 15
+                });
+                confirmClicked = true;
+                
+                // 清理临时属性
+                await puppeteerEvaluate.execute({ 
+                  script: wrapAntiDetectionScript(`
+                    const btn = document.querySelector('.exchange-tooltip span.boss-btn-primary[data-confirm-btn-temp="true"]');
+                    if (btn) btn.removeAttribute('data-confirm-btn-temp');
+                  `)
+                });
+              } catch (_err) {
+                confirmClicked = false;
+              }
+            }
+          }
         }
 
         if (!confirmClicked) {

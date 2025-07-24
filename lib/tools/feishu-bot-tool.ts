@@ -31,7 +31,7 @@ export const feishuBotTool = () =>
         .describe("候选人微信号（candidate_wechat类型时必需）"),
       candidate_info: z
         .object({
-          age: z.number().optional().describe("候选人年龄"),
+          age: z.union([z.number(), z.string()]).optional().describe("候选人年龄"),
           experience: z.string().optional().describe("工作经验"),
           education: z.string().optional().describe("学历"),
         })

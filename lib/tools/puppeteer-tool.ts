@@ -182,7 +182,7 @@ export const puppeteerTool = () =>
         }
 
         // AI SDK MCP工具调用方式
-        const tool = tools[toolName];
+        const tool = tools[toolName] as { execute: (params: unknown) => Promise<unknown> };
         const result = await tool.execute(mcpParams);
 
         console.log(`✅ Puppeteer操作 ${action} 执行成功`);
