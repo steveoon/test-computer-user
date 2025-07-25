@@ -217,15 +217,34 @@ echo "📊 Reviewing $(echo $FILTERED_FILES | wc -w) files..."
 TEMP_PROMPT_FILE=$(mktemp)
 echo "$REVIEW_PROMPT" > "$TEMP_PROMPT_FILE"
 
-# 使用claude命令行工具的无头模式
-# --json 参数确保输出为JSON格式
-claude -p "$(cat $TEMP_PROMPT_FILE)" --json > review_result.json 2>review_error.log
+# Claude Code CLI 不支持 -p 和 --json 参数
+# 使用管道方式传递输入
+echo "开始代码审查，请以JSON格式返回结果..." >> "$TEMP_PROMPT_FILE"
+cat "$TEMP_PROMPT_FILE" | claude > review_raw.txt 2>review_error.log
 
 # 清理临时文件
 rm -f "$TEMP_PROMPT_FILE"
 
+# 从 Claude 输出中提取 JSON
+if [ -f review_raw.txt ]; then
+    echo "📝 Processing Claude output..."
+    # 尝试提取 ```json 和 ``` 之间的内容
+    sed -n '/```json/,/```/{//!p}' review_raw.txt > review_result.json
+    
+    # 如果没有找到 JSON 块，检查是否整个输出就是 JSON
+    if [ ! -s review_result.json ]; then
+        # 尝试直接解析为 JSON
+        if jq . review_raw.txt > /dev/null 2>&1; then
+            cp review_raw.txt review_result.json
+        else
+            echo "❌ Claude 没有返回有效的 JSON 格式"
+            cat review_raw.txt
+        fi
+    fi
+fi
+
 # 检查命令执行结果
-if [ $? -ne 0 ]; then
+if [ ! -f review_result.json ] || [ ! -s review_result.json ]; then
     echo "❌ Claude Code command failed"
     echo "Error log:"
     cat review_error.log
