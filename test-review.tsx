@@ -1,7 +1,7 @@
 import React from 'react';
 
 interface Props {
-  data: any; // 故意使用 any 类型
+  data: any; // 故意使用 any 类型 - 触发重新审查
   items: any[]; // 另一个 any 类型
 }
 
