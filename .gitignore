@@ -47,5 +47,13 @@ next-env.d.ts
 *.log
 *-audit.json
 
+# claude code review
+review_result.json
+review_error.log
+current_diff.patch
+changed_files.txt
+test-review-*.tsx
+test-review-*.ts
+
 # serena files
 .serena/

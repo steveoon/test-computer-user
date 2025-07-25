@@ -8,6 +8,7 @@ README.md
 docker
 .git
 .gitignore
+.github
 
 # 环境变量文件 - 绝对不要包含在镜像中
 .env
